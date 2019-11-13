@@ -13,6 +13,7 @@
     
   <modules>
     <module>praxiscore-api</module>
+    <module>praxiscore-base</module>
   </modules>
     
   <scm>
