@@ -14,6 +14,14 @@
   <modules>
     <module>praxiscore-api</module>
     <module>praxiscore-base</module>
+    <module>praxiscore-code</module>
+    <module>praxiscore-logging</module>
+    <module>praxiscore-util</module>
+    <module>praxiscore-components</module>
+    <module>praxiscore-core-code</module>
+    <module>praxiscore-code-services</module>
+    <module>praxiscore-hub</module>
+    <module>praxiscore-script</module>
   </modules>
     
   <scm>

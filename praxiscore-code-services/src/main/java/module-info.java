@@ -1,0 +1,19 @@
+
+module org.praxislive.code.services {
+    
+    requires java.compiler;
+    requires java.logging;
+    
+    requires org.praxislive.base;
+    requires org.praxislive.core;
+    requires org.praxislive.code;
+    requires org.praxislive.logging;
+    requires org.praxislive.script;
+    requires org.praxislive.util;
+
+    provides org.praxislive.core.RootHub.ExtensionProvider with
+            org.praxislive.code.services.CodeServicesExtensionProvider;
+    provides org.praxislive.script.CommandInstaller with
+            org.praxislive.code.services.CompilerCommandInstaller;
+    
+}
