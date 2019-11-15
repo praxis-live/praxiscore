@@ -61,6 +61,7 @@ class SystemLookup implements Lookup {
 
         @Override
         public <T> Optional<T> find(Class<T> type) {
+            getClass().getModule().addUses(type);
             ServiceLoader<T> loader = ServiceLoader.load(type);
             try {
                 Iterator<T> itr = loader.iterator();
@@ -75,6 +76,7 @@ class SystemLookup implements Lookup {
 
         @Override
         public <T> Stream<T> findAll(Class<T> type) {
+            getClass().getModule().addUses(type);
             ServiceLoader<T> loader = ServiceLoader.load(type);
             // @TODO make lazy?
             try {

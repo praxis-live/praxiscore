@@ -22,25 +22,27 @@
 package org.praxislive.script.impl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Packet;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.RootHub;
 import org.praxislive.core.services.ScriptService;
+import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PError;
 import org.praxislive.script.Env;
 
 /**
  *
  */
-public class ScriptServiceImpl extends AbstractRoot {
+public class ScriptServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
 
     private static final Logger LOG = Logger.getLogger(ScriptServiceImpl.class.getName());
 
@@ -58,6 +60,11 @@ public class ScriptServiceImpl extends AbstractRoot {
     }
 
     @Override
+    public List<Class<? extends Service>> services() {
+        return List.of(ScriptService.class);
+    }
+
+    @Override
     protected void processCall(Call call, PacketRouter router) {
         try {
             controls.get(call.to().controlID()).call(call, router);
@@ -65,7 +72,6 @@ public class ScriptServiceImpl extends AbstractRoot {
             router.route(call.error(PError.of(ex)));
         }
     }
-    
 
     private ScriptExecutor getExecutor(ControlAddress from) {
         ScriptContext ctxt = contexts.get(from);
@@ -73,7 +79,7 @@ public class ScriptServiceImpl extends AbstractRoot {
             return ctxt.executor;
         }
         exID++;
-        String id = "_exec_" + exID;  
+        String id = "_exec_" + exID;
         EnvImpl env = new EnvImpl(ControlAddress.of(getAddress(), id));
 //        ScriptExecutor ex = new ScriptExecutor(env, true);
         ScriptExecutor ex = new ScriptExecutor(env, from.component());
@@ -90,9 +96,6 @@ public class ScriptServiceImpl extends AbstractRoot {
         ctxt.executor.flushEvalQueue();
         controls.remove(ctxt.id);
     }
-
-
-
 
     private class EvalControl implements Control {
 
@@ -123,7 +126,6 @@ public class ScriptServiceImpl extends AbstractRoot {
 
     }
 
-
     private class ScriptControl implements Control {
 
         private final ScriptExecutor executor;
@@ -143,7 +145,7 @@ public class ScriptServiceImpl extends AbstractRoot {
             } else {
                 executor.processScriptCall(call);
             }
-            
+
         }
 
     }
@@ -159,8 +161,6 @@ public class ScriptServiceImpl extends AbstractRoot {
         }
 
     }
-
-
 
     private class EnvImpl implements Env {
 

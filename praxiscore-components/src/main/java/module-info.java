@@ -9,4 +9,7 @@ module org.praxislive.core.components {
     provides org.praxislive.core.services.ComponentFactoryProvider with
             org.praxislive.core.components.CoreComponents;
     
+    opens org.praxislive.core.components;
+    opens org.praxislive.core.components.resources;
+    
 }

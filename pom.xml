@@ -22,6 +22,9 @@
     <module>praxiscore-code-services</module>
     <module>praxiscore-hub</module>
     <module>praxiscore-script</module>
+    <module>praxiscore-launcher</module>
+    <module>praxiscore-bin</module>
+    <module>praxiscore-data</module>
   </modules>
     
   <scm>

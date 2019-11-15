@@ -9,4 +9,7 @@ module org.praxislive.script {
     
     exports org.praxislive.script;
     exports org.praxislive.script.impl;
+    
+    uses org.praxislive.script.CommandInstaller;
+    
 }

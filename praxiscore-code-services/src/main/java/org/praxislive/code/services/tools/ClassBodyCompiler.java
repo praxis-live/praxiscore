@@ -43,6 +43,7 @@ public class ClassBodyCompiler {
     private final ClassBodyContext<?> classBodyContext;
     private final Set<File> extClasspath;
     private final String defClasspath;
+    private final String defModulepath;
 
     private MessageHandler messageHandler;
     private JavaCompiler compiler;
@@ -50,9 +51,10 @@ public class ClassBodyCompiler {
 
     private ClassBodyCompiler(ClassBodyContext<?> classBodyContext) {
         this.classBodyContext = classBodyContext;
-        this.release = SourceVersion.RELEASE_8;
+        this.release = SourceVersion.RELEASE_11;
         this.extClasspath = new LinkedHashSet<>();
-        this.defClasspath = System.getProperty("env.class.path", "");
+        this.defClasspath = System.getProperty("java.class.path", "");
+        this.defModulepath = System.getProperty("jdk.module.path", "");
     }
 
     public ClassBodyCompiler addMessageHandler(MessageHandler messageHandler) {
@@ -69,7 +71,7 @@ public class ClassBodyCompiler {
         this.compiler = compiler;
         return this;
     }
-    
+
     public ClassBodyCompiler setRelease(SourceVersion release) {
         this.release = release;
         return this;
@@ -85,14 +87,12 @@ public class ClassBodyCompiler {
             if (messageHandler != null) {
                 cbe.setMessageHandler(messageHandler);
             }
-            if (compiler.isSupportedOption("--release") == 1) {
-                cbe.setOptions(Arrays.asList("-Xlint:all", "-proc:none",
-                        "--release", String.valueOf(release.ordinal()),
-                        "-classpath", buildClasspath()));
-            } else {
-                cbe.setOptions(Arrays.asList("-Xlint:all", "-proc:none",
-                        "-classpath", buildClasspath()));
-            }
+            cbe.setOptions(Arrays.asList("-Xlint:all", "-proc:none",
+                    "--release", String.valueOf(release.ordinal()),
+                    "--add-modules", "ALL-MODULE-PATH",
+                    "--module-path", defModulepath,
+                    "-classpath", buildClasspath()));
+
             cbe.cook(new StringReader(code));
             return cbe.getCompiledClasses();
         } catch (CompilationException ex) {
@@ -101,13 +101,14 @@ public class ClassBodyCompiler {
             throw new CompilationException(ex);
         }
     }
+
     private String buildClasspath() {
         if (extClasspath.isEmpty()) {
             return defClasspath;
         } else {
             return extClasspath.stream()
                     .map(f -> f.getAbsolutePath())
-                    .collect(Collectors.joining(File.pathSeparator, 
+                    .collect(Collectors.joining(File.pathSeparator,
                             "", File.pathSeparator + defClasspath));
         }
     }

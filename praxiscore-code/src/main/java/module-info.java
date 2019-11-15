@@ -19,4 +19,7 @@ module org.praxislive.code {
     provides org.praxislive.core.Protocol.TypeProvider with
             org.praxislive.code.internal.CodeProtocolsProvider;
     
+    uses org.praxislive.code.CodeConnector.Plugin;
+    uses org.praxislive.code.TypeConverter.Provider;
+    
 }

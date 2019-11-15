@@ -8,4 +8,6 @@ module org.praxislive.core.code {
 
     exports org.praxislive.core.code;
     
+    opens org.praxislive.core.code.resources;
+    
 }

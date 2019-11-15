@@ -71,9 +71,10 @@ public class DefaultCompilerService extends AbstractRoot
                 CodeCompilerService.COMPILE, new CompileControl(),
                 "add-libs", new AddLibsControl(),
                 "release", new JavaReleaseControl());
-        compiler = Lookup.SYSTEM.find(JavaCompilerProvider.class)
-                .map(JavaCompilerProvider::getJavaCompiler)
-                .orElse(ToolProvider.getSystemJavaCompiler());
+        compiler = ToolProvider.getSystemJavaCompiler();
+//                Lookup.SYSTEM.find(JavaCompilerProvider.class)
+//                .map(JavaCompilerProvider::getJavaCompiler)
+//                .orElse(ToolProvider.getSystemJavaCompiler());
         if (compiler == null) {
             throw new RuntimeException("No compiler found");
         }
@@ -214,12 +215,12 @@ public class DefaultCompilerService extends AbstractRoot
         }
         
         private void process(int requestedRelease) throws Exception {
-            if (requestedRelease == release.ordinal()) {
+            if (requestedRelease <= release.ordinal()) {
                 return;
             }
-            if (requestedRelease < release.ordinal()) {
-                throw new IllegalArgumentException("Cannot set release version lower than existing : " + release.ordinal());
-            }
+//            if (requestedRelease < release.ordinal()) {
+//                throw new IllegalArgumentException("Cannot set release version lower than existing : " + release.ordinal());
+//            }
             SourceVersion requested = compiler.getSourceVersions().stream()
                     .filter(v -> v.ordinal() == requestedRelease)
                     .findFirst().orElseThrow(() -> new IllegalArgumentException("Unsupported release version : " + requestedRelease));
