@@ -140,14 +140,13 @@ public class DefaultVideoRoot extends AbstractRootContainer {
             if (outputClient != null && outputClient.getOutputCount() > 0) {
                 player.getSink(0).addSource(outputClient.getOutputSource(0));
             }
-            attachDelegate(delegate);
-            
-//            setDelegate(new Runnable() {
-//                public void run() {
-                    player.run();
-                    setIdle();
-//                }
-//            });
+            invokeLater(() -> {
+                attachDelegate(delegate);
+                player.run();
+                setIdle();
+                detachDelegate(delegate);
+            });
+            interrupt();
         } catch (Exception ex) {
             LOG.log(Level.SEVERE, "Couldn't start video renderer", ex);
             setIdle();
