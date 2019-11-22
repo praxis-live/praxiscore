@@ -67,6 +67,11 @@
       <artifactId>praxiscore-launcher</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-video</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
     
   <properties>

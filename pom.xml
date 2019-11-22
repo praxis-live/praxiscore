@@ -25,6 +25,8 @@
     <module>praxiscore-launcher</module>
     <module>praxiscore-bin</module>
     <module>praxiscore-data</module>
+    <module>praxiscore-video</module>
+    <module>praxiscore-settings</module>
   </modules>
     
   <scm>
