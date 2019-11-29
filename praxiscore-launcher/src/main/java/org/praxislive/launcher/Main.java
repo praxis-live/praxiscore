@@ -21,13 +21,14 @@
  */
 package org.praxislive.launcher;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.praxislive.core.Root;
 import org.praxislive.hub.Hub;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 
 /**
@@ -38,9 +39,11 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("PraxisCORE");
         System.out.println(Arrays.toString(args));
-        
-        if (args.length == 1) {
-            try {
+
+        List<Root> exts = new ArrayList<>();
+
+        try {
+            if (args.length == 1) {
                 File file = new File(args[0]);
                 if (!file.isAbsolute()) {
                     file = file.getAbsoluteFile();
@@ -50,22 +53,23 @@ public class Main {
                 }
                 String script = Files.readString(file.toPath());
                 script = "set _PWD " + file.getParentFile().toURI() + "\n" + script;
-                Hub hub = Hub.builder()
-                        .addExtension(new NonGuiPlayer(List.of(script)))
-                        .build();
-                hub.start();
-                hub.await();
-            } catch (Exception ex) {
-                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-                System.exit(1);
+                exts.add(new NonGuiPlayer(List.of(script)));
             }
-        } else {
+            exts.add(new TerminalIO());
+            var builder = Hub.builder();
+            exts.forEach(builder::addExtension);
+            var hub = builder.build();
+            hub.start();
+            hub.await();
+        } catch (Exception ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
         }
-        
     }
 
-    //
+}
+
+//
 //    private void processScript(Env env, String[] args) throws CommandException {
 //        if (args.length < 1) {
 //            throw new CommandException(1, "Too many script files specified on command line.");
@@ -112,4 +116,4 @@ public class Main {
 //        script = "set _PWD " + FileUtil.toFile(target.getParent()).toURI() + "\n" + script;
 //        return script;
 //    }
-}
+
