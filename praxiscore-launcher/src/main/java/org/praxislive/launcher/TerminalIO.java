@@ -34,7 +34,6 @@ import org.praxislive.core.syntax.Tokenizer;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PString;
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -58,7 +57,7 @@ class TerminalIO extends AbstractRoot {
         scriptService = getLookup().find(Services.class)
                 .flatMap(srvs -> srvs.locate(ScriptService.class))
                 .map(cmp -> ControlAddress.of(cmp, ScriptService.EVAL))
-                .orElseThrow();     
+                .orElseThrow();
         fromAddress = ControlAddress.of(getAddress(), "io");
         input = new Thread(this::inputLoop);
         script = "";
@@ -78,24 +77,14 @@ class TerminalIO extends AbstractRoot {
             router.route(call.error(PError.of("Unsupported Operation")));
             return;
         }
-        Console console = System.console();
         String output = call.args().stream()
                 .map(Value::toString)
                 .collect(Collectors.joining(" "));
 
         if (call.isReply()) {
-            if (console != null) {
-                console.writer().println(output);
-            } else {
-                System.out.println(output);
-            }
+            System.out.println("--- : " + output);
         } else {
-            if (console != null) {
-                console.writer().print("ERR : ");
-                console.writer().print(output);
-            } else {
-                System.err.println(output);
-            }
+            System.err.println("ERR : " + output);
         }
 
     }
@@ -112,9 +101,10 @@ class TerminalIO extends AbstractRoot {
         }
         Tokenizer tok = new Tokenizer(script);
         try {
-            for (Token t : tok) {}
+            for (Token t : tok) {
+            }
             Call exec = Call.create(scriptService,
-                    fromAddress, 
+                    fromAddress,
                     getExecutionContext().getTime(),
                     PString.of(script)
             );
@@ -123,27 +113,19 @@ class TerminalIO extends AbstractRoot {
         } catch (Exception ex) {
             // let script build up
         }
-        
+
     }
 
     private void inputLoop() {
-        Console console = System.console();
-        BufferedReader reader = null;
-        if (console == null) {
-            reader = new BufferedReader(new InputStreamReader(System.in));
-        }
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         while (!Thread.interrupted()) {
             try {
                 String in;
-                if (console != null) {
-                    in = console.readLine();
-                } else {
-                    in = reader.readLine();
-                }
+                in = reader.readLine();
                 invokeLater(() -> processInput(in));
             } catch (IOException ex) {
-                
+
             }
 
         }
