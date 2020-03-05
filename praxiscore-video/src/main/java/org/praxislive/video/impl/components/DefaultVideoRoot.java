@@ -161,7 +161,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         PlayerFactory factory = findPlayerFactory(library);
         RenderingHints renderHints = new RenderingHints();
         renderHints.setSmooth(smooth);
-        Lookup plLkp = Lookup.of(renderHints, new QueueContextImpl());
+        Lookup plLkp = Lookup.of(getLookup(), renderHints, new QueueContextImpl());
         return factory.createPlayer(new PlayerConfiguration(getRootHub().getClock(), width, height, fps, plLkp),
                 new ClientConfiguration[]{
                     new ClientConfiguration(0, 1, clientLookup)

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.praxislive</groupId>
+    <artifactId>praxiscore</artifactId>
+    <version>5.0.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>praxiscore-video-pgl</artifactId>
+  <packaging>jar</packaging>
+  <name>PraxisCORE Video PGL</name>
+    
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.lwjgl</groupId>
+        <artifactId>lwjgl-bom</artifactId>
+        <version>3.2.3</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+    
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-video</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.praxislive</groupId>
+      <artifactId>processing-core</artifactId>
+      <version>0.353.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.praxislive</groupId>
+      <artifactId>processing-lwjgl</artifactId>
+      <version>0.353.0-SNAPSHOT</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-assimp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-egl</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-glfw</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-opengl</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-stb</artifactId>
+    </dependency>
+    
+  </dependencies>
+</project>

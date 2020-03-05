@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -641,7 +641,7 @@ public abstract class AbstractRoot implements Root {
                         lock.unlock();
                     }
                 } else {
-                    LOG.info("Lock already taken");
+                    LOG.finest("Lock already taken");
                 }
                 return true;
             } else {
@@ -665,7 +665,7 @@ public abstract class AbstractRoot implements Root {
                         lock.unlock();
                     }
                 } else {
-                    LOG.info("Lock already taken");
+                    LOG.finest("Lock already taken");
                 }
             } else {
                 LOG.info("Delegate invalid");

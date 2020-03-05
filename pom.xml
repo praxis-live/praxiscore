@@ -30,6 +30,9 @@
     <module>praxiscore-video-code</module>
     <module>praxiscore-video-components</module>
     <module>praxiscore-video-gstreamer</module>
+    <module>praxiscore-video-pgl</module>
+    <module>praxiscore-video-pgl-natives</module>
+    <module>praxiscore-video-pgl-code</module>
   </modules>
     
   <scm>

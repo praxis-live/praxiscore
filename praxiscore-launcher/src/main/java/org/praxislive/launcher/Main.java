@@ -24,8 +24,12 @@ package org.praxislive.launcher;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.praxislive.core.MainThread;
 import org.praxislive.core.Root;
 import org.praxislive.hub.Hub;
 import java.io.File;
@@ -58,13 +62,54 @@ public class Main {
             exts.add(new TerminalIO());
             var builder = Hub.builder();
             exts.forEach(builder::addExtension);
+            var main = new MainThreadImpl();
+            builder.extendLookup(main);
             var hub = builder.build();
             hub.start();
-            hub.await();
+            main.run(hub);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
         }
+    }
+    
+    private static class MainThreadImpl implements MainThread {
+        
+        private final Thread main;
+        private final BlockingQueue<Runnable> queue;
+        
+        private MainThreadImpl() {
+            this.main = Thread.currentThread();
+            this.queue = new LinkedBlockingQueue<>();
+        }
+
+        @Override
+        public void runLater(Runnable task) {
+            queue.add(task);
+        }
+
+        @Override
+        public boolean isMainThread() {
+            return Thread.currentThread() == main;
+        }
+        
+        private void run(Hub hub) {
+            while (hub.isAlive()) {
+                try {
+                    var task = queue.poll(500, TimeUnit.MILLISECONDS);
+                    if (task != null) {
+                        task.run();
+                    }
+                } catch (Throwable t) {
+                    System.getLogger(Main.class.getName())
+                            .log(System.Logger.Level.ERROR,
+                                    "", t);
+                }
+            }
+            // @TODO
+            // clean up queue ?            
+        }
+        
     }
 
 }

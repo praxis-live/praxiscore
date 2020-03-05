@@ -26,4 +26,6 @@ module org.praxislive.video {
     opens org.praxislive.video.impl.components to
             org.praxislive.base;
     
+    uses org.praxislive.video.PlayerFactory.Provider;
+    
 }
