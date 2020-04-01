@@ -7,7 +7,7 @@ module org.praxislive.video.pgl.code {
     requires org.praxislive.logging;
     requires org.praxislive.video;
     requires org.praxislive.video.pgl;
-    requires org.praxislive.processing.core;
+    requires org.praxislive.libp5x.core;
     
     exports org.praxislive.video.pgl.code;
     exports org.praxislive.video.pgl.code.userapi;

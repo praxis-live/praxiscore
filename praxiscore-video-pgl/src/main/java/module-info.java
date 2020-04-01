@@ -6,8 +6,8 @@ module org.praxislive.video.pgl {
     
     requires org.praxislive.core;
     requires org.praxislive.video;
-    requires org.praxislive.processing.core;
-    requires org.praxislive.processing.lwjgl;
+    requires org.praxislive.libp5x.core;
+    requires org.praxislive.libp5x.lwjgl;
     requires org.lwjgl;
     requires org.lwjgl.egl;
     requires org.lwjgl.glfw;
