@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,6 +32,9 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Value;
+import org.praxislive.core.protocols.ComponentProtocol;
+import org.praxislive.core.protocols.ContainerProtocol;
+import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -68,7 +71,6 @@ public class DefaultVideoRoot extends AbstractRootContainer {
 
     private final ComponentInfo info;
     private final VideoContextImpl ctxt;
-    private final VideoDelegate delegate;
     
     private int width = WIDTH_DEFAULT;
     private int height = HEIGHT_DEFAULT;
@@ -87,6 +89,9 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         registerControl("smooth", new SmoothProperty());
         
         info = Info.component(cmp -> cmp
+                .merge(ComponentProtocol.API_INFO)
+                .merge(ContainerProtocol.API_INFO)
+                .merge(StartableProtocol.API_INFO)
                 .control("renderer", c -> c
                         .property()
                         .defaultValue(PString.of(SOFTWARE))
@@ -118,7 +123,6 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         );
 
         ctxt = new VideoContextImpl();
-        delegate = new VideoDelegate();
     }
 
     @Override
@@ -133,27 +137,22 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     protected void starting() {
         try {
             String lib = renderer;
-            player = createPlayer(lib);
-            player.addFrameRateListener(delegate);
+            var delegate = new VideoDelegate();
+            player = createPlayer(lib, delegate);
             lookup = Lookup.of(getLookup(),
                     player.getLookup().findAll(Object.class).toArray());
             if (outputClient != null && outputClient.getOutputCount() > 0) {
                 player.getSink(0).addSource(outputClient.getOutputSource(0));
             }
-            invokeLater(() -> {
-                attachDelegate(delegate);
-                player.run();
-                setIdle();
-                detachDelegate(delegate);
-            });
-            interrupt();
+            attachDelegate(delegate);
+            delegate.start();
         } catch (Exception ex) {
             LOG.log(Level.SEVERE, "Couldn't start video renderer", ex);
             setIdle();
         }
     }
 
-    private Player createPlayer(String library) throws Exception {
+    private Player createPlayer(String library, VideoDelegate delegate) throws Exception {
         Lookup clientLookup = Lookup.EMPTY;
         if (outputClient != null) {
             clientLookup = outputClient.getLookup();
@@ -161,11 +160,13 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         PlayerFactory factory = findPlayerFactory(library);
         RenderingHints renderHints = new RenderingHints();
         renderHints.setSmooth(smooth);
-        Lookup plLkp = Lookup.of(getLookup(), renderHints, new QueueContextImpl());
-        return factory.createPlayer(new PlayerConfiguration(getRootHub().getClock(), width, height, fps, plLkp),
+        Lookup plLkp = Lookup.of(getLookup(), renderHints, delegate);
+        Player pl = factory.createPlayer(new PlayerConfiguration(getRootHub().getClock(), width, height, fps, plLkp),
                 new ClientConfiguration[]{
                     new ClientConfiguration(0, 1, clientLookup)
                 });
+        pl.addFrameRateListener(delegate);
+        return pl;
     }
 
     private PlayerFactory findPlayerFactory(String lib) throws Exception {
@@ -182,10 +183,8 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     @Override
     protected void stopping() {
         lookup = null;
-        detachDelegate(delegate);
         player.terminate();
         interrupt();
-
     }
 
     @Override
@@ -193,7 +192,8 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         return info;
     }
     
-    private class VideoDelegate extends Delegate implements FrameRateListener {
+    private class VideoDelegate extends Delegate 
+            implements FrameRateListener, QueueContext {
 
         @Override
         public void nextFrame(FrameRateSource source) {
@@ -203,8 +203,18 @@ public class DefaultVideoRoot extends AbstractRootContainer {
             }
         }
         
-        private void queueContextPoll(long time, TimeUnit unit) throws InterruptedException {
+        @Override
+        public void process(long time, TimeUnit unit) throws InterruptedException {
             doTimedPoll(time, unit);
+        }
+        
+        private void start() {
+            var runner = getThreadFactory().newThread(() -> {
+                player.run();
+                setIdle();
+                detachDelegate(this);
+            });
+            runner.start();
         }
         
     }
@@ -237,14 +247,6 @@ public class DefaultVideoRoot extends AbstractRootContainer {
             if (outputClient == client) {
                 outputClient = null;
             }
-        }
-    }
-
-    private class QueueContextImpl implements QueueContext {
-
-        @Override
-        public void process(long time, TimeUnit unit) throws InterruptedException {
-            delegate.queueContextPoll(time, unit);
         }
     }
 

@@ -145,17 +145,20 @@ public class PGLPlayer implements Player {
 
         main.runLater(() -> {
 
-            PApplet.setMainThreadContext(new PApplet.MainThreadContext() {
+            if (PApplet.mainThread() == null) {
+                PApplet.setMainThreadContext(new PApplet.MainThreadContext() {
 
-                public void runLater(Runnable task) {
-                    main.runLater(task);
-                }
+                    public void runLater(Runnable task) {
+                        main.runLater(task);
+                    }
 
-                public boolean isMainThread() {
-                    return main.isMainThread();
-                }
+                    public boolean isMainThread() {
+                        return main.isMainThread();
+                    }
 
-            });
+                });
+            } 
+            
             if (outputDevice > -1) {
                 PApplet.runSketch(new String[]{
                     "--display=" + (outputDevice + 1),
