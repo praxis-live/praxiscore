@@ -685,13 +685,7 @@ public abstract class AbstractRoot implements Root {
             if (pollLock.tryLock()) {
                 try {
                     if (pollCondition.await(time, unit)) {
-                        if (delegate.get() == this) {
-                            try {
-                                pollQueue();
-                            } catch (Throwable t) {
-                                LOG.log(Level.SEVERE, "Uncaught error", t);
-                            }
-                        }
+                        doPollQueue();
                     }
                 } finally {
                     pollLock.unlock();
