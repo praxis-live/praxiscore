@@ -56,6 +56,7 @@ class CodeProperty<D extends CodeDelegate>
     private CodeProperty(CodeFactory<D> factory, ControlInfo info) {
         this.factory = factory;
         this.info = info;
+        this.keys = List.of(PString.EMPTY);
     }
 
     @SuppressWarnings("unchecked")
