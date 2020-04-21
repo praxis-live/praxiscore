@@ -33,6 +33,9 @@
     <module>praxiscore-video-pgl</module>
     <module>praxiscore-video-pgl-natives</module>
     <module>praxiscore-video-pgl-code</module>
+    <module>praxiscore-internal-osc</module>
+    <module>praxiscore-internal-httpd</module>
+    <module>praxiscore-hub-net</module>
   </modules>
     
   <scm>

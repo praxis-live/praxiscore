@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 import org.praxislive.core.MainThread;
 import org.praxislive.core.Root;
 import org.praxislive.hub.Hub;
+import org.praxislive.hub.net.SlaveFactory;
 import java.io.File;
 import java.nio.file.Files;
 
@@ -44,9 +45,17 @@ public class Main {
         System.out.println("PraxisCORE");
         System.out.println(Arrays.toString(args));
 
-        List<Root> exts = new ArrayList<>();
+        if (args.length >= 1 && args[0].equals("--slave")) {
+            processSlave(args);
+        } else {
+            processFile(args);
+        }
 
+    }
+    
+    private static void processFile(String[] args) {
         try {
+            List<Root> exts = new ArrayList<>();
             if (args.length == 1) {
                 File file = new File(args[0]);
                 if (!file.isAbsolute()) {
@@ -67,6 +76,29 @@ public class Main {
             var hub = builder.build();
             hub.start();
             main.run(hub);
+        } catch (Exception ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            System.exit(1);
+        }
+    }
+    
+    private static void processSlave(String[] args) {
+        int port = SlaveFactory.DEFAULT_PORT;
+        try {
+            var main = new MainThreadImpl();
+            while (true) {
+                SlaveFactory sf = new SlaveFactory(port, true);
+                List<Root> exts = new ArrayList<>();
+                exts.add(new TerminalIO());
+                var builder = Hub.builder();
+                builder.setCoreRootFactory(sf);
+                exts.forEach(builder::addExtension);
+                builder.extendLookup(main);
+                var hub = builder.build();
+                hub.start();
+                main.run(hub);
+            }
+            
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
@@ -106,8 +138,22 @@ public class Main {
                                     "", t);
                 }
             }
-            // @TODO
-            // clean up queue ?            
+            
+            drain:
+            for (;;) {
+                try {
+                    var task = queue.poll(500, TimeUnit.MILLISECONDS);
+                    if (task != null) {
+                        task.run();
+                    } else {
+                        break drain;
+                    }
+                } catch (Throwable t) {
+                    System.getLogger(Main.class.getName())
+                            .log(System.Logger.Level.ERROR,
+                                    "", t);
+                }
+            }
         }
         
     }
