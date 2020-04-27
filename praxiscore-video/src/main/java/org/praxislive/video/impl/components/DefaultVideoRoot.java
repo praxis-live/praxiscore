@@ -275,7 +275,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         @Override
         protected void set(long time, Value arg) throws Exception {
             if (getState() == State.ACTIVE_RUNNING) {
-                throw new UnsupportedOperationException("Can't set width while running");
+                throw new UnsupportedOperationException("Can't set height while running");
             }
             int h = PNumber.from(arg).orElseThrow().toIntValue();
             if (h < 1 || h > 16384) {
@@ -295,7 +295,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         @Override
         protected void set(long time, Value arg) throws Exception {
             if (getState() == State.ACTIVE_RUNNING) {
-                throw new UnsupportedOperationException("Can't set width while running");
+                throw new UnsupportedOperationException("Can't set fps while running");
             }
             double f = PNumber.from(arg).orElseThrow().value();
             if (f < 1 || f > 256) {
@@ -316,7 +316,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         @Override
         protected void set(long time, Value arg) throws Exception {
             if (getState() == State.ACTIVE_RUNNING) {
-                throw new UnsupportedOperationException("Can't set width while running");
+                throw new UnsupportedOperationException("Can't set renderer while running");
             }
             String r = arg.toString();
             if (!RENDERERS.contains(r)) {
@@ -337,7 +337,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
         @Override
         protected void set(long time, Value arg) throws Exception {
             if (getState() == State.ACTIVE_RUNNING) {
-                throw new UnsupportedOperationException("Can't set width while running");
+                throw new UnsupportedOperationException("Can't set smooth while running");
             }
             smooth = PBoolean.from(arg).orElseThrow().value();
         }

@@ -34,6 +34,7 @@ import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
@@ -76,6 +77,7 @@ public class VideoOutput extends AbstractComponent {
         registerControl("title", new TitleProperty());
 
         info = Info.component(cmp -> cmp
+                .merge(ComponentProtocol.API_INFO)
                 .control("title", c -> c.property().input(PString.class)
                     .defaultValue(PString.EMPTY))
                 .control("device", c -> c.property().input(a -> a

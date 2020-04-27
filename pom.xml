@@ -36,6 +36,10 @@
     <module>praxiscore-internal-osc</module>
     <module>praxiscore-internal-httpd</module>
     <module>praxiscore-hub-net</module>
+    <module>praxiscore-audio</module>
+    <module>praxiscore-audio-code</module>
+    <module>praxiscore-audio-components</module>
+    <module>praxiscore-internal-audioio</module>
   </modules>
     
   <scm>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.praxislive</groupId>
+    <artifactId>praxiscore</artifactId>
+    <version>5.0.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>praxiscore-audio</artifactId>
+  <packaging>jar</packaging>
+  <name>PraxisCORE Audio</name>
+  
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-base</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-settings</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jaudiolibs</groupId>
+      <artifactId>pipes</artifactId>
+      <version>1.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jaudiolibs</groupId>
+      <artifactId>audioservers-api</artifactId>
+      <version>1.2.0</version>
+    </dependency>
+  </dependencies>
+  
+</project>
