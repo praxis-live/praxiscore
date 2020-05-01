@@ -236,7 +236,7 @@ public class Info {
             return this;
         }
 
-        protected ComponentInfo build() {
+        public ComponentInfo build() {
             return new ComponentInfo(protocols == null ? PArray.EMPTY : PArray.of(protocols),
                     controls.build(),
                     ports.build(),
@@ -329,7 +329,7 @@ public class Info {
             return (T) this;
         }
 
-        ControlInfo build() {
+        public ControlInfo build() {
             return new ControlInfo(inputs, outputs, defaults, type,
                     properties == null ? PMap.EMPTY : properties.build(), null);
         }
@@ -569,7 +569,7 @@ public class Info {
             return (T) this;
         }
 
-        ArgumentInfo build() {
+        public ArgumentInfo build() {
             return new ArgumentInfo(type, ArgumentInfo.Presence.Always,
                     properties == null ? PMap.EMPTY : properties.build(), null);
         }
@@ -753,7 +753,7 @@ public class Info {
             return this;
         }
 
-        PortInfo build() {
+        public PortInfo build() {
             return new PortInfo(type, direction,
                     properties == null ? PMap.EMPTY : properties.build(), null);
         }
