@@ -43,6 +43,7 @@
     <module>praxiscore-tinkerforge</module>
     <module>praxiscore-tinkerforge-lib</module>
     <module>praxiscore-gui</module>
+    <module>praxiscore-midi</module>
   </modules>
     
   <scm>

@@ -89,6 +89,11 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-midi</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>praxiscore-tinkerforge</artifactId>
       <version>${project.version}</version>
     </dependency>
