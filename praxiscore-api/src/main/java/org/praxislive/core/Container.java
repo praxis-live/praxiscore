@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,6 @@ import org.praxislive.core.protocols.ContainerProtocol;
  * Extension to the Component interface for components that can contain other
  * components as children.
  *
- * @author Neil C Smith
  */
 public interface Container extends Component, Lookup.Provider {
 
@@ -41,14 +40,6 @@ public interface Container extends Component, Lookup.Provider {
     public Component getChild(String id);
 
     /**
-     * Get the IDs of all child components of this container.
-     *
-     * @return String array of IDs.
-     */
-    @Deprecated
-    public String[] getChildIDs();
-
-    /**
      * Get a Stream of the child IDs that this container makes publicly visible.
      * Containers may have hidden children that can be returned from
      * {@link #getChild(java.lang.String)} but are not listed here. All IDs
@@ -59,9 +50,7 @@ public interface Container extends Component, Lookup.Provider {
      *
      * @return stream of public child IDs
      */
-    public default Stream<String> children() {
-        return Stream.of(getChildIDs());
-    }
+    public Stream<String> children();
 
     /**
      * Get the address for the provided child component, or null if the

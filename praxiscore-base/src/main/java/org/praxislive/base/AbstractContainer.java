@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -76,8 +77,8 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
     }
 
     @Override
-    public String[] getChildIDs() {
-        return childMap.keySet().toArray(new String[0]);
+    public Stream<String> children() {
+        return childMap.keySet().stream();
     }
 
     @Override

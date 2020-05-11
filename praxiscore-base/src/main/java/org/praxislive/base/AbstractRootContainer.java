@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,6 +21,7 @@
  */
 package org.praxislive.base;
 
+import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -35,7 +36,6 @@ import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PString;
 
 /**
  *
@@ -65,8 +65,8 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
     }
 
     @Override
-    public String[] getChildIDs() {
-        return delegate.getChildIDs();
+    public Stream<String> children() {
+        return delegate.children();
     }
 
     @Override
