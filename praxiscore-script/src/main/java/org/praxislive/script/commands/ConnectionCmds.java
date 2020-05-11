@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,13 +21,14 @@
  */
 package org.praxislive.script.commands;
 
+import java.util.List;
 import org.praxislive.script.impl.AbstractSingleCallFrame;
 import java.util.Map;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.PortAddress;
+import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
@@ -39,7 +40,6 @@ import org.praxislive.script.StackFrame;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ConnectionCmds implements CommandInstaller {
 
@@ -63,14 +63,16 @@ public class ConnectionCmds implements CommandInstaller {
 
     private static class Connect implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             return new ConnectionStackFrame(namespace, args, true);
         }
     }
     
     private static class Disconnect implements Command {
         
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             return new ConnectionStackFrame(namespace, args, false);
         }
         
@@ -78,31 +80,31 @@ public class ConnectionCmds implements CommandInstaller {
 
     private static class ConnectionStackFrame extends AbstractSingleCallFrame {
 
-        private boolean connect;
+        private final boolean connect;
 
-        private ConnectionStackFrame(Namespace namespace, CallArguments args, boolean connect) {
+        private ConnectionStackFrame(Namespace namespace, List<Value> args, boolean connect) {
             super(namespace, args);
             this.connect = connect;
         }
 
         @Override
-        protected Call createCall(Env env, CallArguments args) throws Exception {
-            PortAddress p1 = PortAddress.coerce(args.get(0));
-            PortAddress p2 = PortAddress.coerce(args.get(1));
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            PortAddress p1 = PortAddress.from(args.get(0)).orElseThrow(IllegalArgumentException::new);
+            PortAddress p2 = PortAddress.from(args.get(1)).orElseThrow(IllegalArgumentException::new);
             ComponentAddress c1 = p1.component();
             ComponentAddress c2 = p2.component();
             ComponentAddress container = c1.parent();
             if (container == null || !c2.parent().equals(container)) {
                 throw new IllegalArgumentException("Ports don't share a common parent");
             }
-            CallArguments sendArgs = CallArguments.create(
+            List<Value> sendArgs = List.of(
                     PString.of(c1.componentID(c1.depth() - 1)),
                     PString.of(p1.portID()),
                     PString.of(c2.componentID(c1.depth() - 1)),
                     PString.of(p2.portID()));
             ControlAddress to = ControlAddress.of(container,
                     connect ? ContainerProtocol.CONNECT : ContainerProtocol.DISCONNECT);
-            return Call.createCall(to, env.getAddress(), env.getTime(), sendArgs);
+            return Call.create(to, env.getAddress(), env.getTime(), sendArgs);
 
         }
     }

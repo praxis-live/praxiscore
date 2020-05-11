@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,13 +21,13 @@
  */
 package org.praxislive.script.commands;
 
+import java.util.List;
 import org.praxislive.script.impl.AbstractSingleCallFrame;
 import org.praxislive.script.impl.VariableImpl;
 import java.util.Map;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
@@ -35,6 +35,7 @@ import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
@@ -46,7 +47,6 @@ import org.praxislive.script.StackFrame;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AtCmds implements CommandInstaller {
 
@@ -57,6 +57,7 @@ public class AtCmds implements CommandInstaller {
     private AtCmds() {
     }
 
+    @Override
     public void install(Map<String, Command> commands) {
         commands.put("@", AT);
         commands.put("!@", NOT_AT);
@@ -68,24 +69,27 @@ public class AtCmds implements CommandInstaller {
 
     private static class At implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
 
-            if (args.getSize() < 2) {
+            if (args.size() < 2) {
                 throw new ExecutionException();
             }
 
             try {
-                ComponentAddress ctxt = ComponentAddress.coerce(args.get(0));
-                if (args.getSize() == 3) {
-                    ComponentType type = ComponentType.coerce(args.get(1));
+                ComponentAddress ctxt = ComponentAddress.from(args.get(0))
+                        .orElseThrow(IllegalArgumentException::new);
+                if (args.size() == 3) {
+                    ComponentType type = ComponentType.from(args.get(1))
+                            .orElseThrow(IllegalArgumentException::new);
                     return new AtStackFrame(namespace, ctxt, type, args.get(2));
                 } else {
                     Value arg = args.get(1);
                     if (! arg.toString().contains(" ")) {
                         try {
-                            ComponentType type = ComponentType.coerce(arg);
+                            ComponentType type = ComponentType.from(arg).get();
                             return new AtStackFrame(namespace, ctxt, type, PString.EMPTY);
-                        } catch (ValueFormatException ex) {
+                        } catch (Exception ex) {
                             // fall through
                         }
                     }
@@ -100,7 +104,7 @@ public class AtCmds implements CommandInstaller {
 
     private static class NotAt implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             return new NotAtStackFrame(namespace, args);
         }
 
@@ -109,12 +113,12 @@ public class AtCmds implements CommandInstaller {
     private static class AtStackFrame implements StackFrame {
 
         private State state;
-        private Namespace namespace;
+        private final Namespace namespace;
         private final ComponentAddress ctxt;
-        private ComponentType type;
-        private Value script;
+        private final ComponentType type;
+        private final Value script;
         private int stage;
-        private CallArguments result;
+        private List<Value> result;
         private Call active;
 
         private AtStackFrame(Namespace namespace, ComponentAddress ctxt,
@@ -131,17 +135,19 @@ public class AtCmds implements CommandInstaller {
             }
         }
 
+        @Override
         public State getState() {
             return state;
         }
 
+        @Override
         public StackFrame process(Env env) {
             if (stage == 0) {
                 stage++;
                 try {
 
                     ControlAddress to;
-                    CallArguments args;
+                    List<Value> args;
                     int depth = ctxt.depth();
                     if (depth == 1) {
                         to = ControlAddress.of(
@@ -149,20 +155,18 @@ public class AtCmds implements CommandInstaller {
                                 .flatMap(sm -> sm.locate(RootManagerService.class))
                                 .orElseThrow(ServiceUnavailableException::new),
                                 RootManagerService.ADD_ROOT);
-                        args = CallArguments.create(new Value[]{
-                                    PString.of(ctxt.rootID()), type});
+                        args = List.of(PString.of(ctxt.rootID()), type);
                     } else {
                         to = ControlAddress.of(ctxt.parent(),
                                 ContainerProtocol.ADD_CHILD);
-                        args = CallArguments.create(new Value[]{
-                                    PString.of(ctxt.componentID(depth - 1)), type});
+                        args = List.of(PString.of(ctxt.componentID(depth - 1)), type);
                     }
-                    active = Call.createCall(to, env.getAddress(), env.getTime(), args);
+                    active = Call.create(to, env.getAddress(), env.getTime(), args);
                     env.getPacketRouter().route(active);
 
                 } catch (Exception ex) {
                     state = State.Error;
-                    result = CallArguments.create(PReference.of(ex));
+                    result = List.of(PError.of(ex));
                 }
             }
             if (stage == 2) {
@@ -170,29 +174,31 @@ public class AtCmds implements CommandInstaller {
                 try {
                     Namespace child = namespace.createChild();
                     child.addVariable(Env.CONTEXT, new VariableImpl(ctxt));
-                    return ScriptCmds.INLINE_EVAL.createStackFrame(child, CallArguments.create(script));
+                    return ScriptCmds.INLINE_EVAL.createStackFrame(child, List.of(script));
                 } catch (Exception ex) {
                     state = State.Error;
-                    result = CallArguments.create(PReference.of(ex));
+                    result = List.of(PError.of(ex));
                 }
             }
 
             return null;
         }
 
+        @Override
         public void postResponse(Call call) {
             if (active != null && call.matchID() == active.matchID()) {
                 active = null;
-                if (call.getType() == Call.Type.RETURN && stage == 1) {
+                if (call.isReply() && stage == 1) {
                     stage++;
                 } else {
-                    result = call.getArgs();
+                    result = call.args();
                     this.state = State.Error;
                 }
             }
         }
 
-        public void postResponse(State state, CallArguments args) {
+        @Override
+        public void postResponse(State state, List<Value> args) {
             if (state == State.OK) {
 //                if (stage == 1) {
 //                    stage++;
@@ -207,7 +213,8 @@ public class AtCmds implements CommandInstaller {
             }
         }
 
-        public CallArguments getResult() {
+        @Override
+        public List<Value> result() {
             if (result == null) {
                 throw new IllegalStateException();
             }
@@ -217,13 +224,14 @@ public class AtCmds implements CommandInstaller {
 
     private static class NotAtStackFrame extends AbstractSingleCallFrame {
 
-        private NotAtStackFrame(Namespace ns, CallArguments args) {
+        private NotAtStackFrame(Namespace ns, List<Value> args) {
             super(ns, args);
         }
 
         @Override
-        protected Call createCall(Env env, CallArguments args) throws Exception {
-            ComponentAddress comp = ComponentAddress.coerce(args.get(0));
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            ComponentAddress comp = ComponentAddress.from(args.get(0))
+                    .orElseThrow(IllegalArgumentException::new);
             if (comp.depth() == 1) {
                 return createRootRemovalCall(env, comp.rootID());
             } else {

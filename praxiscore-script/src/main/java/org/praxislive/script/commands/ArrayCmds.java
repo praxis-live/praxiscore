@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,9 +22,10 @@
 
 package org.praxislive.script.commands;
 
+import java.util.List;
 import org.praxislive.script.impl.AbstractInlineCommand;
 import java.util.Map;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
@@ -34,7 +35,6 @@ import org.praxislive.script.Namespace;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ArrayCmds implements CommandInstaller {
     
@@ -54,9 +54,10 @@ public class ArrayCmds implements CommandInstaller {
 
     private static class Array extends AbstractInlineCommand {
 
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
             PArray ar = args.stream().collect(PArray.collector());
-            return CallArguments.create(ar);
+            return List.of(ar);
         }
 
     }

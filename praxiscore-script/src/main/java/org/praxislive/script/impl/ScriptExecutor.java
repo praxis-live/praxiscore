@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,10 +28,9 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.logging.Logger;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Lookup;
-import org.praxislive.core.types.PReference;
+import org.praxislive.core.types.PError;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
@@ -43,7 +42,6 @@ import org.praxislive.script.commands.ScriptCmds;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ScriptExecutor {
 
@@ -92,7 +90,7 @@ public class ScriptExecutor {
         stack.clear();
         while (!queue.isEmpty()) {
             Call call = queue.poll();
-            env.getPacketRouter().route(Call.createErrorCall(call, CallArguments.EMPTY));
+            env.getPacketRouter().route(call.error(PError.of("")));
         }
 
     }
@@ -129,7 +127,7 @@ public class ScriptExecutor {
             if (state == StackFrame.State.Incomplete) {
                 return;
             } else {
-                CallArguments args = current.getResult();
+                var args = current.result();
                 log.finest("Stack frame complete : " + current.getClass()
                         + "\n  Result : " + args + "\n  Stack Size : " + stack.size());
                 stack.remove(0);
@@ -141,10 +139,10 @@ public class ScriptExecutor {
                     Call call = queue.poll();
                     if (state == StackFrame.State.OK) {
                         log.finest("Sending OK return call");
-                        call = Call.createReturnCall(call, args);
+                        call = call.reply(args);
                     } else {
                         log.finest("Sending Error return call");
-                        call = Call.createErrorCall(call, args);
+                        call = call.error(args);
                     }
                     env.getPacketRouter().route(call);
                 }
@@ -155,7 +153,7 @@ public class ScriptExecutor {
     private void checkAndStartEval() {
         while (!queue.isEmpty()) {
             Call call = queue.peek();
-            CallArguments args = call.getArgs();
+            var args = call.args();
             try {
                 stack.add(0, evaluator.createStackFrame(rootNS, args));
                 processStack();
@@ -163,7 +161,7 @@ public class ScriptExecutor {
             } catch (Exception ex) {
                 queue.poll();
                 env.getPacketRouter().route(
-                        Call.createErrorCall(call, PReference.of(ex)));
+                        call.error(PError.of(ex)));
             }
         }
     }

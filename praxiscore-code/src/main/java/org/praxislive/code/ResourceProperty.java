@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,7 +38,6 @@ import org.praxislive.code.userapi.OnChange;
 import org.praxislive.code.userapi.OnError;
 import org.praxislive.code.userapi.P;
 import org.praxislive.core.Value;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.Control;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Port;
@@ -56,7 +55,6 @@ import org.praxislive.logging.LogLevel;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
 
@@ -101,13 +99,13 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
     }
 
     @Override
-    protected TaskService.Task createTask(CallArguments keys) throws Exception {
-        Value arg = keys.get(0);
-        if (arg.isEmpty()) {
+    protected TaskService.Task createTask(Value key) throws Exception {
+        if (key.isEmpty()) {
             return null;
         }
         Lookup lkp = context.getLookup();
-        return new Task(loader, lkp, PResource.coerce(arg));
+        return new Task(loader, lkp, PResource.from(key)
+                .orElseThrow(IllegalArgumentException::new));
     }
 
     @Override

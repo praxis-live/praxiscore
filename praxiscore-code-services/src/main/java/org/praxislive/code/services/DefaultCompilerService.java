@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,11 +35,9 @@ import javax.tools.ToolProvider;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.code.services.tools.ClassBodyCompiler;
 import org.praxislive.code.ClassBodyContext;
-import org.praxislive.code.services.tools.JavaCompilerProvider;
 import org.praxislive.code.services.tools.MessageHandler;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
-import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
 import org.praxislive.core.services.Service;
@@ -122,7 +120,7 @@ public class DefaultCompilerService extends AbstractRoot
                             .compile(code);
             PMap classes = convertClasses(classFiles);
             PMap response = PMap.of(CodeCompilerService.KEY_CLASSES, classes,
-                    CodeCompilerService.KEY_LOG, log.toCallArguments().stream().collect(PArray.collector()),
+                    CodeCompilerService.KEY_LOG, PArray.of(log.toList()),
                     EXT_CLASSPATH, convertClasspath());
             return response;
         }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,15 +23,11 @@ package org.praxislive.script.commands;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
-import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ControlAddress;
-import org.praxislive.core.types.PReference;
+import org.praxislive.core.types.PError;
 import org.praxislive.script.Command;
 import org.praxislive.script.Env;
 import org.praxislive.script.ExecutionException;
@@ -41,7 +37,6 @@ import org.praxislive.script.ast.RootNode;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class EvalStackFrame implements StackFrame {
 
@@ -50,7 +45,7 @@ public class EvalStackFrame implements StackFrame {
     private RootNode rootNode;
     private State state;
     private Call pending;
-    private CallArguments result;
+    private List<Value> result;
     private List<Value> argList;
     private boolean doProcess;
 
@@ -58,16 +53,18 @@ public class EvalStackFrame implements StackFrame {
         this.namespace = namespace;
         this.rootNode = rootNode;
         this.state = State.Incomplete;
-        this.argList = new LinkedList<Value>();
+        this.argList = new LinkedList<>();
         rootNode.reset();
         rootNode.init(namespace);
         doProcess = true;
     }
 
+    @Override
     public State getState() {
         return state;
     }
 
+    @Override
     public StackFrame process(Env context) {
         if (state != State.Incomplete) {
             throw new IllegalStateException();
@@ -83,7 +80,7 @@ public class EvalStackFrame implements StackFrame {
                 return processNextCommand(context);
             }
         } catch (Exception ex) {
-            result = CallArguments.create(PReference.of(ex));
+            result = List.of(PError.of(ex));
             state = State.Error;
             return null;
         } finally {
@@ -92,16 +89,17 @@ public class EvalStackFrame implements StackFrame {
 
     }
 
+    @Override
     public void postResponse(Call call) {
         if (pending != null && pending.matchID() == call.matchID()) {
             pending = null;
-            if (call.getType() == Call.Type.RETURN) {
+            if (call.isReply()) {
                 log.finest("EvalStackFrame - Received valid Return call : \n" + call);
-                postResponse(call.getArgs());
+                postResponse(call.args());
             } else {
                 log.finest("EvalStackFrame - Received valid Error call : \n" + call);
                 this.state = State.Error;
-                this.result = call.getArgs();
+                this.result = call.args();
             }
             doProcess = true;
         } else {
@@ -110,7 +108,8 @@ public class EvalStackFrame implements StackFrame {
 
     }
 
-    public void postResponse(State state, CallArguments args) {
+    @Override
+    public void postResponse(State state, List<Value> args) {
         if (this.state != State.Incomplete) {
             throw new IllegalStateException();
         }
@@ -127,21 +126,22 @@ public class EvalStackFrame implements StackFrame {
         doProcess = true;
     }
 
-    public CallArguments getResult() {
+    @Override
+    public List<Value> result() {
         if (state == State.Incomplete) {
             throw new IllegalStateException();
         }
         if (result == null) {
-            return CallArguments.EMPTY;
+            return List.of();
         } else {
             return result;
         }
     }
 
-    private void postResponse(CallArguments args) {
+    private void postResponse(List<Value> args) {
         try {
             argList.clear();
-            argsToList(args, argList);
+            argList.addAll(args);
             rootNode.postResponse(argList);
         } catch (ExecutionException ex) {
             state = State.Error;//@TODO proper error reporting
@@ -151,7 +151,7 @@ public class EvalStackFrame implements StackFrame {
     private void processResultFromNode() throws ExecutionException {
         argList.clear();
         rootNode.writeResult(argList);
-        result = CallArguments.create(argList);
+        result = List.copyOf(argList);
         state = State.OK;
 
     }
@@ -169,10 +169,6 @@ public class EvalStackFrame implements StackFrame {
             routeCall(context, argList);
             return null;
         }
-//        if (cmdArg instanceof ComponentAddress) {
-//            // default command
-//            return tryDefault(namespace, argList);
-//        }
         String cmdStr = cmdArg.toString();
         if (cmdStr.isEmpty()) {
             throw new ExecutionException();
@@ -180,7 +176,7 @@ public class EvalStackFrame implements StackFrame {
         Command cmd = namespace.getCommand(cmdStr);
         if (cmd != null) {
             argList.remove(0);
-            return cmd.createStackFrame(namespace, CallArguments.create(argList));
+            return cmd.createStackFrame(namespace, List.copyOf(argList));
         }
         if (cmdStr.charAt(0) == '/' && cmdStr.lastIndexOf('.') > -1) {
             routeCall(context, argList);
@@ -188,37 +184,18 @@ public class EvalStackFrame implements StackFrame {
         }
 
         throw new ExecutionException();
-//        } else {
-//            return tryDefault(namespace, argList);
-//        }
 
     }
 
     private void routeCall(Env context, List<Value> argList)
             throws ExecutionException {
-        try {
-            ControlAddress ad = ControlAddress.coerce(argList.get(0));
-            argList.remove(0);
-            CallArguments args = CallArguments.create(argList);
-            Call call = Call.createCall(ad, context.getAddress(), context.getTime(), args);
-            log.finest("Sending Call" + call);
-            pending = call;
-            context.getPacketRouter().route(call);
-        } catch (ValueFormatException ex) {
-            throw new ExecutionException(ex);
-        }
+        ControlAddress ad = ControlAddress.from(argList.get(0))
+                .orElseThrow(ExecutionException::new);
+        argList.remove(0);
+        Call call = Call.create(ad, context.getAddress(), context.getTime(), List.copyOf(argList));
+        log.finest("Sending Call" + call);
+        pending = call;
+        context.getPacketRouter().route(call);
     }
 
-//    private StackFrame tryDefault(Namespace namespace, List<Value> argList)
-//            throws ExecutionException {
-//        CallArguments args = CallArguments.create(argList);
-//        return DefaultCommand.getInstance().createStackFrame(namespace, args);
-//
-//    }
-
-    private void argsToList(CallArguments args, List<Value> list) {
-        for (int i = 0, count = args.getSize(); i < count; i++) {
-            list.add(args.get(i));
-        }
-    }
 }

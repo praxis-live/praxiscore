@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,13 +24,13 @@ package org.praxislive.code;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
@@ -39,6 +39,7 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.Value;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.logging.LogBuilder;
@@ -47,7 +48,6 @@ import org.praxislive.util.ArrayUtils;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public abstract class CodeContext<D extends CodeDelegate> {
 
@@ -367,7 +367,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
     protected void flush() {
         if (!log.isEmpty()) {
-            log(log.toCallArguments());
+            log(log.toList());
             log.clear();
         }
     }
@@ -384,17 +384,17 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (log.isEmpty()) {
             return;
         }
-        log(log.toCallArguments());
+        log(log.toList());
     }
 
-    private void log(CallArguments args) {
+    private void log(List<Value> args) {
         PacketRouter router = cmp.getPacketRouter();
         ControlAddress to = cmp.getLogToAddress();
         ControlAddress from = cmp.getLogFromAddress();
         if (router == null || to == null) {
             return;
         }
-        router.route(Call.createCall(to, from, time, args));
+        router.route(Call.create(to, from, time, args));
     }
 
     public static interface ClockListener {

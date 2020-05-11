@@ -247,10 +247,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             handleConnection(true,
-                    PString.coerce(call.getArgs().get(0)),
-                    PString.coerce(call.getArgs().get(1)),
-                    PString.coerce(call.getArgs().get(2)),
-                    PString.coerce(call.getArgs().get(3)));
+                    PString.from(call.args().get(0)).orElseThrow(),
+                    PString.from(call.args().get(1)).orElseThrow(),
+                    PString.from(call.args().get(2)).orElseThrow(),
+                    PString.from(call.args().get(3)).orElseThrow());
             router.route(call.reply());
         }
 
@@ -261,10 +261,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             handleConnection(false,
-                    PString.coerce(call.getArgs().get(0)),
-                    PString.coerce(call.getArgs().get(1)),
-                    PString.coerce(call.getArgs().get(2)),
-                    PString.coerce(call.getArgs().get(3)));
+                    PString.from(call.args().get(0)).orElseThrow(),
+                    PString.from(call.args().get(1)).orElseThrow(),
+                    PString.from(call.args().get(2)).orElseThrow(),
+                    PString.from(call.args().get(3)).orElseThrow());
             router.route(call.reply());
         }
 

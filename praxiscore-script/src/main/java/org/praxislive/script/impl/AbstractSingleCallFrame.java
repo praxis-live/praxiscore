@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,8 +21,9 @@
  */
 package org.praxislive.script.impl;
 
+import java.util.List;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PReference;
 import org.praxislive.script.Env;
 import org.praxislive.script.Namespace;
@@ -30,17 +31,16 @@ import org.praxislive.script.StackFrame;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public abstract class AbstractSingleCallFrame implements StackFrame {
 
     private Namespace namespace;
-    private CallArguments args;
+    private List<Value> args;
     private State state;
     private Call call;
-    private CallArguments result;
+    private List<Value> result;
 
-    protected AbstractSingleCallFrame(Namespace namespace, CallArguments args) {
+    protected AbstractSingleCallFrame(Namespace namespace, List<Value> args) {
         if (namespace == null || args == null) {
             throw new NullPointerException();
         }
@@ -49,6 +49,7 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
         state = State.Incomplete;
     }
 
+    @Override
     public final State getState() {
         return state;
     }
@@ -57,6 +58,7 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
         return namespace;
     }
 
+    @Override
     public final StackFrame process(Env env) {
         if (state == State.Incomplete && call == null) {
             try {
@@ -66,18 +68,19 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
                 }
                 env.getPacketRouter().route(call);
             } catch (Exception ex) {
-                result = CallArguments.create(PReference.of(ex));
+                result = List.of(PReference.of(ex));
                 state = State.Error;
             }
         }
         return null;
     }
 
+    @Override
     public final void postResponse(Call response) {
         if (call != null && response.matchID() == call.matchID()) {
             call = null;
-            result = response.getArgs();
-            if (response.getType() == Call.Type.RETURN) {
+            result = response.args();
+            if (response.isReply()) {
                 result = processResult(result);
                 state = State.OK;
             } else {
@@ -86,20 +89,21 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
         }
     }
 
-    public final void postResponse(State state, CallArguments args) {
+    public final void postResponse(State state, List<Value> args) {
         throw new IllegalStateException();
     }
 
-    public final CallArguments getResult() {
+    @Override
+    public final List<Value> result() {
         if (result == null) {
             throw new IllegalStateException();
         }
         return result;
     }
 
-    protected abstract Call createCall(Env env, CallArguments args) throws Exception;
+    protected abstract Call createCall(Env env, List<Value> args) throws Exception;
 
-    protected CallArguments processResult(CallArguments result) {
+    protected List<Value> processResult(List<Value> result) {
         return result;
     }
 

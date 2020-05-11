@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,13 +21,10 @@
  */
 package org.praxislive.script.commands;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.List;
 import java.util.Map;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.syntax.InvalidSyntaxException;
 import org.praxislive.core.types.PResource;
 import org.praxislive.script.Command;
@@ -40,7 +37,6 @@ import org.praxislive.script.ast.ScriptParser;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ScriptCmds implements CommandInstaller {
 
@@ -52,6 +48,7 @@ public class ScriptCmds implements CommandInstaller {
     private ScriptCmds() {
     }
 
+    @Override
     public void install(Map<String, Command> commands) {
         commands.put("eval", EVAL);
         commands.put("include", INCLUDE);
@@ -63,9 +60,10 @@ public class ScriptCmds implements CommandInstaller {
 
     private static class Eval implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args)
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args)
                 throws ExecutionException {
-            if (args.getSize() != 1) {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             String script = args.get(0).toString();
@@ -80,9 +78,10 @@ public class ScriptCmds implements CommandInstaller {
 
     private static class InlineEval implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args)
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args)
                 throws ExecutionException {
-            if (args.getSize() != 1) {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             String script = args.get(0).toString();
@@ -97,9 +96,10 @@ public class ScriptCmds implements CommandInstaller {
 
     private static class Include implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             // @TODO - should load in background - call to
-            if (args.getSize() != 1) {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             try {

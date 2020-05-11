@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -169,8 +169,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             Class<? extends CodeDelegate> cls = codeFactory.getDefaultDelegateClass()
                     .orElseGet(() -> CODE_CACHE.get(new ClassCacheKey(cbc, src)));
             if (cls != null) {
-                return Call.createReturnCall(call,
-                        PReference.of(createComponent(codeFactory, cls)));
+                return call.reply(PReference.of(createComponent(codeFactory, cls)));
             } else {
                 return Call.create(
                         findCompilerService(),
@@ -185,11 +184,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
         protected Call processResponse(Call call) throws Exception {
             try {
                 CodeFactory<CodeDelegate> codeFactory = findCodeFactory();
-                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.getArgs().get(0));
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
                 CodeDelegate delegate = cls.newInstance();
                 CodeComponent<CodeDelegate> cmp = codeFactory.task().createComponent(delegate);
                 CODE_CACHE.putIfAbsent(new ClassCacheKey(codeFactory.getClassBodyContext(), codeFactory.getSourceTemplate()), cls);
-                return Call.createReturnCall(getActiveCall(), PReference.of(cmp));
+                return getActiveCall().reply(PReference.of(cmp));
             } catch (Throwable throwable) {
                 if (throwable instanceof Exception) {
                     throw (Exception) throwable;
@@ -200,7 +199,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         }
 
         private CodeFactory<CodeDelegate> findCodeFactory() throws Exception {
-            ComponentType type = ComponentType.coerce(getActiveCall().getArgs().get(0));
+            ComponentType type = ComponentType.coerce(getActiveCall().args().get(0));
             ComponentFactory cmpFactory = registry.getComponentFactory(type);
             return cmpFactory.getMetaData(type).getLookup()
                     .find(CodeFactory.class).orElse(null);
@@ -234,8 +233,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             if (cls != null) {
                 LogBuilder log = new LogBuilder(task.getLogLevel());
                 CodeDelegate delegate = cls.newInstance();
-                return Call.createReturnCall(call,
-                        PReference.of(createContext(task, log, delegate)));
+                return call.reply(PReference.of(createContext(task, log, delegate)));
             } else {
                 return Call.create(
                         findCompilerService(),
@@ -250,12 +248,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
         protected Call processResponse(Call call) throws Exception {
             try {
                 CodeContextFactoryService.Task<CodeDelegate> task = findTask();
-                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.getArgs().get(0));
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
                 CodeDelegate delegate = cls.newInstance();
                 LogBuilder log = new LogBuilder(task.getLogLevel());
-                extractCompilerLog(call.getArgs().get(0), log);
-                return Call.createReturnCall(getActiveCall(),
-                        PReference.of(createContext(task, log, delegate)));
+                extractCompilerLog(call.args().get(0), log);
+                return getActiveCall().reply(PReference.of(createContext(task, log, delegate)));
             } catch (Throwable throwable) {
                 if (throwable instanceof Exception) {
                     throw (Exception) throwable;
@@ -266,7 +263,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         }
 
         private CodeContextFactoryService.Task<CodeDelegate> findTask() throws Exception {
-            return (CodeContextFactoryService.Task<CodeDelegate>) PReference.coerce(getActiveCall().getArgs().get(0)).getReference();
+            return (CodeContextFactoryService.Task<CodeDelegate>) PReference.coerce(getActiveCall().args().get(0)).getReference();
         }
 
         private CodeContextFactoryService.Result<CodeDelegate> createContext(

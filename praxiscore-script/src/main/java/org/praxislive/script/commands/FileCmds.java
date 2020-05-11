@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -39,7 +39,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.praxislive.core.ValueFormatException;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
@@ -53,7 +53,6 @@ import org.praxislive.script.impl.VariableImpl;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class FileCmds implements CommandInstaller {
 
@@ -68,6 +67,7 @@ public class FileCmds implements CommandInstaller {
     private FileCmds() {
     }
 
+    @Override
     public void install(Map<String, Command> commands) {
         commands.put("file", FILE);
         commands.put("file-list", FILE_LIST);
@@ -147,12 +147,13 @@ public class FileCmds implements CommandInstaller {
 
     private static class FileCmd extends AbstractInlineCommand {
 
-        public CallArguments process(Env env, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() != 1) {
+        @Override
+        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             try {
-                return CallArguments.create(PResource.of(
+                return List.of(PResource.of(
                         resolve(namespace, args.get(0).toString())
                 ));
             } catch (Exception ex) {
@@ -164,8 +165,8 @@ public class FileCmds implements CommandInstaller {
     private static class FileListCmd extends AbstractInlineCommand {
 
         @Override
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() > 1) {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() > 1) {
                 throw new ExecutionException();
             }
             try {
@@ -173,7 +174,7 @@ public class FileCmds implements CommandInstaller {
                 /*if (args.getSize() == 2) {
                     list = listFiles(namespace, args.get(0).toString(), args.get(1).toString());
                 } else*/
-                if (args.getSize() == 1) {
+                if (args.size() == 1) {
                     list = listFiles(namespace, args.get(0).toString());
                 } else {
                     list = listFiles(namespace);
@@ -183,7 +184,7 @@ public class FileCmds implements CommandInstaller {
                         .map(path -> PResource.of(path.toUri()))
                         .collect(Collectors.toList());
                 
-                return CallArguments.create(PArray.of(ret));
+                return List.of(PArray.of(ret));
             } catch (Exception ex) {
                 throw new ExecutionException(ex);
             }
@@ -194,8 +195,9 @@ public class FileCmds implements CommandInstaller {
 
     private static class FileNamesCmd extends AbstractInlineCommand {
 
-        public CallArguments process(Env env, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() > 1) {
+        @Override
+        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() > 1) {
                 throw new ExecutionException();
             }
             try {
@@ -203,7 +205,7 @@ public class FileCmds implements CommandInstaller {
                 /*if (args.getSize() == 2) {
                     list = listFiles(namespace, args.get(0).toString(), args.get(1).toString());
                 } else*/
-                if (args.getSize() == 1) {
+                if (args.size() == 1) {
                     list = listFiles(namespace, args.get(0).toString());
                 } else {
                     list = listFiles(namespace);
@@ -213,7 +215,7 @@ public class FileCmds implements CommandInstaller {
                         .map(path -> PString.of(path.getFileName()))
                         .collect(Collectors.toList());
                 
-                return CallArguments.create(PArray.of(ret));
+                return List.of(PArray.of(ret));
             } catch (Exception ex) {
                 throw new ExecutionException(ex);
             }
@@ -224,8 +226,8 @@ public class FileCmds implements CommandInstaller {
     private static class CdCmd extends AbstractInlineCommand {
 
         @Override
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() != 1) {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             try {
@@ -244,7 +246,7 @@ public class FileCmds implements CommandInstaller {
                     pwd = new VariableImpl(dir);
                     namespace.addVariable(Env.PWD, pwd);
                 }
-                return CallArguments.create(dir);
+                return List.of(dir);
             } catch (URISyntaxException ex) {
                 throw new ExecutionException(ex);
             }
@@ -255,8 +257,8 @@ public class FileCmds implements CommandInstaller {
     private static class PwdCmd extends AbstractInlineCommand {
 
         @Override
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
-            return CallArguments.create(PResource.of(getPWD(namespace)));
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+            return List.of(PResource.of(getPWD(namespace)));
         }
         
     }    

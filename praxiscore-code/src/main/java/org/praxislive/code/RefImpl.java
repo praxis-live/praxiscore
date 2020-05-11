@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,7 +42,6 @@ import org.praxislive.logging.LogLevel;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 class RefImpl<T> extends Ref<T> {
 
@@ -81,7 +80,7 @@ class RefImpl<T> extends Ref<T> {
         if (activeCalls.remove(call.matchID())) {
             if (call.isReply()) {
                 try {
-                    T val = (T) PReference.from(call.getArgs().get(0)).get().getReference();
+                    T val = (T) PReference.from(call.args().get(0)).get().getReference();
                     if (!refType.isInstance(val)) {
                         throw new IllegalArgumentException(val.getClass() + " is not a " + refType);
                     }

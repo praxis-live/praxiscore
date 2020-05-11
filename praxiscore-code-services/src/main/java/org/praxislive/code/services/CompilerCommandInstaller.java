@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,10 +21,10 @@
  */
 package org.praxislive.code.services;
 
+import java.util.List;
 import java.util.Map;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.services.Services;
@@ -41,7 +41,6 @@ import org.praxislive.script.impl.AbstractSingleCallFrame;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 public class CompilerCommandInstaller implements CommandInstaller {
 
@@ -66,7 +65,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
         }
         
         @Override
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             return new AddLibsStackFrame(namespace, args, array);
         }
         
@@ -76,14 +75,15 @@ public class CompilerCommandInstaller implements CommandInstaller {
         
         private final boolean array;
         
-        AddLibsStackFrame(Namespace namespace, CallArguments args, boolean array) {
+        AddLibsStackFrame(Namespace namespace, List<Value> args, boolean array) {
             super(namespace, args);
             this.array = array;
         }
 
         @Override
-        protected Call createCall(Env env, CallArguments args) throws Exception {
-            PArray libs = array ? PArray.coerce(args.get(0)) : PArray.of((Value)args.get(0));
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            PArray libs = array ? PArray.from(args.get(0)).orElseThrow(IllegalArgumentException::new)
+                    : PArray.of((Value)args.get(0));
             ComponentAddress service = env.getLookup().find(Services.class)
                     .flatMap(sm -> sm.locate(CodeCompilerService.class))
                     .orElseThrow(ServiceUnavailableException::new);
@@ -96,7 +96,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
     private static class JavaReleaseCmd implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
             return new JavaReleaseStackFrame(namespace, args);
         }
         
@@ -104,17 +104,17 @@ public class CompilerCommandInstaller implements CommandInstaller {
     
     private static class JavaReleaseStackFrame extends AbstractSingleCallFrame {
         
-        JavaReleaseStackFrame(Namespace namespace, CallArguments args) {
+        JavaReleaseStackFrame(Namespace namespace, List<Value> args) {
             super(namespace, args);
         }
 
         @Override
-        protected Call createCall(Env env, CallArguments args) throws Exception {
+        protected Call createCall(Env env, List<Value> args) throws Exception {
             ComponentAddress service = env.getLookup().find(Services.class)
                     .flatMap(sm -> sm.locate(CodeCompilerService.class))
                     .orElseThrow(ServiceUnavailableException::new);
             ControlAddress releaseControl = ControlAddress.of(service, "release");
-            return Call.createCall(releaseControl, env.getAddress(), env.getTime(), args);
+            return Call.create(releaseControl, env.getAddress(), env.getTime(), args);
         }
         
     }

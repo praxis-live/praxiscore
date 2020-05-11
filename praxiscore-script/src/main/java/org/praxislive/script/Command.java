@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,23 +23,14 @@
 package org.praxislive.script;
 
 import java.util.List;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.Value;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public interface Command {
 
-    @Deprecated
-    public StackFrame createStackFrame(Namespace namespace, CallArguments args)
+    public StackFrame createStackFrame(Namespace namespace, List<Value> args)
             throws ExecutionException;
-    
-    @SuppressWarnings("deprecation")
-    public default StackFrame createStackFrame(Namespace namespace, List<? extends Value> args)
-            throws ExecutionException {
-        return createStackFrame(namespace, CallArguments.create(args));
-    }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,8 +23,9 @@ package org.praxislive.script.commands;
 
 import org.praxislive.script.impl.AbstractInlineCommand;
 import java.io.File;
+import java.util.List;
 import java.util.Map;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.types.PResource;
 import org.praxislive.script.Command;
@@ -35,7 +36,6 @@ import org.praxislive.script.Namespace;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ResourceCmds implements CommandInstaller {
 
@@ -46,6 +46,7 @@ public class ResourceCmds implements CommandInstaller {
     private ResourceCmds() {
     }
 
+    @Override
     public void install(Map<String, Command> commands) {
         commands.put("load", LOAD);
     }
@@ -58,14 +59,15 @@ public class ResourceCmds implements CommandInstaller {
    
     private static class LoadCmd extends AbstractInlineCommand {
 
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() != 1) {
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() != 1) {
                 throw new ExecutionException();
             }
             try {
                 File f = new File(PResource.coerce(args.get(0)).value());
                 String s = Utils.loadStringFromFile(f);
-                return CallArguments.create(PString.of(s));
+                return List.of(PString.of(s));
             } catch (Exception ex) {
                 throw new ExecutionException(ex);
             }

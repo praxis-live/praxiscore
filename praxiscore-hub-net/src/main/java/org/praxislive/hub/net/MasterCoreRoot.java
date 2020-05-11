@@ -156,7 +156,7 @@ class MasterCoreRoot extends BasicCoreRoot {
         @Override
         protected Call processResponse(Call call) throws Exception {
             Call active = getActiveCall();
-            String id = active.getArgs().get(0).toString();
+            String id = active.args().get(0).toString();
             String source = call.from().component().rootID();
             if (source.startsWith(SLAVE_PREFIX)) {
                 Root.Controller ctrl = getHubAccessor().getRootController(source);
@@ -168,7 +168,7 @@ class MasterCoreRoot extends BasicCoreRoot {
                     throw new IllegalArgumentException("Invalid response");
                 }
                 Root r = (Root) ((PReference) args.get(0)).getReference();
-                String type = active.getArgs().get(1).toString();
+                String type = active.args().get(1).toString();
                 installRoot(id, type, r);
             }
             return active.reply();

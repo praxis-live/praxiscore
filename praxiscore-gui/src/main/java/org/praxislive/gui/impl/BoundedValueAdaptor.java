@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,15 +31,12 @@ import org.praxislive.base.Binding;
 import org.praxislive.base.Binding.SyncRate;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
-import org.praxislive.core.CallArguments;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith
  */
 public class BoundedValueAdaptor extends Binding.Adaptor {
 

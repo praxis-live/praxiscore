@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,13 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.praxislive.core.Value;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public final class LogBuilder {
 
@@ -96,8 +94,8 @@ public final class LogBuilder {
         return this.level.isLoggable(level);
     }
 
-    public CallArguments toCallArguments() {
-        return CallArguments.create(log);
+    public List<Value> toList() {
+        return List.copyOf(log);
     }
 
     public void clear() {

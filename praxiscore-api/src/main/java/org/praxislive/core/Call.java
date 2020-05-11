@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,14 +24,11 @@ package org.praxislive.core;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.praxislive.core.types.PError;
 
 /**
  *
- * @author Neil C Smith
  */
-@SuppressWarnings("deprecation")
 public final class Call extends Packet {
 
     /**
@@ -153,16 +150,6 @@ public final class Call extends Packet {
      */
     public List<Value> args() {
         return args;
-    }
-
-    /**
-     * Get the Arguments of this Call.
-     *
-     * @return CallArguments
-     */
-    @Deprecated
-    public CallArguments getArgs() {
-        return CallArguments.create(args);
     }
 
     /**
@@ -404,26 +391,6 @@ public final class Call extends Packet {
     }
 
     /**
-     * Create a Call with Type INVOKE.
-     *
-     * @param toAddress ControlAddress of receiving Control.
-     * @param fromAddress ControlAddress for response.
-     * @param timeCode long nanosecond time relative to hub clock
-     * @param args CallArguments (use CallArguments.EMPTY for no arguments)
-     * @return Call
-     */
-    @Deprecated
-    public static Call createCall(
-            ControlAddress toAddress,
-            ControlAddress fromAddress,
-            long timeCode,
-            CallArguments args) {
-        return createCall(toAddress, fromAddress, timeCode,
-                callArgsToListArgs(args),
-                Type.INVOKE);
-    }
-
-    /**
      * Create a Call with Type INVOKE_QUIET and empty empty arguments. This
      * indicates that the sender does not require a response (though it might
      * still get one), except in case of error.
@@ -501,28 +468,6 @@ public final class Call extends Packet {
             Value arg) {
         return createCall(toAddress, fromAddress, timeCode,
                 Collections.singletonList(arg), Type.INVOKE_QUIET);
-    }
-
-    /**
-     * Create a Call with Type INVOKE_QUIET. This indicates that the sender does
-     * not require a response (though it might still get one), except in case of
-     * error.
-     *
-     * @param toAddress ControlAddress of receiving Control.
-     * @param fromAddress ControlAddress for response.
-     * @param timeCode long nanosecond time relative to hub clock
-     * @param args CallArguments
-     * @return Call
-     */
-    @Deprecated
-    public static Call createQuietCall(
-            ControlAddress toAddress,
-            ControlAddress fromAddress,
-            long timeCode,
-            CallArguments args) {
-        return createCall(toAddress, fromAddress, timeCode,
-                callArgsToListArgs(args),
-                Type.INVOKE_QUIET);
     }
 
     /**
@@ -589,21 +534,6 @@ public final class Call extends Packet {
     }
 
     /**
-     * Create a Call of type RETURN. Addresses, ID and timeCode will
-     * automatically be set from the given inward Call.
-     *
-     * @param inwardCall Call this is a response to.
-     * @param args Arguments
-     * @return Call
-     */
-    @Deprecated
-    public static Call createReturnCall(
-            Call inwardCall,
-            CallArguments args) {
-        return createResponseCall(inwardCall, callArgsToListArgs(args), Type.RETURN);
-    }
-
-    /**
      * Create a Call of type ERROR. Addresses, ID and timeCode will
      * automatically be set from the given inward Call.
      *
@@ -632,21 +562,6 @@ public final class Call extends Packet {
         return createResponseCall(inwardCall, Collections.singletonList(arg), Type.ERROR);
     }
 
-    /**
-     * Create a Call of type ERROR. Addresses, ID and timeCode will
-     * automatically be set from the given inward Call.
-     *
-     * @param inwardCall Call this is a response to.
-     * @param args Arguments
-     * @return Call
-     */
-    @Deprecated
-    public static Call createErrorCall(
-            Call inwardCall,
-            CallArguments args) {
-        return createResponseCall(inwardCall, callArgsToListArgs(args), Type.ERROR);
-    }
-
     private static Call createResponseCall(
             Call inwardCall,
             List<Value> args,
@@ -660,11 +575,6 @@ public final class Call extends Packet {
         long timeCode = inwardCall.time();
         int matchID = inwardCall.id();
         return new Call(root, toAddress, fromAddress, timeCode, args, type, matchID);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static List<Value> callArgsToListArgs(CallArguments args) {
-        return Collections.unmodifiableList(args.stream().collect(Collectors.toList()));
     }
 
 }

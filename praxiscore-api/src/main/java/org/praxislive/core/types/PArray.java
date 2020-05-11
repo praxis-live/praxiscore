@@ -31,7 +31,6 @@ import java.util.stream.Collector;
 import java.util.stream.Stream;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.syntax.Token;
 import org.praxislive.core.syntax.Tokenizer;
@@ -199,11 +198,6 @@ public final class PArray extends Value implements Iterable<Value> {
             }
         }
         return new PArray(args, null);
-    }
-
-    @Deprecated
-    public static PArray valueOf(CallArguments args) {
-        return of(args.getAll());
     }
 
     public static PArray parse(String str) throws ValueFormatException {

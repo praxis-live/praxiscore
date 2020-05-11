@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,12 +21,12 @@
  */
 package org.praxislive.script.commands;
 
+import java.util.List;
 import org.praxislive.script.impl.AbstractInlineCommand;
 import org.praxislive.script.impl.VariableImpl;
 import java.util.Map;
 import java.util.logging.Logger;
 import org.praxislive.core.Value;
-import org.praxislive.core.CallArguments;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
@@ -36,7 +36,6 @@ import org.praxislive.script.Variable;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class VariableCmds implements CommandInstaller {
 
@@ -50,6 +49,7 @@ public class VariableCmds implements CommandInstaller {
 
     private VariableCmds() {}
 
+    @Override
     public void install(Map<String, Command> commands) {
         commands.put("set", SET);
     }
@@ -60,8 +60,9 @@ public class VariableCmds implements CommandInstaller {
 
     private static class Set extends AbstractInlineCommand {
 
-        public CallArguments process(Env context, Namespace namespace, CallArguments args) throws ExecutionException {
-            if (args.getSize() != 2) {
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+            if (args.size() != 2) {
                 throw new ExecutionException();
             }
             String varName = args.get(0).toString();
@@ -74,7 +75,7 @@ public class VariableCmds implements CommandInstaller {
                 var = new VariableImpl(val);
                 namespace.addVariable(varName, var);
             }
-            return CallArguments.create(val);
+            return List.of(val);
 
         }
     }

@@ -22,8 +22,9 @@
 
 package org.praxislive.script.impl;
 
+import java.util.List;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PReference;
 import org.praxislive.script.Env;
 import org.praxislive.script.ExecutionException;
@@ -33,55 +34,60 @@ import org.praxislive.script.StackFrame;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public abstract class AbstractInlineCommand implements InlineCommand {
 
 
 
-    public StackFrame createStackFrame(Namespace namespace, CallArguments args) throws ExecutionException {
+    @Override
+    public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
         return new InlineStackFrame(namespace, args);
     }
 
     private class InlineStackFrame implements StackFrame {
 
+        private final Namespace namespace;
+        private final List<Value> args;
         private State state;
-        private Namespace namespace;
-        private CallArguments args;
-        private CallArguments result;
+        private List<Value> result;
 
-        private InlineStackFrame(Namespace namespace, CallArguments args) {
+        private InlineStackFrame(Namespace namespace, List<Value> args) {
             this.namespace = namespace;
             this.args = args;
             state = State.Incomplete;
         }
 
+        @Override
         public State getState() {
             return state;
         }
 
+        @Override
         public StackFrame process(Env env) {
             if (state == State.Incomplete) {
                 try {
                     result = AbstractInlineCommand.this.process(env, namespace, args);
                     state = State.OK;
                 } catch (ExecutionException ex) {
-                    result = CallArguments.create(PReference.of(ex));
+                    result = List.of(PReference.of(ex));
                     state = State.Error;
                 }
             }
             return null;
         }
 
+        @Override
         public void postResponse(Call call) {
             throw new IllegalStateException();
         }
 
-        public void postResponse(State state, CallArguments args) {
+        @Override
+        public void postResponse(State state, List<Value> args) {
             throw new IllegalStateException();
         }
 
-        public CallArguments getResult() {
+        @Override
+        public List<Value> result() {
             if (result == null) {
                 throw new IllegalStateException();
             }

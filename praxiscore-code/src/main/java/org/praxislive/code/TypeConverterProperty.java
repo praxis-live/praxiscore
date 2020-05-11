@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import org.praxislive.code.userapi.OnChange;
 import org.praxislive.code.userapi.OnError;
 import org.praxislive.code.userapi.P;
 import org.praxislive.core.Value;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.Control;
 import org.praxislive.core.Port;
 import org.praxislive.core.ArgumentInfo;
@@ -43,7 +42,6 @@ import org.praxislive.logging.LogLevel;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
 
@@ -77,8 +75,8 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
     }
 
     @Override
-    protected TaskService.Task createTask(CallArguments keys) throws Exception {
-        return new Task(converter, keys.get(0));
+    protected TaskService.Task createTask(Value key) throws Exception {
+        return new Task(converter, key);
     }
 
     @Override

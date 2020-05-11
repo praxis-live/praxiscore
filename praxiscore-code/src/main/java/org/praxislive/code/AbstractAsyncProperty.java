@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,9 +22,7 @@
 package org.praxislive.code;
 
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Call;
-import org.praxislive.core.CallArguments;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
@@ -38,7 +36,6 @@ import org.praxislive.logging.LogLevel;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public abstract class AbstractAsyncProperty<V> implements Control {
     
@@ -47,8 +44,8 @@ public abstract class AbstractAsyncProperty<V> implements Control {
     private CodeContext<?> context;
     private Call activeCall;
     private Call taskCall;
-    private CallArguments keys;
-    private CallArguments portKeys;
+    private Value key;
+    private Value portKey;
     private V value;
     private boolean latestSet;
     private long latest;
@@ -56,9 +53,8 @@ public abstract class AbstractAsyncProperty<V> implements Control {
     
     protected AbstractAsyncProperty(Value initialKey, Class<V> valueType, V value) {
         this.valueType = valueType;
-        this.keys = CallArguments.create(initialKey);
+        this.key = initialKey;
         this.value = value;
-        
     }
     
     protected void attach(CodeContext<?> context) {
@@ -85,10 +81,10 @@ public abstract class AbstractAsyncProperty<V> implements Control {
     }
 
     private void processInvoke(Call call, PacketRouter router) throws Exception {
-        CallArguments args = call.getArgs();
+        var args = call.args();
         long time = call.time();
-        if (args.getSize() > 0 && isLatest(time)) {
-            TaskService.Task task = createTask(args);
+        if (args.size() > 0 && isLatest(time)) {
+            TaskService.Task task = createTask(args.get(0));
             // no exception so valid args
             if (task == null) {
                 nullify(time);
@@ -98,17 +94,17 @@ public abstract class AbstractAsyncProperty<V> implements Control {
             // managed to start task ok
             setLatest(time);
             if (activeCall != null) {
-                respond(activeCall, activeCall.getArgs(), router);
+                respond(activeCall, activeCall.args().get(0), router);
                 activeCall = null;
             }
             if (task == null) {
-                keys = args;
-                respond(call, keys, router);
+                key = args.get(0);
+                respond(call, key, router);
             } else {
                 activeCall = call;
             }
         } else {
-            respond(call, keys, router);
+            respond(call, key, router);
         }
     }
 
@@ -118,14 +114,14 @@ public abstract class AbstractAsyncProperty<V> implements Control {
             return;
         }
         taskCall = null;
-        castAndSetValue(call.getArgs().get(0));
+        castAndSetValue(call.args().get(0));
         if (activeCall != null) {
-            keys = activeCall.getArgs();
-            respond(activeCall, keys, router);
+            key = activeCall.args().get(0);
+            respond(activeCall, key, router);
             activeCall = null;
-        } else if (portKeys != null) {
-            keys = portKeys;
-            portKeys = null;
+        } else if (portKey != null) {
+            key = portKey;
+            portKey = null;
         }
         valueChanged(call.time());
     }
@@ -136,49 +132,45 @@ public abstract class AbstractAsyncProperty<V> implements Control {
             return;
         }
         if (activeCall != null) {
-            router.route(Call.createErrorCall(activeCall, call.getArgs()));
+            router.route(activeCall.error(call.args()));
             activeCall = null;
         }
-        CallArguments args = call.getArgs();
-        PError err = null;
-        if (args.getSize() > 0) {
-            try {
-                err = PError.coerce(args.get(0));
-            } catch (ValueFormatException ex) {
-                err = PError.of(ex, args.get(0).toString());
-            }
+        var args = call.args();
+        PError err;
+        if (args.size() > 0) {
+            err = PError.from(args.get(0)).orElse(PError.of(args.get(0).toString()));
         } else {
             err = PError.of("");
         }
         taskError(latest, err);
     }
 
-    private void respond(Call call, CallArguments args, PacketRouter router) {
+    private void respond(Call call, Value arg, PacketRouter router) {
 
-        if (call.getType() == Call.Type.INVOKE) {
+        if (call.isReplyRequired()) {
             if (router == null) {
                 router = getLookup().find(PacketRouter.class)
                         .orElseThrow(IllegalStateException::new);
             }
-            router.route(Call.createReturnCall(call, args));
+            router.route(call.reply(arg));
+            
         }
     }
 
     protected void portInvoke(long time, Value key) {
         if (isLatest(time)) {
-            CallArguments pkeys = CallArguments.create(key);
             try {
-                TaskService.Task task = createTask(pkeys);
+                TaskService.Task task = createTask(key);
                 if (task == null) {
-                    keys = pkeys;
+                    this.key = key;
                     nullify(time);
                 } else {
                     startTask(task, null, time);
-                    portKeys = pkeys;
+                    portKey = key;
                 }
                 setLatest(time);
                 if (activeCall != null) {
-                    respond(activeCall, activeCall.getArgs(), null);
+                    respond(activeCall, activeCall.args().get(0), null);
                     activeCall = null;
                 }
             } catch (Exception ex) {
@@ -228,8 +220,8 @@ public abstract class AbstractAsyncProperty<V> implements Control {
 
     }
 
-    protected CallArguments getKeys() {
-        return keys;
+    protected Value getKey() {
+        return key;
     }
 
     protected V getValue() {
@@ -238,7 +230,7 @@ public abstract class AbstractAsyncProperty<V> implements Control {
 
     private void nullify(long time) {
         taskCall = null;
-        portKeys = null;
+        portKey = null;
         value = null;
         valueChanged(time);
     }
@@ -254,7 +246,7 @@ public abstract class AbstractAsyncProperty<V> implements Control {
         router.route(taskCall);
     }
 
-    protected abstract TaskService.Task createTask(CallArguments keys)
+    protected abstract TaskService.Task createTask(Value key)
             throws Exception;
 
     protected void valueChanged(long time) {
