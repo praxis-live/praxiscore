@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,19 +23,16 @@ package org.praxislive.tinkerforge;
 
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.ControlDescriptor;
-import org.praxislive.code.InfoProperty;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
-import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 class ConnectedProperty implements Control {
     
@@ -47,11 +44,8 @@ class ConnectedProperty implements Control {
     
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
-        Call.Type type = call.getType();
-        if (type == Call.Type.INVOKE || type == Call.Type.INVOKE_QUIET) {
-            router.route(Call.createReturnCall(call, context.isConnected()));
-        } else {
-            // do nothing?
+        if (call.isReplyRequired()) {
+            router.route(call.reply(context.isConnected()));
         }
     }
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import java.util.Objects;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
-import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.Lookup;
@@ -141,7 +140,9 @@ public abstract class AbstractComponent implements Component {
 
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
-            router.route(Call.createReturnCall(call, getInfo()));
+            if (call.isReplyRequired()) {
+                router.route(call.reply(getInfo()));
+            }
         }
 
     }

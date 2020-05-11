@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,7 +29,6 @@ import org.praxislive.core.protocols.ComponentProtocol;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public class InfoProperty implements Control {
 
@@ -37,11 +36,8 @@ public class InfoProperty implements Control {
 
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
-        Call.Type type = call.getType();
-        if (type == Call.Type.INVOKE || type == Call.Type.INVOKE_QUIET) {
-            router.route(Call.createReturnCall(call, context.getInfo()));
-        } else {
-            // do nothing?
+        if (call.isReplyRequired()) {
+            router.route(call.reply(context.getInfo()));
         }
     }
 

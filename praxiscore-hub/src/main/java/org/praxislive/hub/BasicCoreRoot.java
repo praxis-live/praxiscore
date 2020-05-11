@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -104,7 +104,7 @@ public class BasicCoreRoot extends AbstractRoot {
         try {
             controls.get(call.to().controlID()).call(call, router);
         } catch (Exception ex) {
-            router.route(Call.createErrorCall(call, PError.of(ex)));
+            router.route(call.error(PError.of(ex)));
         }
     }
 

@@ -63,7 +63,7 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
         if (state == State.Incomplete && call == null) {
             try {
                 call = createCall(env, args);
-                if (call == null || call.getType() != Call.Type.INVOKE) {
+                if (call == null || !(call.isReplyRequired())) {
                     throw new IllegalStateException("Invalid call");
                 }
                 env.getPacketRouter().route(call);
