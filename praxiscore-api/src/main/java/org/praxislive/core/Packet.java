@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,8 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Superclass of Call. Intended to allow future support for atomic Call bundles.
- * 
- * @author Neil C Smith
  */
 public class Packet implements Comparable<Packet> {
 
@@ -53,16 +51,6 @@ public class Packet implements Comparable<Packet> {
     }
     
     /**
-     * Get the time that this Packet should be processed, relative to {@link RootHub#getClock() }
-     *
-     * @return long time
-     */
-    @Deprecated
-    public final long getTimecode() {
-        return timeCode;
-    }
-
-    /**
      * Get the ID of the Root component that this packet should be sent to.
      *
      * @return String Root ID
@@ -70,50 +58,24 @@ public class Packet implements Comparable<Packet> {
     public final String rootID() {
         return rootID;
     }
-    /**
-     * Get the ID of the Root component that this packet should be sent to.
-     *
-     * @return String Root ID
-     */
-    @Deprecated
-    public final String getRootID() {
-        return rootID;
-    }
 
     /**
      * Get the ID of this Packet.
-     *
-     * This should not be used to test equality as it may not be unique if the
-     * Packet has been serialized.
      *
      * @return long ID
      */
     public final int id() {
         // should not be used for object equality
-        // @TODO Change ID semantics to maintain uniqueness?
-        return id;
-    }
-    /**
-     * Get the ID of this Packet.
-     *
-     * This should not be used to test equality as it may not be unique if the
-     * Packet has been serialized.
-     *
-     * @return long ID
-     */
-    @Deprecated
-    public final int getID() {
-        // should not be used for object equality
-        // @TODO Change ID semantics to maintain uniqueness?
         return id;
     }
 
- /**
+    /**
      * Compare Packets and order them by timeCode and ID.
      *
      * @param obj
      * @return int
      */
+    @Override
     public final int compareTo(Packet obj) {
         if (this == obj) {
             return 0;
