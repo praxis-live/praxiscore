@@ -22,12 +22,12 @@
 package org.praxislive.tinkerforge;
 
 import org.praxislive.code.AbstractComponentFactory;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public class TFComponents implements ComponentFactoryProvider {
     
@@ -61,12 +61,12 @@ public class TFComponents implements ComponentFactoryProvider {
             add("tinkerforge:temperature", "resources/temperature.pxj");
             add("tinkerforge:temperature-ir", "resources/temperature_ir.pxj");
                       
-            add(data(new TFCodeFactory("tinkerforge:custom")));
+            add(data(new TFCodeFactory(ComponentType.of("tinkerforge:custom"))));
 
         }
 
         private void add(String type, String sourceFile) {
-            add(data(new TFCodeFactory(type, source(sourceFile))));
+            add(data(new TFCodeFactory(ComponentType.of(type), source(sourceFile))));
         }
         
     }

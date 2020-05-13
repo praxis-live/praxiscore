@@ -125,15 +125,6 @@ public abstract class Input {
         }
     }
 
-    /**
-     *
-     * @param full
-     */
-    @Deprecated
-    protected void reset(boolean full) {
-        clearLinks();
-    }
-
     private static interface BaseLink {
 
         void update(double value);

@@ -376,10 +376,10 @@ public class PVector implements Serializable, DataObject {
         return new PVector(x, y, z);
     }
 
-    @Deprecated
-    public PVector get() {
-        return copy();
-    }
+//    @Deprecated
+//    public PVector get() {
+//        return copy();
+//    }
 
     /**
      * @param target
@@ -878,10 +878,10 @@ public class PVector implements Serializable, DataObject {
         return angle;
     }
 
-    @Deprecated
-    public double heading2D() {
-        return heading();
-    }
+//    @Deprecated
+//    public double heading2D() {
+//        return heading();
+//    }
 
     /**
      * ( begin auto-generated from PVector_rotate.xml )

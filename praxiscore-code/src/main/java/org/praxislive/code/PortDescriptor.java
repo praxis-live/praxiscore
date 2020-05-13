@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,7 +26,6 @@ import org.praxislive.core.PortInfo;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public abstract class PortDescriptor {
 
@@ -62,15 +61,8 @@ public abstract class PortDescriptor {
 
     public abstract PortInfo getInfo();
 
-    @SuppressWarnings("deprecated")
     public void reset(boolean full) {
-        reset();
     }
-    
-    @Deprecated
-    public void reset() {
-    }
-    
 
     public void stopping() {
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,7 +38,6 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 @GenerateTemplate(VideoSnapshot.TEMPLATE_PATH)
 public class VideoSnapshot extends VideoCodeDelegate {
@@ -59,25 +58,21 @@ public class VideoSnapshot extends VideoCodeDelegate {
     @P(100) @ReadOnly
     Property activeMix;
     
-    @T(1) Trigger trigger;
-    @T(2) Trigger reset;
+    @T(1) boolean trigger;
+    @T(2) boolean reset;
     
     @OffScreen PGraphics fg, bg, scratch;
 
-    
-    @Override
-    public void setup() {
-
-    }
-
     @Override
     public void draw() {
-        if (reset.poll()) {
+        if (reset) {
             reset();
+            reset = false;
         }
         
-        if (trigger.poll()) {
+        if (trigger) {
             capture();
+            trigger = false;
         } else {
             render();
         }

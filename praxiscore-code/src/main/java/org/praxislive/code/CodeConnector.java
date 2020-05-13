@@ -564,10 +564,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return syntheticIdx++;
     }
 
-    @SuppressWarnings("deprecation")
     ArgumentInfo infoFromType(Type typeAnnotation) {
-        Class<? extends Value> valueCls = typeAnnotation.value() == Value.class
-                ? typeAnnotation.cls() : typeAnnotation.value();
+        Class<? extends Value> valueCls = typeAnnotation.value();
         PMap properties = createPropertyMap(typeAnnotation.properties());
         return ArgumentInfo.of(valueCls, properties);
     }
@@ -586,11 +584,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return bld.build();
     }
 
-    @SuppressWarnings("deprecation")
     Value defaultValueFromType(Type typeAnnotation) {
-        Class<Value> valueCls = typeAnnotation.value() == Value.class
-                ? (Class<Value>) typeAnnotation.cls()
-                : (Class<Value>) typeAnnotation.value();
+        Class<Value> valueCls = (Class<Value>) typeAnnotation.value();
         Value.Type<Value> valueType = Value.Type.of(valueCls);
         String defaultString = typeAnnotation.def();
         return valueType.converter().apply(PString.of(defaultString)).orElse(PString.EMPTY);

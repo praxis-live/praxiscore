@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import org.praxislive.logging.LogBuilder;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public abstract class CodeFactory<D extends CodeDelegate> {
 
@@ -54,14 +53,6 @@ public abstract class CodeFactory<D extends CodeDelegate> {
         this(cbc, type, null, template);
     }
 
-    @Deprecated
-    protected CodeFactory(
-            ClassBodyContext<D> cbc,
-            String type,
-            String template) {
-        this(cbc, ComponentType.of(type), template);
-    }
-    
     public final ComponentType getComponentType() {
         return type;
     }

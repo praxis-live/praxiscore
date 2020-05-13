@@ -52,9 +52,6 @@ public abstract class Trigger {
         }
     }
 
-    @Deprecated
-    public abstract boolean poll();
-
     /**
      * Clear all Linkables from this Trigger.
      *

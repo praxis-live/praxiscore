@@ -403,17 +403,6 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
     }
 
-    @Deprecated
-    public static interface Invoker extends Runnable {
-
-        public void invoke();
-        
-        public default void run() {
-            invoke();
-        }
-
-    }
-
     private class Driver implements ExecutionContext.StateListener,
             ExecutionContext.ClockListener {
 

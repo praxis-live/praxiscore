@@ -4,6 +4,7 @@ package org.praxislive.video.pgl.code;
 
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.CodeFactory;
+import org.praxislive.core.ComponentType;
 
 
 public class P3DCodeFactory extends CodeFactory<P3DCodeDelegate> {
@@ -13,12 +14,12 @@ public class P3DCodeFactory extends CodeFactory<P3DCodeDelegate> {
     private final boolean emptyDefault;
     
     public P3DCodeFactory(String type) {
-        super(CBC, type, P3DClassBodyContext.TEMPLATE);
+        super(CBC, ComponentType.of(type), P3DClassBodyContext.TEMPLATE);
         emptyDefault = true;
     }
     
     public P3DCodeFactory(String type, String sourceTemplate) {
-        super(CBC, type, sourceTemplate);
+        super(CBC, ComponentType.of(type), sourceTemplate);
         emptyDefault = false;
     }
 

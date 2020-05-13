@@ -165,11 +165,6 @@ public abstract class Property {
         return this;
     }
     
-//    @Deprecated
-//    public Property set(Value value) {
-//        Value v = value instanceof Value ? (Value) value : PString.valueOf(value);
-//        return set(v);
-//    }
 
     /**
      * Set the current value. Also stops any active animation.

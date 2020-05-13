@@ -36,9 +36,6 @@ public @interface Type {
     java.lang.String[] properties() default {};
     java.lang.String def() default "";
     
-    @Deprecated
-    Class<? extends Value> cls() default Value.class;
-
     @Retention(RetentionPolicy.RUNTIME)
     public static @interface Number {
         double min() default PNumber.MIN_VALUE;
