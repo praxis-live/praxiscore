@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,6 +21,7 @@
  */
 package org.praxislive.core.protocols;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ArgumentInfo;
@@ -34,7 +35,6 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ContainerProtocol implements Protocol {
 
@@ -48,31 +48,31 @@ public class ContainerProtocol implements Protocol {
     private final static ArgumentInfo STRING = PString.info();
     public final static ControlInfo ADD_CHILD_INFO
             = ControlInfo.createFunctionInfo(
-                    new ArgumentInfo[]{STRING, ComponentType.info()},
-                    new ArgumentInfo[0],
+                    List.of(STRING, ComponentType.info()),
+                    List.of(),
                     PMap.EMPTY);
     public final static ControlInfo REMOVE_CHILD_INFO
             = ControlInfo.createFunctionInfo(
-                    new ArgumentInfo[]{STRING},
-                    new ArgumentInfo[0],
+                    List.of(STRING),
+                    List.of(),
                     PMap.EMPTY);
     public final static ControlInfo CHILDREN_INFO
             = ControlInfo.createReadOnlyPropertyInfo(
-                    new ArgumentInfo[]{PArray.info()},
+                    PArray.info(),
                     PMap.EMPTY);
     public final static ControlInfo CONNECT_INFO
             = ControlInfo.createFunctionInfo(
-                    new ArgumentInfo[]{STRING, STRING, STRING, STRING},
-                    new ArgumentInfo[0],
+                    List.of(STRING, STRING, STRING, STRING),
+                    List.of(),
                     PMap.EMPTY);
     public final static ControlInfo DISCONNECT_INFO
             = ControlInfo.createFunctionInfo(
-                    new ArgumentInfo[]{STRING, STRING, STRING, STRING},
-                    new ArgumentInfo[0],
+                    List.of(STRING, STRING, STRING, STRING),
+                    List.of(),
                     PMap.EMPTY);
     public final static ControlInfo CONNECTIONS_INFO
             = ControlInfo.createReadOnlyPropertyInfo(
-                    new ArgumentInfo[]{PArray.info()},
+                    PArray.info(),
                     PMap.EMPTY);
 
     public static final ComponentInfo API_INFO = Info.component(cmp -> cmp

@@ -27,11 +27,10 @@ import java.util.stream.Stream;
 import org.praxislive.core.Value;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.Protocol;
 import org.praxislive.core.services.Service;
-import org.praxislive.core.types.PArray;
-import org.praxislive.core.types.PMap;
-import org.praxislive.core.types.PString;
+import org.praxislive.core.types.PBoolean;
 
 /**
  *
@@ -39,21 +38,17 @@ import org.praxislive.core.types.PString;
 public class LogService implements Service {
     
     public final static String LOG = "log";
-    public final static ControlInfo LOG_INFO =
-            ControlInfo.createFunctionInfo(
-            new ArgumentInfo[]{
-                ArgumentInfo.of(PString.class,
-                        PMap.of(PString.KEY_ALLOWED_VALUES, PArray.of(
-                                LogLevel.ERROR.asPString(),
-                                LogLevel.WARNING.asPString(),
-                                LogLevel.INFO.asPString(),
-                                LogLevel.DEBUG.asPString()
-                        ))),
-                ArgumentInfo.of(Value.class,
-                        PMap.of(ArgumentInfo.KEY_VARARGS, true))
-            },
-            new ArgumentInfo[0],
-            PMap.EMPTY);
+    public final static ControlInfo LOG_INFO =    
+            Info.control(ctl -> ctl.function()
+                    .inputs(a -> a.string().allowed(
+                                LogLevel.ERROR.name(),
+                                LogLevel.WARNING.name(),
+                                LogLevel.INFO.name(),
+                                LogLevel.DEBUG.name()
+                            ),
+                            a -> a.type(Value.class)
+                                    .property(ArgumentInfo.KEY_VARARGS, PBoolean.TRUE))
+            );
 
     @Override
     public Stream<String> controls() {

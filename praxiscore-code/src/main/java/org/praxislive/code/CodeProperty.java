@@ -178,15 +178,13 @@ class CodeProperty<D extends CodeDelegate>
 
         private ControlInfo createInfo(CodeFactory<D> factory) {
             return ControlInfo.createPropertyInfo(
-                    new ArgumentInfo[]{
-                        ArgumentInfo.of(PString.class,
-                                PMap.of(
-                                        PString.KEY_MIME_TYPE, MIME_TYPE,
-                                        ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
-                                        ClassBodyContext.KEY, factory.getClassBodyContext().getClass().getName()
-                                ))
-                    },
-                    new Value[]{PString.EMPTY},
+                    ArgumentInfo.of(PString.class,
+                            PMap.of(
+                                    PString.KEY_MIME_TYPE, MIME_TYPE,
+                                    ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
+                                    ClassBodyContext.KEY, factory.getClassBodyContext().getClass().getName()
+                            )),
+                    PString.EMPTY,
                     PMap.EMPTY);
         }
 

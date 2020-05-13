@@ -64,7 +64,9 @@ public class ActionAdaptor extends Binding.Adaptor implements ActionListener {
         Binding binding = getBinding();
         if (binding != null) {
              isProperty = binding.getControlInfo()
-                    .map(ControlInfo::isProperty)
+                    .map(ControlInfo::controlType)
+                    .map(t -> t == ControlInfo.Type.Property ||
+                            t == ControlInfo.Type.ReadOnlyProperty)
                     .orElse(Boolean.FALSE);
         }
     }

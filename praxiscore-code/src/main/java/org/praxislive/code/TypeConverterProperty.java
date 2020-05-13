@@ -29,7 +29,6 @@ import org.praxislive.code.userapi.P;
 import org.praxislive.core.Value;
 import org.praxislive.core.Control;
 import org.praxislive.core.Port;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.services.TaskService;
@@ -138,8 +137,7 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
             this.onChange = onChange;
             this.onError = onError;
             info = ControlInfo.createPropertyInfo(
-                    new ArgumentInfo[]{converter.getInfo()},
-                    new Value[]{PString.EMPTY}, PMap.EMPTY);
+                    converter.getInfo(), PString.EMPTY, PMap.EMPTY);
         }
 
         @Override

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,32 +21,31 @@
  */
 package org.praxislive.core.services;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentType;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ComponentFactoryService implements Service {
 
     public final static String NEW_INSTANCE = "new-instance";
-    public final static ControlInfo NEW_INSTANCE_INFO =
-            ControlInfo.createFunctionInfo(
-            new ArgumentInfo[]{ComponentType.info()},
-            new ArgumentInfo[]{PReference.info(Component.class)},
-            PMap.EMPTY);
+    public final static ControlInfo NEW_INSTANCE_INFO
+            = ControlInfo.createFunctionInfo(
+                    List.of(ComponentType.info()),
+                    List.of(PReference.info(Component.class)),
+                    PMap.EMPTY);
 
     @Override
     public Stream<String> controls() {
         return Stream.of(NEW_INSTANCE);
     }
-    
+
     @Override
     public ControlInfo getControlInfo(String control) {
         if (NEW_INSTANCE.equals(control)) {
@@ -55,5 +54,3 @@ public class ComponentFactoryService implements Service {
         throw new IllegalArgumentException();
     }
 }
-
-

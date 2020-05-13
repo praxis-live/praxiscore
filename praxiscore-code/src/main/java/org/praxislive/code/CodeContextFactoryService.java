@@ -21,8 +21,8 @@
  */
 package org.praxislive.code;
 
+import java.util.List;
 import java.util.stream.Stream;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
@@ -37,11 +37,11 @@ import org.praxislive.logging.LogLevel;
 public class CodeContextFactoryService implements Service {
 
     public final static String NEW_CONTEXT = "new-context";
-    public final static ControlInfo NEW_CONTEXT_INFO =
-            ControlInfo.createFunctionInfo(
-            new ArgumentInfo[]{PReference.info(Task.class)},
-            new ArgumentInfo[]{PReference.info(Result.class)},
-            PMap.EMPTY);
+    public final static ControlInfo NEW_CONTEXT_INFO
+            = ControlInfo.createFunctionInfo(
+                    List.of(PReference.info(Task.class)),
+                    List.of(PReference.info(Result.class)),
+                    PMap.EMPTY);
 
     @Override
     public Stream<String> controls() {

@@ -20,7 +20,6 @@ import static org.junit.Assert.*;
 
 /**
  *
- * @author Neil C Smith - https://www.neilcsmith.net
  */
 public class InfoTest {
     
@@ -44,9 +43,9 @@ public class InfoTest {
         interfaces.add(StartableProtocol.class);
         
         Map<String, ControlInfo> controls = new LinkedHashMap<>();
-        controls.put("p1", ControlInfo.createPropertyInfo(new ArgumentInfo[]{PNumber.info(0, 1)}, new Value[]{PNumber.ONE}, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
-        controls.put("p2", ControlInfo.createPropertyInfo(new ArgumentInfo[]{ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){"))}, new Value[]{PString.EMPTY}, PMap.EMPTY));
-        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(new ArgumentInfo[]{PNumber.info(0, 1)}, PMap.EMPTY));
+        controls.put("p1", ControlInfo.createPropertyInfo(PNumber.info(0, 1), PNumber.ONE, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
+        controls.put("p2", ControlInfo.createPropertyInfo(ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){")), PString.EMPTY, PMap.EMPTY));
+        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(PNumber.info(0, 1), PMap.EMPTY));
         controls.put("t1", ControlInfo.createActionInfo(PMap.of("key", "value")));
         
         Map<String, PortInfo> ports = new LinkedHashMap<>();

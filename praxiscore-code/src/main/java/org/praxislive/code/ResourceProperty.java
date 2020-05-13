@@ -59,13 +59,13 @@ import org.praxislive.logging.LogLevel;
 public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
 
     private final static ControlInfo INFO = ControlInfo.createPropertyInfo(
-            new ArgumentInfo[]{PResource.info(true)},
-            new Value[]{PString.EMPTY},
+            PResource.info(true),
+            PString.EMPTY,
             PMap.EMPTY);
 
     private final static ControlInfo PREF_INFO = ControlInfo.createPropertyInfo(
-            new ArgumentInfo[]{PResource.info(true)},
-            new Value[]{PString.EMPTY},
+            PResource.info(true),
+            PString.EMPTY,
             PMap.of("preferred", true));
 
     private final Loader<V> loader;

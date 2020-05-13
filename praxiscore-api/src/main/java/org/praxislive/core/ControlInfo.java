@@ -23,6 +23,7 @@ package org.praxislive.core;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
@@ -43,20 +44,20 @@ public class ControlInfo extends Value {
         Function, Action, Property, ReadOnlyProperty
     };
 
-    private final static ArgumentInfo[] EMPTY_INFO = new ArgumentInfo[0];
-    private final static Value[] EMPTY_DEFAULTS = new Value[0];
+    private final static List<ArgumentInfo> EMPTY_INFO = List.of();
+    private final static List<Value> EMPTY_DEFAULTS = List.of();
 
-    private final ArgumentInfo[] inputs;
-    private final ArgumentInfo[] outputs;
-    private final Value[] defaults;
+    private final List<ArgumentInfo> inputs;
+    private final List<ArgumentInfo> outputs;
+    private final List<Value> defaults;
     private final PMap properties;
     private final Type type;
 
     private volatile String string;
 
-    ControlInfo(ArgumentInfo[] inputs,
-            ArgumentInfo[] outputs,
-            Value[] defaults,
+    ControlInfo(List<ArgumentInfo> inputs,
+            List<ArgumentInfo> outputs,
+            List<Value> defaults,
             Type type,
             PMap properties,
             String string
@@ -105,134 +106,122 @@ public class ControlInfo extends Value {
         
     }
 
-//    @Override
-//    public boolean isEquivalent(Value arg) {
-//        return equals(arg);
-//    }
- 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof ControlInfo) {
-            ControlInfo o = (ControlInfo) obj;
-            return type == o.type
-                    && Arrays.equals(inputs, o.inputs)
-                    && Arrays.equals(outputs, o.outputs)
-                    && Arrays.equals(defaults, o.defaults)
-                    && properties.equals(o.properties);
-        }
-        return false;
-    }
-
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 11 * hash + Arrays.deepHashCode(this.inputs);
-        hash = 11 * hash + Arrays.deepHashCode(this.outputs);
-        hash = 11 * hash + Arrays.deepHashCode(this.defaults);
-        hash = 11 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 11 * hash + (this.properties != null ? this.properties.hashCode() : 0);
+        int hash = 5;
+        hash = 37 * hash + Objects.hashCode(this.inputs);
+        hash = 37 * hash + Objects.hashCode(this.outputs);
+        hash = 37 * hash + Objects.hashCode(this.defaults);
+        hash = 37 * hash + Objects.hashCode(this.properties);
+        hash = 37 * hash + Objects.hashCode(this.type);
         return hash;
     }
 
-    @Deprecated
-    public boolean isProperty() {
-        return type == Type.ReadOnlyProperty || type == Type.Property;
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final ControlInfo other = (ControlInfo) obj;
+        if (!Objects.equals(this.inputs, other.inputs)) {
+            return false;
+        }
+        if (!Objects.equals(this.outputs, other.outputs)) {
+            return false;
+        }
+        if (!Objects.equals(this.defaults, other.defaults)) {
+            return false;
+        }
+        if (!Objects.equals(this.properties, other.properties)) {
+            return false;
+        }
+        if (this.type != other.type) {
+            return false;
+        }
+        return true;
     }
+
 
     public Type controlType() {
         return type;
     }
     
-    @Deprecated
-    public Type getType() {
-        return type;
-    }
-
     public PMap properties() {
         return properties;
     }
     
-    @Deprecated
-    public PMap getProperties() {
-        return properties;
-    }
-    
     public List<Value> defaults() {
-        return Arrays.asList(defaults.clone());
+        return defaults;
     }
 
-    @Deprecated
-    public Value[] getDefaults() {
-        return defaults.clone();
-    }
-    
     public List<ArgumentInfo> inputs() {
-        return Arrays.asList(inputs.clone());
-    }
-
-    @Deprecated
-    public ArgumentInfo[] getInputsInfo() {
-        return inputs.clone();
+        return inputs;
     }
 
     public List<ArgumentInfo> outputs() {
-        return Arrays.asList(outputs.clone());
+        return outputs;
     }
     
-    @Deprecated
-    public ArgumentInfo[] getOutputsInfo() {
-        return outputs.clone();
-    }
-
-    public static ControlInfo createFunctionInfo(ArgumentInfo[] inputs,
-            ArgumentInfo[] outputs, PMap properties) {
+    public static ControlInfo createFunctionInfo(List<ArgumentInfo> inputs,
+            List<ArgumentInfo> outputs, PMap properties) {
         return create(inputs, outputs, null, Type.Function, properties);
     }
 
-    @Deprecated
-    public static ControlInfo createTriggerInfo(PMap properties) {
-        return create(EMPTY_INFO, EMPTY_INFO, null, Type.Action, properties);
-    }
-
     public static ControlInfo createActionInfo(PMap properties) {
-        return create(EMPTY_INFO, EMPTY_INFO, null, Type.Action, properties);
+        return create(null, null, null, Type.Action, properties);
     }
 
-    public static ControlInfo createPropertyInfo(ArgumentInfo[] arguments, Value[] defaults, PMap properties) {
+    public static ControlInfo createPropertyInfo(ArgumentInfo argument,
+            Value def, PMap properties) {
+        return createPropertyInfo(List.of(argument), List.of(def), properties);
+    }
+    
+    public static ControlInfo createPropertyInfo(List<ArgumentInfo> arguments,
+            List<Value> defaults, PMap properties) {
         return create(arguments, arguments, defaults, Type.Property, properties);
     }
 
-    public static ControlInfo createReadOnlyPropertyInfo(ArgumentInfo[] arguments, PMap properties) {
-        return create(EMPTY_INFO, arguments, null, Type.ReadOnlyProperty, properties);
+    public static ControlInfo createReadOnlyPropertyInfo(ArgumentInfo argument,
+            PMap properties) {
+        return createReadOnlyPropertyInfo(List.of(argument), properties);
+    }
+    
+    public static ControlInfo createReadOnlyPropertyInfo(List<ArgumentInfo> arguments,
+            PMap properties) {
+        return create(null, arguments, null, Type.ReadOnlyProperty, properties);
     }
 
-    private static ControlInfo create(ArgumentInfo[] inputs,
-            ArgumentInfo[] outputs,
-            Value[] defaults,
+    private static ControlInfo create(List<ArgumentInfo> inputs,
+            List<ArgumentInfo> outputs,
+            List<Value> defaults,
             Type type,
             PMap properties) {
 
-        ArgumentInfo[] ins = inputs.length == 0 ? EMPTY_INFO : inputs.clone();
-        ArgumentInfo[] outs;
+        List<ArgumentInfo> ins = inputs == null ? EMPTY_INFO : List.copyOf(inputs);
+        List<ArgumentInfo> outs;
         if (outputs == inputs) {
             // property - make same as inputs
             outs = ins;
         } else {
-            outs = outputs.length == 0 ? EMPTY_INFO : outputs.clone();
+            outs = outputs == null ? EMPTY_INFO : List.copyOf(outputs);
         }
+        List<Value> def;
         if (defaults != null) {
-            defaults = defaults.clone();
+            def = List.copyOf(defaults);
         } else {
-            defaults = EMPTY_DEFAULTS;
+            def = EMPTY_DEFAULTS;
         }
         if (properties == null) {
             properties = PMap.EMPTY;
         }
 
-        return new ControlInfo(ins, outs, defaults, type, properties, null);
+        return new ControlInfo(ins, outs, def, type, properties, null);
 
     }
 
@@ -290,7 +279,7 @@ public class ControlInfo extends Value {
         } else {
             properties = PMap.EMPTY;
         }
-        return new ControlInfo(inputs, outputs, EMPTY_DEFAULTS, Type.Function, properties, string);
+        return new ControlInfo(List.of(inputs), List.of(outputs), EMPTY_DEFAULTS, Type.Function, properties, string);
     }
     
     private static ControlInfo parseAction(String string, PArray array) throws Exception {
@@ -312,7 +301,7 @@ public class ControlInfo extends Value {
             outputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
         }
         ArgumentInfo[] inputs = type == Type.ReadOnlyProperty ?
-                EMPTY_INFO : outputs;
+                new ArgumentInfo[0] : outputs;
         // array(2) is defaults
         args = PArray.from(array.get(2)).orElseThrow();
         Value[] defs = new Value[args.size()];
@@ -326,7 +315,7 @@ public class ControlInfo extends Value {
         } else {
             properties = PMap.EMPTY;
         }
-        return new ControlInfo(inputs, outputs, defs, type, properties, string);
+        return new ControlInfo(List.of(inputs), List.of(outputs), List.of(defs), type, properties, string);
     }
 
 }

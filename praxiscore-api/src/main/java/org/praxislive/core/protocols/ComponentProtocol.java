@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,6 @@
 package org.praxislive.core.protocols;
 
 import java.util.stream.Stream;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
@@ -30,16 +29,15 @@ import org.praxislive.core.Protocol;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class ComponentProtocol implements Protocol {
     
     public final static ComponentProtocol INSTANCE = new ComponentProtocol();
     public final static String INFO = "info";
-    public final static ControlInfo INFO_INFO = ControlInfo.createReadOnlyPropertyInfo(
-            new ArgumentInfo[]{ComponentInfo.info()},
+    public final static ControlInfo INFO_INFO =
+            ControlInfo.createReadOnlyPropertyInfo(
+            ComponentInfo.info(),
             null);
-    ;
     public final static ComponentInfo API_INFO = Info.component(cmp -> cmp
             .protocol(ComponentProtocol.class)
             .control(INFO, INFO_INFO)

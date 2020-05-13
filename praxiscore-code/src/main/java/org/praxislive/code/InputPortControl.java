@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,7 +34,6 @@ import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 class InputPortControl implements Control {
     
@@ -64,10 +63,8 @@ class InputPortControl implements Control {
             super(id, category, index);
             control = new InputPortControl(link);
             info = ControlInfo.createFunctionInfo(
-                    new ArgumentInfo[]{
-                        ArgumentInfo.of(Value.class)
-                    },
-                    new ArgumentInfo[0],
+                    List.of(ArgumentInfo.of(Value.class)),
+                    List.of(),
                     PMap.of("input-port", id)
             );
         }

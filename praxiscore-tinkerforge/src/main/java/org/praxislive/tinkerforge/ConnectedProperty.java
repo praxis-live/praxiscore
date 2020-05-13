@@ -26,7 +26,6 @@ import org.praxislive.code.ControlDescriptor;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PMap;
@@ -38,7 +37,7 @@ class ConnectedProperty implements Control {
     
     private final static ControlInfo INFO =
             ControlInfo.createReadOnlyPropertyInfo(
-                    new ArgumentInfo[]{PBoolean.info()}, PMap.EMPTY);
+                    PBoolean.info(), PMap.EMPTY);
     
     private TFCodeContext context;
     

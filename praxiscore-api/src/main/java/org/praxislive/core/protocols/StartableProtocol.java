@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,16 +22,15 @@
 package org.praxislive.core.protocols;
 
 import java.util.stream.Stream;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Protocol;
 import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class StartableProtocol implements Protocol {
 
@@ -40,17 +39,11 @@ public class StartableProtocol implements Protocol {
     public final static String START = "start";
     public final static String STOP = "stop";
     public final static String IS_RUNNING = "is-running";
-    public final static ControlInfo START_INFO = ControlInfo.createFunctionInfo(
-                new ArgumentInfo[0],
-                new ArgumentInfo[0],
-                null);;
-    public final static ControlInfo STOP_INFO = ControlInfo.createFunctionInfo(
-                new ArgumentInfo[0],
-                new ArgumentInfo[0],
-                null);;
+    public final static ControlInfo START_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
+    public final static ControlInfo STOP_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
     public final static ControlInfo IS_RUNNING_INFO =
             ControlInfo.createReadOnlyPropertyInfo(
-                new ArgumentInfo[]{PBoolean.info()},
+                PBoolean.info(),
                 null);;
 
     public static final ComponentInfo API_INFO = Info.component(cmp -> cmp

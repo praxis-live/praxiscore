@@ -1,23 +1,12 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package org.praxislive.core;
 
-import org.praxislive.core.ArgumentInfo;
-import org.praxislive.core.ControlInfo;
-import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.PortInfo;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.praxislive.core.Value;
-import org.praxislive.core.ControlPort;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PMap;
@@ -28,12 +17,11 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
-import org.praxislive.core.Protocol;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public class ComponentInfoTest {
     
@@ -57,9 +45,9 @@ public class ComponentInfoTest {
         interfaces.add(StartableProtocol.class);
         
         Map<String, ControlInfo> controls = new LinkedHashMap<>();
-        controls.put("p1", ControlInfo.createPropertyInfo(new ArgumentInfo[]{PNumber.info(0, 1)}, new Value[]{PNumber.ONE}, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
-        controls.put("p1", ControlInfo.createPropertyInfo(new ArgumentInfo[]{ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){"))}, new Value[]{PString.EMPTY}, PMap.EMPTY));
-        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(new ArgumentInfo[]{PNumber.info(0, 1)}, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
+        controls.put("p1", ControlInfo.createPropertyInfo(PNumber.info(0, 1), PNumber.ONE, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
+        controls.put("p1", ControlInfo.createPropertyInfo(ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){")), PString.EMPTY, PMap.EMPTY));
+        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(PNumber.info(0, 1), PMap.of(ControlInfo.KEY_TRANSIENT, true)));
         controls.put("t1", ControlInfo.createActionInfo(PMap.of("key", "value")));
         
         Map<String, PortInfo> ports = new LinkedHashMap<>();
@@ -77,7 +65,7 @@ public class ComponentInfoTest {
     }
 
     /**
-     * Test of coerce method, of class ComponentInfo.
+     * Test of from method, of class ComponentInfo.
      */
     @Test
     public void testFrom() throws Exception {
@@ -95,7 +83,8 @@ public class ComponentInfoTest {
 //        assertTrue(Value.equivalent(Value.class, info, info2));
         assertTrue(info.equivalent(info2));
         assertTrue(info.controlInfo("p1").equivalent(info2.controlInfo("p1")));
-        assertTrue(info.controlInfo("ro1").getOutputsInfo()[0].equivalent(info2.controlInfo("ro1").getOutputsInfo()[0]));
+//        assertTrue(info.controlInfo("ro1").getOutputsInfo()[0].equivalent(info2.controlInfo("ro1").getOutputsInfo()[0]));
+        assertTrue(info.controlInfo("ro1").outputs().get(0).equivalent(info2.controlInfo("ro1").outputs().get(0)));
         assertTrue(info.portInfo("in").equivalent(info2.portInfo("in")));
     }
 

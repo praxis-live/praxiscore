@@ -366,12 +366,12 @@ public class PropertyControl extends Property implements Control {
             ControlInfo info;
             if (field.isAnnotationPresent(ReadOnly.class)) {
                 info = ControlInfo.createReadOnlyPropertyInfo(
-                        new ArgumentInfo[]{binding.getArgumentInfo()},
+                        List.of(binding.getArgumentInfo()),
                         PMap.EMPTY);
             } else {
                 info = ControlInfo.createPropertyInfo(
-                        new ArgumentInfo[]{binding.getArgumentInfo()},
-                        new Value[]{binding.getDefaultValue()},
+                        binding.getArgumentInfo(),
+                        binding.getDefaultValue(),
                         buildProperties(field));
             }
             return new Descriptor(id, index, info, binding, propertyField, onChange, onError);

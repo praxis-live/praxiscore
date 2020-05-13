@@ -21,6 +21,7 @@
  */
 package org.praxislive.core;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
@@ -302,15 +303,15 @@ public class Info {
         private final ControlInfo.Type type;
         private PMap.Builder properties;
 
-        ArgumentInfo[] inputs;
-        ArgumentInfo[] outputs;
-        Value[] defaults;
+        List<ArgumentInfo> inputs;
+        List<ArgumentInfo> outputs;
+        List<Value> defaults;
 
         ControlInfoBuilder(ControlInfo.Type type) {
             this.type = type;
-            inputs = new ArgumentInfo[0];
-            outputs = new ArgumentInfo[0];
-            defaults = new Value[0];
+            inputs = List.of();
+            outputs = List.of();
+            defaults = List.of();
         }
 
         /**
@@ -352,7 +353,7 @@ public class Info {
          * @return this
          */
         public PropertyInfoBuilder input(ArgumentInfo info) {
-            inputs = new ArgumentInfo[]{info};
+            inputs = List.of(info);
             outputs = inputs;
             return this;
         }
@@ -385,7 +386,7 @@ public class Info {
          * @return this
          */
         public PropertyInfoBuilder defaultValue(Value value) {
-            defaults = new Value[]{value};
+            defaults = List.of(value);
             return this;
         }
 
@@ -407,7 +408,7 @@ public class Info {
          * @return this
          */
         public ReadOnlyPropertyInfoBuilder output(ArgumentInfo info) {
-            outputs = new ArgumentInfo[]{info};
+            outputs = List.of(info);
             return this;
         }
 
@@ -450,7 +451,7 @@ public class Info {
          * @return this
          */
         public FunctionInfoBuilder inputs(ArgumentInfo... inputs) {
-            this.inputs = inputs;
+            this.inputs = List.of(inputs);
             return this;
         }
 
@@ -473,7 +474,7 @@ public class Info {
          * @return this
          */
         public FunctionInfoBuilder outputs(ArgumentInfo... outputs) {
-            this.outputs = outputs;
+            this.outputs = List.of(outputs);
             return this;
         }
 

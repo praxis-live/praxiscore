@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,9 +21,9 @@
  */
 package org.praxislive.core.services;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.praxislive.core.Value;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
@@ -35,11 +35,11 @@ import org.praxislive.core.types.PReference;
 public class TaskService implements Service {
 
     public final static String SUBMIT = "submit";
-    public final static ControlInfo SUBMIT_INFO =
-            ControlInfo.createFunctionInfo(
-            new ArgumentInfo[]{PReference.info(Task.class)},
-            new ArgumentInfo[]{Value.info()},
-            PMap.EMPTY);
+    public final static ControlInfo SUBMIT_INFO
+            = ControlInfo.createFunctionInfo(
+                    List.of(PReference.info(Task.class)),
+                    List.of(Value.info()),
+                    PMap.EMPTY);
 
     @Override
     public Stream<String> controls() {
@@ -58,6 +58,7 @@ public class TaskService implements Service {
 
         /**
          * Called to execute task.
+         *
          * @return Value (use PReference to wrap arbitrary Objects)
          * @throws java.lang.Exception
          */
