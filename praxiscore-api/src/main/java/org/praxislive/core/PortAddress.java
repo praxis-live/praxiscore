@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import static org.praxislive.core.ComponentAddress.cache;
 
 /**
  *
- * @author Neil C Smith
  */
 public class PortAddress extends Value {
 
@@ -51,17 +50,7 @@ public class PortAddress extends Value {
         return this.component;
     }
 
-    @Deprecated
-    public ComponentAddress getComponentAddress() {
-        return this.component;
-    }
-
     public String portID() {
-        return this.portID;
-    }
-
-    @Deprecated
-    public String getID() {
         return this.portID;
     }
 
@@ -98,22 +87,12 @@ public class PortAddress extends Value {
         return new PortAddress(comp, id, address);
     }
 
-    @Deprecated
-    public static PortAddress valueOf(String address) throws ValueFormatException {
-        return parse(address);
-    }
-
     public static PortAddress of(String address) {
         try {
             return parse(address);
         } catch (ValueFormatException ex) {
             throw new IllegalArgumentException(ex);
         }
-    }
-
-    @Deprecated
-    public static PortAddress create(String address) {
-        return PortAddress.of(address);
     }
 
     public static PortAddress of(ComponentAddress component, String id) {
@@ -126,13 +105,7 @@ public class PortAddress extends Value {
         return new PortAddress(component, id, address);
     }
 
-    @Deprecated
-    public static PortAddress create(ComponentAddress component, String id) {
-        return of(component, id);
-    }
-
-    @Deprecated
-    public static PortAddress coerce(Value arg) throws ValueFormatException {
+    private static PortAddress coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PortAddress) {
             return (PortAddress) arg;
         } else {

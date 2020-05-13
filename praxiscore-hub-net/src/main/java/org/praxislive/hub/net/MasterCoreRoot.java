@@ -132,7 +132,7 @@ class MasterCoreRoot extends BasicCoreRoot {
             if (!ComponentAddress.isValidID(id)) {
                 throw new IllegalArgumentException("Invalid Component ID");
             }
-            ComponentType type = ComponentType.coerce(args.get(1));
+            ComponentType type = ComponentType.from(args.get(1)).orElseThrow();
 
             ComponentAddress proxy = null;
             for (int i = 0; i < slaves.length; i++) {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,7 +38,6 @@ import org.praxislive.core.types.PMap;
  *
  * ComponentAddresses are always absolute.
  *
- * @author Neil C Smith
  */
 public final class ComponentAddress extends Value {
     
@@ -65,32 +64,12 @@ public final class ComponentAddress extends Value {
     }
 
     /**
-     * Number of ID parts to this address
-     *
-     * @return int Depth (always >=1)
-     */
-    @Deprecated
-    public int getDepth() {
-        return address.length;
-    }
-
-    /**
      * Get ID at given depth in address.
      *
      * @param depth
      * @return String ID
      */
     public String componentID(int depth) {
-        return address[depth];
-    }
-    /**
-     * Get ID at given depth in address.
-     *
-     * @param depth
-     * @return String ID
-     */
-    @Deprecated
-    public String getComponentID(int depth) {
         return address[depth];
     }
 
@@ -104,16 +83,6 @@ public final class ComponentAddress extends Value {
     }
     
     /**
-     * Equivalent to getComponentID(getDepth() - 1).
-     *
-     * @return String
-     */
-    @Deprecated
-    public String getID() {
-        return address[address.length - 1];
-    }
-    
-    /**
      * Equivalent to componentID(0).
      *
      * @return String
@@ -122,16 +91,6 @@ public final class ComponentAddress extends Value {
         return address[0];
     }
     
-    /**
-     * Equivalent to getComponentID(0), which will always refer to a Root component.
-     *
-     * @return String
-     */
-    @Deprecated
-    public String getRootID() {
-        return address[0];
-    }
-
     public ComponentAddress parent() {
         if (address.length == 1) {
             return null;
@@ -144,11 +103,6 @@ public final class ComponentAddress extends Value {
         }
     }
     
-    @Deprecated
-    public ComponentAddress getParentAddress() {
-        return parent();
-    }
-
     @Override
     public String toString() {
         return this.addressString;
@@ -186,15 +140,10 @@ public final class ComponentAddress extends Value {
     /**
      * Create an address from the supplied String
      *
-     * @param addressString
+     * @param address
      * @return ComponentAddress
-     * @throws org.praxislive.core.ValueFormatException
+     * @throws IllegalArgumentException on invalid string
      */
-    @Deprecated
-    public static ComponentAddress valueOf(String addressString) throws ValueFormatException {
-        return parse(addressString);
-    }
-
     public static ComponentAddress of(String address) {
         try {
             return parse(address);
@@ -203,16 +152,6 @@ public final class ComponentAddress extends Value {
         }
     }
     
-    @Deprecated
-    public static ComponentAddress create(String address) {
-        try {
-            return parse(address);
-        } catch (ValueFormatException ex) {
-            throw new IllegalArgumentException(ex);
-        }
-    }
-
-
     /**
      * Create a ComponentAddress by adding the supplied path to the end of the
      * supplied ComponentAddress.
@@ -231,33 +170,7 @@ public final class ComponentAddress extends Value {
         
     }
     
-    /**
-     * Create a ComponentAddress by adding the supplied ID to the end of the
-     * supplied ComponentAddress path.
-     *
-     * @param address
-     * @param id
-     * @return ComponentAddress
-     * @throws IllegalArgumentException
-     */
-    @Deprecated
-    public static ComponentAddress create(ComponentAddress address, String id) {
-        try {
-            return parse(address.toString() + '/' + id);
-        } catch (ValueFormatException ex) {
-            throw new IllegalArgumentException(ex);
-        }
-        
-    }
-    
-    /**
-     *
-     * @param arg
-     * @return
-     * @throws org.praxislive.core.ValueFormatException
-     */
-    @Deprecated
-    public static ComponentAddress coerce(Value arg) throws ValueFormatException {
+    private static ComponentAddress coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ComponentAddress) {
             return (ComponentAddress) arg;
         } else {

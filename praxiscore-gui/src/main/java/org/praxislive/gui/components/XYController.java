@@ -244,7 +244,8 @@ public class XYController extends AbstractGuiComponent {
                     yBinding = null;
                 } else {
                     try {
-                        yBinding = ControlAddress.coerce(value);
+                        yBinding = ControlAddress.from(value)
+                                .orElseThrow(ValueFormatException::new);
                         bindingContext.bind(yBinding, yAdaptor);
                     } catch (ValueFormatException ex) {
                         logger.log(Level.WARNING, "Could not create binding-y", ex);

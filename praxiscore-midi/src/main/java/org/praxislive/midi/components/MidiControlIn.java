@@ -35,6 +35,7 @@ import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
@@ -229,7 +230,8 @@ public class MidiControlIn extends AbstractMidiInComponent {
             if (value.isEmpty()) {
                 binding = null;
             } else {
-                binding = ControlAddress.coerce(value);
+                binding = ControlAddress.from(value)
+                        .orElseThrow(ValueFormatException::new);
             }
         }
 

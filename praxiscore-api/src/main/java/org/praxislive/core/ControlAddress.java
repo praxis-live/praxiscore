@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import static org.praxislive.core.ComponentAddress.cache;
 
 /**
  *
- * @author Neil C Smith
  */
 public class ControlAddress extends Value {
 
@@ -51,20 +50,10 @@ public class ControlAddress extends Value {
         return this.component;
     }
     
-    @Deprecated
-    public ComponentAddress getComponentAddress() {
-        return this.component;
-    }
-
     public String controlID() {
         return this.controlID;
     }
     
-    @Deprecated
-    public String getID() {
-        return this.controlID;
-    }
-
     @Override
     public String toString() {
         return this.addressString;
@@ -98,11 +87,6 @@ public class ControlAddress extends Value {
         return new ControlAddress(comp, id, address);
     }
 
-    @Deprecated
-    public static ControlAddress valueOf(String address) throws ValueFormatException {
-        return parse(address);
-    }
-
     public static ControlAddress of(String address) {
         try {
             return parse(address);
@@ -111,11 +95,6 @@ public class ControlAddress extends Value {
         }
     }
     
-    @Deprecated
-    public static ControlAddress create(String address) {
-        return ControlAddress.of(address);
-    }
-
     public static ControlAddress of(ComponentAddress component, String id) {
         if (!(isValidID(id))) {
             throw new IllegalArgumentException();
@@ -127,13 +106,7 @@ public class ControlAddress extends Value {
 
     }
     
-    @Deprecated
-    public static ControlAddress create(ComponentAddress component, String id) {
-        return of(component, id);
-    }
-    
-    @Deprecated
-    public static ControlAddress coerce(Value arg) throws ValueFormatException {
+    private static ControlAddress coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ControlAddress) {
             return (ControlAddress) arg;
         } else {
@@ -151,22 +124,5 @@ public class ControlAddress extends Value {
     
     public static boolean isValidID(String id) {
         return ID_PATTERN.matcher(id).matches();
-
-//        int length = id.length();
-//        if (length == 0) {
-//            return false;
-//        }
-//        boolean valid = Character.isLetter(id.charAt(0));
-//        
-//        if (length > 1 && valid) {
-//            for (int i=1; i<length; i++) {
-//                if (! (Character.isLetterOrDigit(id.charAt(i)))) {
-//                    valid = false;
-//                    break;
-//                }
-//            }
-//        }
-//        
-//        return valid;
     }
 }

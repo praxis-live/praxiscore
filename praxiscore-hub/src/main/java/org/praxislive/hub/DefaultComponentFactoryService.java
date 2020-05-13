@@ -101,7 +101,7 @@ class DefaultComponentFactoryService extends AbstractRoot
 
         @Override
         protected Call processInvoke(Call call) throws Exception {
-            ComponentType type = ComponentType.coerce(call.args().get(0));
+            ComponentType type = ComponentType.from(call.args().get(0)).orElseThrow();
             ComponentFactory factory = registry.getComponentFactory(type);
             if (factory.getFactoryService() != ComponentFactoryService.class) {
                 ControlAddress altFactory = getLookup().find(Services.class)
@@ -130,7 +130,7 @@ class DefaultComponentFactoryService extends AbstractRoot
 
         @Override
         protected Call processInvoke(Call call) throws Exception {
-            ComponentType type = ComponentType.coerce(call.args().get(0));
+            ComponentType type = ComponentType.from(call.args().get(0)).orElseThrow();
             ComponentFactory factory = registry.getRootComponentFactory(type);
             Root root = factory.createRootComponent(type);
             return call.reply(PReference.of(root));

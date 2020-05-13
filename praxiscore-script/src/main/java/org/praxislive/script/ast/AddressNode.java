@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,7 +32,6 @@ import org.praxislive.script.Namespace;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AddressNode extends Node {
 
@@ -70,7 +69,10 @@ public class AddressNode extends Node {
 
     private Value parseAddress() {
         try {
-            ComponentAddress ctxt = ComponentAddress.coerce(namespace.getVariable(Env.CONTEXT).getValue());
+            ComponentAddress ctxt = 
+                    ComponentAddress.from(
+                            namespace.getVariable(Env.CONTEXT).getValue())
+                    .orElseThrow();
             if (address.charAt(1) == '/') {
                 return parseComplexAddress(ctxt);
             } else {
