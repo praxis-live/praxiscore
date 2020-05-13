@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,7 +29,6 @@ import org.praxislive.core.ArgumentInfo;
 
 /**
  *
- * @author Neil C Smith
  */
 public final class PBoolean extends Value {
     
@@ -68,10 +67,6 @@ public final class PBoolean extends Value {
         return value ? TRUE : FALSE;
     }
     
-    @Deprecated
-    public static PBoolean valueOf(boolean value) {
-        return value ? TRUE : FALSE;
-    }
     
     public static PBoolean parse(String str) throws ValueFormatException {
         if (str.equals("true")) {
@@ -83,13 +78,7 @@ public final class PBoolean extends Value {
         }
     }
     
-    @Deprecated
-    public static PBoolean valueOf(String str) throws ValueFormatException {
-        return parse(str);
-    }
-       
-    @Deprecated
-    public static PBoolean coerce(Value arg) throws ValueFormatException {
+    private static PBoolean coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PBoolean) {
             return (PBoolean) arg;
         } else if (arg instanceof PNumber) {

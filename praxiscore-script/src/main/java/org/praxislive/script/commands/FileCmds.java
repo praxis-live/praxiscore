@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -82,15 +83,10 @@ public class FileCmds implements CommandInstaller {
     }
 
     private static URI getPWD(Namespace namespace) {
-        Variable pwd = namespace.getVariable(Env.PWD);
-        if (pwd != null) {
-            try {
-                return PResource.coerce(pwd.getValue()).value();
-            } catch (ValueFormatException ex) {
-                Logger.getLogger(FileCmds.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        return new File("").toURI();
+        return Optional.ofNullable(namespace.getVariable(Env.PWD))
+                .flatMap(v -> PResource.from(v.getValue()))
+                .map(PResource::value)
+                .orElse(new File("").toURI());
     }
 
     private static URI resolve(Namespace namespace, String path) throws URISyntaxException {

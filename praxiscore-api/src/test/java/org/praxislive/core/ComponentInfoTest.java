@@ -80,11 +80,11 @@ public class ComponentInfoTest {
      * Test of coerce method, of class ComponentInfo.
      */
     @Test
-    public void testCoerce() throws Exception {
+    public void testFrom() throws Exception {
         System.out.println("coerce");
         String ci = info.toString();
         System.out.println(ci);
-        ComponentInfo info2 = ComponentInfo.coerce(PString.of(ci));
+        ComponentInfo info2 = ComponentInfo.from(PString.of(ci)).orElseThrow();
         System.out.println(info2);
         System.out.println(info.controlInfo("p1"));
         System.out.println(info2.controlInfo("p1"));

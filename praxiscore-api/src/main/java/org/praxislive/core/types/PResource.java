@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,7 +34,6 @@ import org.praxislive.core.ArgumentInfo;
 
 /**
  *
- * @author Neil C Smith
  */
 public final class PResource extends Value implements Comparable<PResource> {
     
@@ -79,11 +78,6 @@ public final class PResource extends Value implements Comparable<PResource> {
         throw new IllegalArgumentException();
     }
     
-    @Deprecated
-    public static PResource valueOf(URI uri) {
-        return of(uri);
-    }
-    
     public static PResource parse(String str) throws ValueFormatException {
         try {
             URI uri = new URI(str);
@@ -95,14 +89,8 @@ public final class PResource extends Value implements Comparable<PResource> {
             throw new ValueFormatException(ex);
         }
     }
-
-    @Deprecated
-    public static PResource valueOf(String str) throws ValueFormatException {
-        return parse(str);
-    }
     
-    @Deprecated
-    public static PResource coerce(Value arg) throws ValueFormatException {
+    private static PResource coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PResource) {
             return (PResource) arg;
         } else {
@@ -125,13 +113,13 @@ public final class PResource extends Value implements Comparable<PResource> {
     public static ArgumentInfo info(boolean allowEmpty) {
         if (allowEmpty) {
             return ArgumentInfo.of(PResource.class,
-//                    PMap.valueOf(PString.valueOf(KEY_ALLOW_EMPTY), PBoolean.TRUE));
-PMap.of(ArgumentInfo.KEY_ALLOW_EMPTY, true));
+                    PMap.of(ArgumentInfo.KEY_ALLOW_EMPTY, true));
         } else {
             return ArgumentInfo.of(PResource.class, null);
         }
     }
 
+    @Override
     public int compareTo(PResource o) {
         return uri.compareTo(o.uri);
     }

@@ -205,11 +205,7 @@ class RangeSlider extends AbstractGuiComponent {
             if (value.isEmpty()) {
                 prefMin = null;
             } else {
-                try {
-                    prefMin = PNumber.coerce(value);
-                } catch (Exception ex) {
-                    prefMin = null;
-                }
+                prefMin = PNumber.from(value).orElse(null);
             }
             updateAdaptors();
         }
@@ -231,11 +227,7 @@ class RangeSlider extends AbstractGuiComponent {
             if (value.isEmpty()) {
                 prefMax = null;
             } else {
-                try {
-                    prefMax = PNumber.coerce(value);
-                } catch (Exception ex) {
-                    prefMax = null;
-                }
+                prefMax = PNumber.from(value).orElse(null);
             }
             updateAdaptors();
         }

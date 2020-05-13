@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -43,7 +43,6 @@ import org.praxislive.hub.Hub;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 class MasterCoreRoot extends BasicCoreRoot {
 
@@ -167,7 +166,9 @@ class MasterCoreRoot extends BasicCoreRoot {
                 if (args.size() < 1) {
                     throw new IllegalArgumentException("Invalid response");
                 }
-                Root r = (Root) ((PReference) args.get(0)).getReference();
+                Root r = PReference.from(args.get(0))
+                        .flatMap(ref -> ref.as(Root.class))
+                        .orElseThrow();
                 String type = active.args().get(1).toString();
                 installRoot(id, type, r);
             }

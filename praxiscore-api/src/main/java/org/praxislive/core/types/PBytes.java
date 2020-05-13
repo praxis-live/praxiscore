@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -52,7 +52,6 @@ import org.praxislive.core.DataObject;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public final class PBytes extends Value {
 
@@ -91,11 +90,6 @@ public final class PBytes extends Value {
     }
 
     public int size() {
-        return bytes.length;
-    }
-    
-    @Deprecated
-    public int getSize() {
         return bytes.length;
     }
 
@@ -244,47 +238,12 @@ public final class PBytes extends Value {
         }
     }
     
-    @Deprecated
-    public static PBytes valueOf(String str) throws ValueFormatException {
-        if (str.trim().isEmpty()) {
-            return PBytes.EMPTY;
-        }
-        try {
-            byte[] bytes = Base64.getMimeDecoder().decode(str);
-            return new PBytes(bytes, str);
-        } catch (Exception ex) {
-            throw new ValueFormatException(ex);
-        }
-    }
-    
     /**
      * Encode the provided List of DataObject subclasses into a new PBytes
      * @param list
      * @return PBytes of data
      */
     public static PBytes of(List<? extends DataObject> list) {
-        if (list.isEmpty()) {
-            return PBytes.EMPTY;
-        }
-        try {
-            OutputStream os = new OutputStream();
-            DataOutputStream dos = new DataOutputStream(os);
-            for (DataObject s : list) {
-                s.writeTo(dos);
-            }
-            dos.flush();
-            return os.toBytes();
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(ex);
-        }
-    }
-    /**
-     * Encode the provided List of DataObject subclasses into a new PBytes
-     * @param list
-     * @return PBytes of data
-     */
-    @Deprecated
-    public static PBytes valueOf(List<? extends DataObject> list) {
         if (list.isEmpty()) {
             return PBytes.EMPTY;
         }
@@ -316,8 +275,7 @@ public final class PBytes extends Value {
         return os.toBytes();
     }
 
-    @Deprecated
-    public static PBytes coerce(Value arg) throws ValueFormatException {
+    private static PBytes coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PBytes) {
             return (PBytes) arg;
         } else {
@@ -355,7 +313,7 @@ public final class PBytes extends Value {
     
     private static class DataOutputImpl extends DataOutputStream {
         
-        private OutputStream out;
+        private final OutputStream out;
         
         public DataOutputImpl(OutputStream out) {
             super(out);

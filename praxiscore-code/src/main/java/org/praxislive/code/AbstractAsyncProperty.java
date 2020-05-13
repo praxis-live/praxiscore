@@ -186,14 +186,17 @@ public abstract class AbstractAsyncProperty<V> implements Control {
             value = valueType.cast(result);
             return;
         }
-        if (result instanceof PReference) {
-            Object ref = ((PReference) result).getReference();
-            if (valueType.isInstance(ref)) {
-                value = valueType.cast(ref);
-                return;
-            }
-        }
-        value = null;
+//        if (result instanceof PReference) {
+//            Object ref = ((PReference) result).getReference();
+//            if (valueType.isInstance(ref)) {
+//                value = valueType.cast(ref);
+//                return;
+//            }
+//        }
+//        value = null;
+        value = PReference.from(result)
+                .flatMap(r -> r.as(valueType))
+                .orElse(null);
     }
     
     private Lookup getLookup() {

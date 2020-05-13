@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,18 +22,16 @@
 package org.praxislive.code.services;
 
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.types.PBytes;
 import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class PMapClassLoader extends ClassLoader {
-    
+
     private final PMap classes;
-    
+
     PMapClassLoader(PMap classes, ClassLoader parent) {
         super(parent);
         this.classes = classes;
@@ -45,16 +43,9 @@ class PMapClassLoader extends ClassLoader {
         if (dataArg == null) {
             throw new ClassNotFoundException(name);
         }
-        try {
-            PBytes data = PBytes.coerce(dataArg);
-            byte[] bytes = new byte[data.size()];
-            data.read(bytes);
-            return defineClass(name, bytes, 0, bytes.length);
-        } catch (ValueFormatException ex) {
-            throw new ClassNotFoundException(name, ex);
-        }
+        PBytes data = PBytes.from(dataArg).orElseThrow(() -> new ClassNotFoundException(name));
+        byte[] bytes = new byte[data.size()];
+        data.read(bytes);
+        return defineClass(name, bytes, 0, bytes.length);
     }
-    
-    
-    
 }

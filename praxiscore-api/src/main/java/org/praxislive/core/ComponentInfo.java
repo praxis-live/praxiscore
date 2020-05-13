@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,7 +35,6 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith
  */
 public class ComponentInfo extends Value {
 
@@ -84,70 +83,33 @@ public class ComponentInfo extends Value {
     }
 
     public List<String> controls() {
-        return Arrays.asList(controls.getKeys());
+        return controls.keys();
     }
     
-    @Deprecated
-    public String[] getControls() {
-        return controls.getKeys();
-    }
-
     public ControlInfo controlInfo(String control) {
-        try {
-            return ControlInfo.coerce(controls.get(control));
-        } catch (ValueFormatException ex) {
-            Logger.getLogger(ComponentInfo.class.getName()).log(Level.SEVERE, null, ex);
+        var info = controls.get(control);
+        if (info == null) {
             return null;
         }
+        return ControlInfo.from(controls.get(control)).orElse(null);
     }
     
-    @Deprecated
-    public ControlInfo getControlInfo(String control) {
-        try {
-            return ControlInfo.coerce(controls.get(control));
-        } catch (ValueFormatException ex) {
-            Logger.getLogger(ComponentInfo.class.getName()).log(Level.SEVERE, null, ex);
-            return null;
-        }
-    }
-
     public List<String> ports() {
-        return Arrays.asList(ports.getKeys());
+        return ports.keys();
     }
     
-    @Deprecated
-    public String[] getPorts() {
-        return ports.getKeys();
-    }
-
     public PortInfo portInfo(String port) {
-        try {
-            return PortInfo.coerce(ports.get(port));
-        } catch (ValueFormatException ex) {
-            Logger.getLogger(ComponentInfo.class.getName()).log(Level.SEVERE, null, ex);
+        var info = ports.get(port);
+        if (info == null) {
             return null;
         }
-    }
-    
-    @Deprecated
-    public PortInfo getPortInfo(String port) {
-        try {
-            return PortInfo.coerce(ports.get(port));
-        } catch (ValueFormatException ex) {
-            Logger.getLogger(ComponentInfo.class.getName()).log(Level.SEVERE, null, ex);
-            return null;
-        }
+        return PortInfo.from(ports.get(port)).orElse(null);
     }
 
     public PMap properties() {
         return properties;
     }
     
-    @Deprecated
-    public PMap getProperties() {
-        return properties;
-    }
-
     @Override
     public String toString() {
         String str = string;
@@ -211,8 +173,7 @@ public class ComponentInfo extends Value {
         return hash;
     }
 
-    @Deprecated
-    public static ComponentInfo create(
+    static ComponentInfo create(
             Map<String, ControlInfo> controls,
             Map<String, PortInfo> ports,
             Set<Class<? extends Protocol>> protocols,
@@ -247,8 +208,7 @@ public class ComponentInfo extends Value {
 
     }
 
-    @Deprecated
-    public static ComponentInfo coerce(Value arg) throws ValueFormatException {
+    private static ComponentInfo coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ComponentInfo) {
             return (ComponentInfo) arg;
         } else {
@@ -276,7 +236,7 @@ public class ComponentInfo extends Value {
                 throw new ValueFormatException();
             }
             // arr(1) is controls
-            PArray ctrls = PArray.coerce(arr.get(1));
+            PArray ctrls = PArray.from(arr.get(1)).orElseThrow();
             int len = ctrls.size();
             PMap controls;
             if (len == 0) {
@@ -288,13 +248,14 @@ public class ComponentInfo extends Value {
                     if (!ControlAddress.isValidID(id)) {
                         throw new ValueFormatException("Invalid control ID " + id);
                     }
-                    cBld.put(id, ControlInfo.coerce(ctrls.get(i + 1)));
+                    cBld.put(id, ControlInfo.from(ctrls.get(i + 1))
+                            .orElseThrow(ValueFormatException::new));
                 }
                 controls = cBld.build();
             }
 
             // arr(2) is ports
-            PArray pts = PArray.coerce(arr.get(2));
+            PArray pts = PArray.from(arr.get(2)).orElseThrow();
             len = pts.size();
             PMap ports;
             if (len == 0) {
@@ -306,7 +267,8 @@ public class ComponentInfo extends Value {
                     if (!PortAddress.isValidID(id)) {
                         throw new ValueFormatException("Invalid port ID: " + id);
                     }
-                    pBld.put(id, PortInfo.coerce(pts.get(i + 1)));
+                    pBld.put(id, PortInfo.from(pts.get(i + 1))
+                            .orElseThrow(ValueFormatException::new));
                 }
                 ports = pBld.build();
             }
@@ -314,13 +276,13 @@ public class ComponentInfo extends Value {
             // optional arr(3) is interfaces
             PArray protocols = PArray.EMPTY;
             if (arr.size() > 3) {
-                protocols = PArray.coerce(arr.get(3));
+                protocols = PArray.from(arr.get(3)).orElseThrow();
             }
 
             // optional arr(4) is properties
             PMap properties;
             if (arr.size() > 4) {
-                properties = PMap.coerce(arr.get(4));
+                properties = PMap.from(arr.get(4)).orElseThrow();
             } else {
                 properties = PMap.EMPTY;
             }

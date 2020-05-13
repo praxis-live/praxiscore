@@ -210,7 +210,9 @@ public class BasicCoreRoot extends AbstractRoot {
             if (args.size() < 1) {
                 throw new IllegalArgumentException("Invalid response");
             }
-            Root r = (Root) ((PReference) args.get(0)).getReference();
+            Root r = PReference.from(args.get(0))
+                    .flatMap(ref -> ref.as(Root.class))
+                    .orElseThrow();
             Call active = getActiveCall();
 //            addChild(active.getArgs().get(0).toString(), c);
             String id = active.args().get(0).toString();

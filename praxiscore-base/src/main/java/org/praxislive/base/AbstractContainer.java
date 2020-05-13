@@ -214,7 +214,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
             if (args.size() < 1) {
                 throw new IllegalArgumentException("Invalid response");
             }
-            Component c = (Component) ((PReference) args.get(0)).getReference();
+            Component c = PReference.from(args.get(0))
+                    .flatMap(r -> r.as(Component.class))
+                    .orElseThrow();
             Call active = getActiveCall();
             addChild(active.args().get(0).toString(), c);
             return active.reply();

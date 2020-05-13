@@ -206,13 +206,7 @@ public class ComboBox extends SingleBindingGuiComponent {
                 intersect = true;
             }
             if (p != null) {
-                try {
-                    infoValues = PArray.coerce(p);
-                } catch (ValueFormatException ex) {/*
-                     * fall through
-                     */
-
-                }
+                infoValues = PArray.from(p).orElse(PArray.EMPTY);
             }
         }
         if (userValues.isEmpty()) {

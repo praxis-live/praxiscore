@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,6 @@ import org.praxislive.core.ArgumentInfo;
 
 /**
  *
- * @author Neil C Smith
  */
 public final class PNumber extends Value implements Comparable<PNumber> {
 
@@ -123,11 +122,6 @@ public final class PNumber extends Value implements Comparable<PNumber> {
     public static PNumber of(double val) {
         return valueOf(val, null);
     }
-    
-    @Deprecated
-    public static PNumber valueOf(double val) {
-        return valueOf(val, null);
-    }
 
     private static PNumber valueOf(double val, String str) {
         if (val > MAX_VALUE) {
@@ -141,11 +135,6 @@ public final class PNumber extends Value implements Comparable<PNumber> {
     }
 
     public static PNumber of(int val) {
-        return new PNumber(val, null);
-    }
-    
-    @Deprecated
-    public static PNumber valueOf(int val) {
         return new PNumber(val, null);
     }
 
@@ -165,14 +154,7 @@ public final class PNumber extends Value implements Comparable<PNumber> {
         }
     }
     
-    @Deprecated
-    public static PNumber valueOf(String str) throws ValueFormatException {
-        return parse(str);
-    }
-
-    @Deprecated
-    public static PNumber coerce(
-            Value arg) throws ValueFormatException {
+    private static PNumber coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PNumber) {
             return (PNumber) arg;
         } else if (arg instanceof PBoolean) {

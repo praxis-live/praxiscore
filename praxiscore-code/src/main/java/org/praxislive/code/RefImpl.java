@@ -80,7 +80,8 @@ class RefImpl<T> extends Ref<T> {
         if (activeCalls.remove(call.matchID())) {
             if (call.isReply()) {
                 try {
-                    T val = (T) PReference.from(call.args().get(0)).get().getReference();
+                    T val = (T) PReference.from(call.args().get(0))
+                            .orElseThrow().as(Object.class).orElseThrow();
                     if (!refType.isInstance(val)) {
                         throw new IllegalArgumentException(val.getClass() + " is not a " + refType);
                     }

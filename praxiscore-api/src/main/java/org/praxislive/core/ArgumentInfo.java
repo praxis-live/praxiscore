@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,6 +21,7 @@
  */
 package org.praxislive.core;
 
+import java.util.Objects;
 import java.util.Optional;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
@@ -33,60 +34,38 @@ import org.praxislive.core.types.PString;
  * set of properties. This might be used for defining the "minimum" and "maximum"
  * values of a PNumber argument, for example.
  *
- * @author Neil C Smith
  */
 public final class ArgumentInfo extends Value {
 
-    public final static String KEY_ALLOWED_VALUES = "allowed-values";
-    public final static String KEY_SUGGESTED_VALUES = "suggested-values";
-    public final static String KEY_ALLOW_EMPTY = "allow-empty";
-    public final static String KEY_EMPTY_IS_DEFAULT = "empty-is-default";
-    public final static String KEY_TEMPLATE = "template";
-    public final static String KEY_MIME_TYPE = "mime-type";
+    public static final String KEY_ALLOWED_VALUES = "allowed-values";
+    public static final String KEY_SUGGESTED_VALUES = "suggested-values";
+    public static final String KEY_ALLOW_EMPTY = "allow-empty";
+    public static final String KEY_EMPTY_IS_DEFAULT = "empty-is-default";
+    public static final String KEY_TEMPLATE = "template";
+    public static final String KEY_MIME_TYPE = "mime-type";
+    public static final String KEY_OPTIONAL = "optional";
+    public static final String KEY_VARARGS = "varargs";
 
-    @Deprecated
-    public static enum Presence {
+    static enum Presence {
 
         Always, Optional, Variable
     }
 
     private final Value.Type<? extends Value> type;
-    private final Presence presence;
     private final PMap properties;
 
     private volatile String string;
 
     ArgumentInfo(Value.Type<? extends Value> type,
-            Presence presence,
             PMap properties,
             String string) {
         this.type = type;
-        this.presence = presence;
         this.properties = properties;
         this.string = string;
     }
-
-    /**
-     *
-     * @return String name of Value subclass
-     */
-    @Deprecated
-    public Class<? extends Value> getType() {
-        return type.asClass();
-    }
  
-    @Deprecated
-    public Value.Type<? extends Value> type() {
-        return type;
-    }
-    
     public Value.Type<? extends Value> argumentType() {
         return type;
-    }
-
-    @Deprecated
-    public Presence getPresence() {
-        return presence;
     }
 
     /**
@@ -97,23 +76,15 @@ public final class ArgumentInfo extends Value {
         return properties;
     }
     
-    /**
-     *
-     * @return PMap properties
-     */
-    @Deprecated
-    public PMap getProperties() {
-        return properties;
-    }
 
     @Override
     public String toString() {
         String str = string;
         if (str == null) {
-//            str = type.getName() + " " + presence.name() + " {" + escape(properties.toString()) + "}";
             str = PArray.of(
                     PString.of(type.name()),
-                    PString.of(presence.name()),
+                    // @TODO remove when legacy parsing not required
+                    PString.of(Presence.Always.name()),
                     properties
             
             ).toString();
@@ -131,7 +102,7 @@ public final class ArgumentInfo extends Value {
     public boolean equals(Object obj) {
         if (obj instanceof ArgumentInfo) {
             ArgumentInfo o = (ArgumentInfo) obj;
-            return type.equals(o.type) && presence == o.presence
+            return type.equals(o.type)
                     && properties.equals(o.properties);
         }
         return false;
@@ -141,7 +112,6 @@ public final class ArgumentInfo extends Value {
     public int hashCode() {
         int hash = 5;
         hash = 53 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 53 * hash + (this.presence != null ? this.presence.hashCode() : 0);
         hash = 53 * hash + (this.properties != null ? this.properties.hashCode() : 0);
         return hash;
     }
@@ -154,19 +124,7 @@ public final class ArgumentInfo extends Value {
      * @return ArgumentInfo
      */
     public static ArgumentInfo of(Class<? extends Value> argClass) {
-        return create(argClass, Presence.Always, PMap.EMPTY);
-
-    }
-    /**
-     * Create an ArgumentInfo from the Value class and optional PMap of
-     * additional properties.
-     *
-     * @param argClass
-     * @return ArgumentInfo
-     */
-    @Deprecated
-    public static ArgumentInfo create(Class<? extends Value> argClass) {
-        return create(argClass, Presence.Always, PMap.EMPTY);
+        return create(argClass, PMap.EMPTY);
 
     }
     
@@ -180,9 +138,10 @@ public final class ArgumentInfo extends Value {
      */
     public static ArgumentInfo of(Class<? extends Value> argClass,
             PMap properties) {
-        return create(argClass, Presence.Always, properties);
+        return create(argClass, properties);
 
     }
+
     /**
      * Create an ArgumentInfo from the Value class and optional PMap of
      * additional properties.
@@ -191,32 +150,13 @@ public final class ArgumentInfo extends Value {
      * @param properties
      * @return ArgumentInfo
      */
-    @Deprecated
-    public static ArgumentInfo create(Class<? extends Value> argClass,
+    private static ArgumentInfo create(Class<? extends Value> argClass,
             PMap properties) {
-        return create(argClass, Presence.Always, properties);
-
-    }
-
-    /**
-     * Create an ArgumentInfo from the Value class and optional PMap of
-     * additional properties.
-     *
-     * @param argClass
-     * @param properties
-     * @return ArgumentInfo
-     */
-    @Deprecated
-    public static ArgumentInfo create(Class<? extends Value> argClass,
-            Presence presence, PMap properties) {
-        if (argClass == null || presence == null) {
-            throw new NullPointerException();
-        }
-//        String type = argClass.getName();
+        Objects.requireNonNull(argClass);
         if (properties == null) {
             properties = PMap.EMPTY;
         }
-        return new ArgumentInfo(Value.Type.of(argClass), presence, properties, null);
+        return new ArgumentInfo(Value.Type.of(argClass), properties, null);
 
     }
 
@@ -227,8 +167,7 @@ public final class ArgumentInfo extends Value {
      * @return ArgumentInfo
      * @throws ValueFormatException if Value cannot be coerced.
      */
-    @Deprecated
-    public static ArgumentInfo coerce(Value arg) throws ValueFormatException {
+    private static ArgumentInfo coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ArgumentInfo) {
             return (ArgumentInfo) arg;
         } else {
@@ -247,10 +186,31 @@ public final class ArgumentInfo extends Value {
     public static ArgumentInfo parse(String string) throws ValueFormatException {
         PArray arr = PArray.parse(string);
         try {
-            Value.Type<? extends Value> type = Value.Type.fromName(arr.get(0).toString()).get();
-            Presence presence = Presence.valueOf(arr.get(1).toString());
-            PMap properties = PMap.coerce(arr.get(2));
-            return new ArgumentInfo(type, presence, properties, string);
+            if (arr.size() > 2) {
+                // legacy format
+                Value.Type<? extends Value> type =
+                        Value.Type.fromName(arr.get(0).toString()).orElseThrow();
+                Presence presence = Presence.valueOf(arr.get(1).toString());
+                PMap properties = PMap.from(arr.get(2)).orElseThrow();
+                if (presence != Presence.Always) {
+                    var b = PMap.builder(properties.size() + 1);
+                    for (var key : properties.keys()) {
+                        b.put(key, properties.get(key));
+                    }
+                    if (presence == Presence.Optional) {
+                        b.put(KEY_OPTIONAL, true);
+                    } else {
+                        b.put(KEY_VARARGS, true);
+                    }
+                    properties = b.build();
+                }
+                return new ArgumentInfo(type, properties, string);
+            } else {
+                Value.Type<? extends Value> type =
+                        Value.Type.fromName(arr.get(0).toString()).orElseThrow();
+                PMap properties = PMap.from(arr.get(1)).orElseThrow();
+                return new ArgumentInfo(type, properties, string);
+            }
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }

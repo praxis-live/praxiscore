@@ -149,11 +149,7 @@ public class BoundedValueAdaptor extends Binding.Adaptor {
         if (arg == null) {
             return null;
         }
-        try {
-            return PNumber.coerce(arg);
-        } catch (ValueFormatException ex) {
-            return null;
-        }
+        return PNumber.from(arg).orElse(null);
     }
 
     @Override

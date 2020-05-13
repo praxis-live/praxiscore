@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,7 +34,6 @@ import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 abstract class IntegerBinding extends PropertyControl.Binding {
 
@@ -52,7 +51,7 @@ abstract class IntegerBinding extends PropertyControl.Binding {
 
     @Override
     public void set(Value value) throws Exception {
-        PNumber n = PNumber.coerce(value);
+        PNumber n = PNumber.from(value).orElseThrow(IllegalArgumentException::new);
         double d = n.value();
         if (d < min || d > max) {
             throw new IllegalArgumentException();

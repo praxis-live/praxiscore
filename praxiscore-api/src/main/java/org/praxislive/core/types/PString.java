@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,9 +28,8 @@ import org.praxislive.core.ArgumentInfo;
 
 /**
  *
- * @author Neil C Smith
  */
-public class PString extends Value implements Comparable<PString> {
+public final class PString extends Value implements Comparable<PString> {
 
     public final static String KEY_ALLOWED_VALUES = ArgumentInfo.KEY_ALLOWED_VALUES;
     public final static String KEY_SUGGESTED_VALUES = ArgumentInfo.KEY_SUGGESTED_VALUES;
@@ -40,7 +39,7 @@ public class PString extends Value implements Comparable<PString> {
     
     public final static PString EMPTY = PString.of("");
     
-    private String value;
+    private final String value;
     
     private PString(String value) {
         this.value = value;
@@ -72,8 +71,7 @@ public class PString extends Value implements Comparable<PString> {
         
     }
 
-    @Deprecated
-    public static PString coerce(Value arg) {
+    private static PString coerce(Value arg) {
         if (arg instanceof PString) {
             return (PString) arg;
         } else {
@@ -92,11 +90,6 @@ public class PString extends Value implements Comparable<PString> {
         return new PString(str);
     }
     
-    @Deprecated
-    public static PString valueOf(String str) {
-        return PString.of(str);
-    }
-    
     public static PString of(Object obj) {
         if (obj instanceof PString) {
             return (PString) obj;
@@ -105,14 +98,6 @@ public class PString extends Value implements Comparable<PString> {
         }
     }
     
-    @Deprecated
-    public static PString valueOf(Object obj) {
-        if (obj == null) {
-            throw new NullPointerException();
-        }
-        return new PString(String.valueOf(obj));
-    }
-
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PString.class, null);
     }
@@ -131,6 +116,7 @@ public class PString extends Value implements Comparable<PString> {
         }
     }
 
+    @Override
     public int compareTo(PString o) {
         return value.compareTo(o.value);
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,6 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith
  */
 public class ControlInfo extends Value {
 
@@ -237,8 +236,7 @@ public class ControlInfo extends Value {
 
     }
 
-    @Deprecated
-    public static ControlInfo coerce(Value arg) throws ValueFormatException {
+    private static ControlInfo coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ControlInfo) {
             return (ControlInfo) arg;
         } else {
@@ -274,21 +272,21 @@ public class ControlInfo extends Value {
     
     private static ControlInfo parseFunction(String string, PArray array) throws Exception {
         // array(1) is inputs
-        PArray args = PArray.coerce(array.get(1));
+        PArray args = PArray.from(array.get(1)).orElseThrow();
         ArgumentInfo[] inputs = new ArgumentInfo[args.size()];
         for (int i=0; i<inputs.length; i++) {
-            inputs[i] = ArgumentInfo.coerce(args.get(i));
+            inputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
         }
         // array(2) is outputs
-        args = PArray.coerce(array.get(2));
+        args = PArray.from(array.get(2)).orElseThrow();
         ArgumentInfo[] outputs = new ArgumentInfo[args.size()];
         for (int i=0; i<outputs.length; i++) {
-            outputs[i] = ArgumentInfo.coerce(args.get(i));
+            outputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
         }
         // optional array(3) is properties
         PMap properties;
         if (array.size() > 3) {
-            properties = PMap.coerce(array.get(3));
+            properties = PMap.from(array.get(3)).orElseThrow();
         } else {
             properties = PMap.EMPTY;
         }
@@ -299,7 +297,7 @@ public class ControlInfo extends Value {
         // optional array(1) is properties
         PMap properties;
         if (array.size() > 1) {
-            properties = PMap.coerce(array.get(1));
+            properties = PMap.from(array.get(1)).orElseThrow();
         } else {
             properties = PMap.EMPTY;
         }
@@ -308,23 +306,23 @@ public class ControlInfo extends Value {
     
     private static ControlInfo parseProperty(String string, Type type, PArray array) throws Exception {
         // array(1) is outputs
-        PArray args = PArray.coerce(array.get(1));
+        PArray args = PArray.from(array.get(1)).orElseThrow();
         ArgumentInfo[] outputs = new ArgumentInfo[args.size()];
         for (int i=0; i<outputs.length; i++) {
-            outputs[i] = ArgumentInfo.coerce(args.get(i));
+            outputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
         }
         ArgumentInfo[] inputs = type == Type.ReadOnlyProperty ?
                 EMPTY_INFO : outputs;
         // array(2) is defaults
-        args = PArray.coerce(array.get(2));
+        args = PArray.from(array.get(2)).orElseThrow();
         Value[] defs = new Value[args.size()];
         for (int i=0; i<defs.length; i++) {
-            defs[i] = PString.coerce(args.get(i));
+            defs[i] = PString.from(args.get(i)).orElseThrow();
         }
         // optional array(3) is properties
         PMap properties;
         if (array.size() > 3) {
-            properties = PMap.coerce(array.get(3));
+            properties = PMap.from(array.get(3)).orElseThrow();
         } else {
             properties = PMap.EMPTY;
         }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,14 +24,12 @@ package org.praxislive.core.types;
 
 import java.util.Optional;
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.ArgumentInfo;
 
 /**
  *
- * @author Neil C Smith
  */
-public class PReference extends Value {
+public final class PReference extends Value {
     
     public final static String REFERENCE_TYPE = "reference-type";
     
@@ -43,11 +41,6 @@ public class PReference extends Value {
         this.ref = ref;
         refHash = System.identityHashCode(ref);
         refClass = ref.getClass();
-    }
-    
-    @Deprecated
-    public Object getReference() {
-        return ref;
     }
     
     public <T> Optional<T> as(Class<T> cls) {
@@ -92,20 +85,7 @@ public class PReference extends Value {
         }
         return new PReference(obj);
     }
-    
-    @Deprecated
-    public static PReference wrap(Object obj) {
-        return of(obj);
-    }
 
-    @Deprecated
-    public static PReference coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof PReference) {
-            return (PReference) arg;
-        }
-        throw new ValueFormatException();
-    }
-    
     public static Optional<PReference> from(Value arg) {
         if (arg instanceof PReference) {
             return Optional.of((PReference) arg);

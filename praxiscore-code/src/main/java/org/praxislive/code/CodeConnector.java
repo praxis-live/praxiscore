@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -51,9 +51,8 @@ import org.praxislive.code.userapi.Type;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
-import org.praxislive.core.PortInfo;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PMap;
@@ -62,7 +61,6 @@ import org.praxislive.logging.LogBuilder;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public abstract class CodeConnector<D extends CodeDelegate> {
 
@@ -179,25 +177,21 @@ public abstract class CodeConnector<D extends CodeDelegate> {
 
     protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor> controls,
             Map<String, PortDescriptor> ports) {
-        Map<String, ControlInfo> controlInfo = new LinkedHashMap<>(controls.size());
-        for (Map.Entry<String, ControlDescriptor> e : controls.entrySet()) {
-            if (!excludeFromInfo(e.getKey(), e.getValue())) {
-                controlInfo.put(e.getKey(), e.getValue().getInfo());
+        var cmp = Info.component();
+        cmp.merge(ComponentProtocol.API_INFO);
+        for (var e : controls.entrySet()) {
+             if (!excludeFromInfo(e.getKey(), e.getValue())) {
+                cmp.control(e.getKey(), e.getValue().getInfo());
             }
         }
-        Map<String, PortInfo> portInfo = new LinkedHashMap<>(ports.size());
-        for (Map.Entry<String, PortDescriptor> e : ports.entrySet()) {
+        for (var e : ports.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
-                portInfo.put(e.getKey(), e.getValue().getInfo());
+                cmp.port(e.getKey(), e.getValue().getInfo());
             }
         }
-        return ComponentInfo.create(controlInfo,
-                portInfo,
-                Collections.singleton(ComponentProtocol.class),
-                PMap.of(
-                        ComponentInfo.KEY_DYNAMIC, true,
-                        ComponentInfo.KEY_COMPONENT_TYPE, factory.getComponentType()
-                ));
+        cmp.property(ComponentInfo.KEY_DYNAMIC, true);
+        cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.getComponentType());
+        return cmp.build();
     }
 
     private boolean excludeFromInfo(String id, ControlDescriptor desc) {

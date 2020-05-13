@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -52,7 +52,6 @@ import org.praxislive.internal.osc.OSCServer;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 class SlaveCoreRoot extends BasicCoreRoot {
 
@@ -226,7 +225,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
             
             PMap services = PMap.parse(params.getString(Utils.KEY_REMOTE_SERVICES, ""));
             if (!services.isEmpty()) {
-                for (String serviceName : services.getKeys()) {
+                for (String serviceName : services.keys()) {
                     Class<? extends Service> service = (Class<? extends Service>)
                             Class.forName(serviceName, true,
                             Thread.currentThread().getContextClassLoader());

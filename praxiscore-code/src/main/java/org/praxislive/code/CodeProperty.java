@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,7 +23,6 @@ package org.praxislive.code;
 
 import java.util.List;
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
@@ -117,7 +116,9 @@ class CodeProperty<D extends CodeDelegate>
             }
             taskCall = null;
             CodeContextFactoryService.Result result
-                    = (CodeContextFactoryService.Result) ((PReference) call.args().get(0)).getReference();
+                    = PReference.from(call.args().get(0))
+                    .flatMap(r -> r.as(CodeContextFactoryService.Result.class))
+                    .orElseThrow(IllegalArgumentException::new);
             keys = activeCall.args();
             router.route(activeCall.reply(keys));
             activeCall = null;
@@ -140,11 +141,8 @@ class CodeProperty<D extends CodeDelegate>
         List<Value> args = call.args();
         PError err;
         if (args.size() > 0) {
-            try {
-                err = PError.coerce(args.get(0));
-            } catch (ValueFormatException ex) {
-                err = PError.of(ex, args.get(0).toString());
-            }
+            err = PError.from(args.get(0))
+                    .orElse(PError.of(args.get(0).toString()));
         } else {
             err = PError.of("");
         }

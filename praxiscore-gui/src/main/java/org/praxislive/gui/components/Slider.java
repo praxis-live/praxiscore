@@ -175,11 +175,7 @@ class Slider extends SingleBindingGuiComponent {
             if (value.isEmpty()) {
                 prefMin = null;
             } else {
-                try {
-                    prefMin = PNumber.coerce(value);
-                } catch (Exception ex) {
-                    prefMin = null;
-                }
+                prefMin = PNumber.from(value).orElse(null);
             }
             if (adaptor != null) {
                 adaptor.setPreferredMinimum(prefMin);
@@ -204,11 +200,7 @@ class Slider extends SingleBindingGuiComponent {
             if (value.isEmpty()) {
                 prefMax = null;
             } else {
-                try {
-                    prefMax = PNumber.coerce(value);
-                } catch (Exception ex) {
-                    prefMax = null;
-                }
+                prefMax = PNumber.from(value).orElse(null);
             }
             if (adaptor != null) {
                 adaptor.setPreferredMaximum(prefMax);

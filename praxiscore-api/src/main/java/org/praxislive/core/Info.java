@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -223,13 +223,13 @@ public class Info {
          * @return this
          */
         public ComponentInfoBuilder merge(ComponentInfo info) {
-            for (String id : info.getControls()) {
+            for (String id : info.controls()) {
                 controls.put(id, info.controlInfo(id));
             }
-            for (String id : info.getPorts()) {
+            for (String id : info.ports()) {
                 ports.put(id, info.portInfo(id));
             }
-            for (String key : info.properties().getKeys()) {
+            for (String key : info.properties().keys()) {
                 property(key, info.properties().get(key));
             }
             info.protocols().forEach(this::protocol);
@@ -570,7 +570,7 @@ public class Info {
         }
 
         public ArgumentInfo build() {
-            return new ArgumentInfo(type, ArgumentInfo.Presence.Always,
+            return new ArgumentInfo(type,
                     properties == null ? PMap.EMPTY : properties.build(), null);
         }
 

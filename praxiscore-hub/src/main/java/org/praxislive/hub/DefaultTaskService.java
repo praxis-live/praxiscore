@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -46,7 +46,6 @@ import org.praxislive.core.types.PReference;
 
 /**
  *
- * @author Neil C Smith
  */
 class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider {
 
@@ -128,19 +127,10 @@ class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider
         if (args.size() == 1) {
             Value arg = args.get(0);
             if (arg instanceof PReference) {
-                Object ref = ((PReference) arg).getReference();
-                if (ref instanceof Task) {
-                    final Task task = (Task) ref;
-                    Future<Value> future = threadService.submit(
-                            new Callable<Value>() {
-
-                        @Override
-                        public Value call() throws Exception {
-                            return task.execute();
-                        }
-                    });
+                ((PReference) arg).as(Task.class).ifPresent(task -> {
+                    Future<Value> future = threadService.submit(task::execute);
                     futures.put(future, call);
-                }
+                });
             }
         } else {
             throw new IllegalArgumentException();

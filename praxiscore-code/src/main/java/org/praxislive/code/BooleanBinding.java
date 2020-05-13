@@ -42,7 +42,7 @@ abstract class BooleanBinding extends PropertyControl.Binding {
 
     @Override
     public void set(Value value) throws Exception {
-        setImpl(PBoolean.coerce(value));
+        setImpl(PBoolean.from(value).orElseThrow(IllegalArgumentException::new));
     }
 
     @Override

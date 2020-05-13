@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,6 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 @GenerateTemplate(CoreArrayRandom.TEMPLATE_PATH)
 public class CoreArrayRandom extends CoreCodeDelegate {
@@ -45,36 +44,20 @@ public class CoreArrayRandom extends CoreCodeDelegate {
 
     // PXJ-BEGIN:body
     
-    @P(1) @Type(cls = PArray.class) @OnChange("extractArray")
-    Property values;
+    @P(1)
+    PArray values;
     @P(2) @ReadOnly
     int index;
     
     @Out(1) Output out;
     
-    PArray array;
-    
-    @Override
-    public void init() {
-        extractArray();
-    }
-
     @T(1) void trigger() {
-        if (array.isEmpty()) {
+        if (values.isEmpty()) {
             index = -1;
             out.send();
         } else {
-            index = (int) random(array.size());
-            out.send(array.get(index));
-        }
-    }
-    
-    void extractArray() {
-        try {
-            array = PArray.coerce(values.get());
-        } catch (ValueFormatException ex) {
-            log(ERROR, ex, "values isn't an array");
-            array = PArray.EMPTY;
+            index = (int) random(values.size());
+            out.send(values.get(index));
         }
     }
     

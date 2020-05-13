@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,6 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 @GenerateTemplate(CoreRoutingGate.TEMPLATE_PATH)
 public class CoreRoutingGate extends CoreCodeDelegate {
@@ -46,7 +45,7 @@ public class CoreRoutingGate extends CoreCodeDelegate {
     // PXJ-BEGIN:body
     
     @P(1) boolean active;
-    @P(2) @Type(cls = PArray.class) @OnChange("updatePattern")
+    @P(2) @Type(PArray.class) @OnChange("updatePattern")
     Property pattern;
     @P(3) @ReadOnly
     int index;
@@ -95,10 +94,10 @@ public class CoreRoutingGate extends CoreCodeDelegate {
     
     void updatePattern() {
         try {
-            PArray arr = PArray.coerce(pattern.get());
+            PArray arr = PArray.from(pattern.get()).orElseThrow();
             pt = new double[arr.size()];
             for (int i = 0; i < pt.length; i++) {
-                double d = PNumber.coerce(arr.get(i)).value();
+                double d = PNumber.from(arr.get(i)).orElseThrow().value();
                 pt[i] = d;
             }
             if (pt.length == 0) {
@@ -106,7 +105,7 @@ public class CoreRoutingGate extends CoreCodeDelegate {
             } else {
                 index %= pt.length;
             }
-        } catch (ValueFormatException ex) {
+        } catch (Exception ex) {
             log(WARNING, "Invalid pattern");
             pt = new double[0];
             index = 0;

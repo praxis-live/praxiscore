@@ -103,7 +103,7 @@ public class ScriptCmds implements CommandInstaller {
                 throw new ExecutionException();
             }
             try {
-                PResource res = PResource.coerce(args.get(0));
+                PResource res = PResource.from(args.get(0)).orElseThrow();
                 File file = new File(res.value());
                 String script = Utils.loadStringFromFile(file);
                 RootNode astRoot = ScriptParser.getInstance().parse(script);

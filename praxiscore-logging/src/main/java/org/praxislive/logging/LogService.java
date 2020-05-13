@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,7 +35,6 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public class LogService implements Service {
     
@@ -43,14 +42,15 @@ public class LogService implements Service {
     public final static ControlInfo LOG_INFO =
             ControlInfo.createFunctionInfo(
             new ArgumentInfo[]{
-                ArgumentInfo.create(PString.class, ArgumentInfo.Presence.Variable,
+                ArgumentInfo.of(PString.class,
                         PMap.of(PString.KEY_ALLOWED_VALUES, PArray.of(
                                 LogLevel.ERROR.asPString(),
                                 LogLevel.WARNING.asPString(),
                                 LogLevel.INFO.asPString(),
                                 LogLevel.DEBUG.asPString()
                         ))),
-                ArgumentInfo.create(Value.class, ArgumentInfo.Presence.Variable, PMap.EMPTY)
+                ArgumentInfo.of(Value.class,
+                        PMap.of(ArgumentInfo.KEY_VARARGS, true))
             },
             new ArgumentInfo[0],
             PMap.EMPTY);

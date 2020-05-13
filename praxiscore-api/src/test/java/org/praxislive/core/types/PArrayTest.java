@@ -1,8 +1,6 @@
 
 package org.praxislive.core.types;
 
-import org.praxislive.core.types.PArray;
-import org.praxislive.core.types.PString;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.praxislive.core.Value;
@@ -11,6 +9,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 /**
@@ -67,10 +66,10 @@ public class PArrayTest {
     }
   
     /**
-     * Test of coerce method, of class PArray.
+     * Test of from method, of class PArray.
      */
     @Test
-    public void testCoerce() throws Exception {
+    public void testFrom() throws Exception {
         System.out.println("coerce");
         PArray startArr = PArray.of(PString.of("this has spaces"), PString.of("is"),
                 PString.of("an"),
@@ -84,7 +83,7 @@ public class PArrayTest {
 //        }
         a1.stream().forEach(System.out::println);
         System.out.println("Array 2");
-        PArray a2 = PArray.coerce(a1.get(3));
+        PArray a2 = PArray.from(a1.get(3)).orElseThrow();
 //        for (Value a : a2) {
 //            System.out.println(a);
 //        }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,7 +37,6 @@ import org.praxislive.core.syntax.Tokenizer;
 
 /**
  *
- * @author Neil C Smith
  */
 public final class PArray extends Value implements Iterable<Value> {
 
@@ -60,20 +59,10 @@ public final class PArray extends Value implements Iterable<Value> {
         }
     }
 
-    @Deprecated
-    public Value[] getAll() {
-        return data.clone();
-    }
-
     public int size() {
         return data.length;
     }
     
-    @Deprecated
-    public int getSize() {
-        return data.length;
-    }
-
     @Override
     public String toString() {
         if (str == null) {
@@ -142,6 +131,7 @@ public final class PArray extends Value implements Iterable<Value> {
         return false;
     }
 
+    @Override
     public Iterator<Value> iterator() {
         return new Itr();
     }
@@ -154,16 +144,19 @@ public final class PArray extends Value implements Iterable<Value> {
 
         int cursor = 0;
 
+        @Override
         public boolean hasNext() {
             return cursor < data.length;
         }
 
+        @Override
         public Value next() {
             Value arg = data[cursor];
             cursor++;
             return arg;
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException("PArrays are immutable");
         }
@@ -173,17 +166,7 @@ public final class PArray extends Value implements Iterable<Value> {
         return valueOf(collection.toArray(new Value[collection.size()]), false);
     }
 
-    @Deprecated
-    public static PArray valueOf(Collection<? extends Value> collection) {
-        return valueOf(collection.toArray(new Value[collection.size()]), false);
-    }
-
     public static PArray of(Value... args) {
-        return valueOf(args, true);
-    }
-    
-    @Deprecated
-    public static PArray valueOf(Value... args) {
         return valueOf(args, true);
     }
     
@@ -237,13 +220,7 @@ public final class PArray extends Value implements Iterable<Value> {
 
     }
 
-    @Deprecated
-    public static PArray valueOf(String str) throws ValueFormatException {
-        return parse(str);
-    }
-
-    @Deprecated
-    public static PArray coerce(Value arg) throws ValueFormatException {
+    private static PArray coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PArray) {
             return (PArray) arg;
         } else {
@@ -273,39 +250,6 @@ public final class PArray extends Value implements Iterable<Value> {
                 },
                 PArray::of
         );
-    }
-
-    @Deprecated
-    public static PArray concat(PArray a, PArray b) {
-        Value[] values = new Value[a.data.length + b.data.length];
-        System.arraycopy(a.data, 0, values, 0, a.data.length);
-        System.arraycopy(b.data, 0, values, a.data.length, b.data.length);
-        return new PArray(values, null);
-    }
-
-    @Deprecated
-    public static PArray subset(PArray array, int start, int count) {
-        Value[] values = new Value[count];
-        System.arraycopy(array.data, start, values, 0, count);
-        return new PArray(values, null);
-    }
-
-    @Deprecated
-    public static PArray insert(PArray array, int index, Value value) {
-        Value[] values = new Value[array.data.length + 1];
-        System.arraycopy(array.data, 0, values, 0, index);
-        values[index] = value;
-        System.arraycopy(array.data, index, values, index + 1,
-                array.data.length - index);
-        return new PArray(values, null);
-    }
-    
-    @Deprecated
-    public static PArray append(PArray array, Value value) {
-        Value[] values = new Value[array.data.length + 1];
-        System.arraycopy(array.data, 0, values, 0, array.data.length);
-        values[values.length - 1] = value;
-        return new PArray(values, null);
     }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import org.praxislive.core.types.PMap;
 
 /**
  *
- * @author Neil C Smith
  */
 public final class PortInfo extends Value {
 
@@ -49,38 +48,18 @@ public final class PortInfo extends Value {
         this.string = string;
     }
 
-    @Deprecated
-    public Class<? extends Port> getType() {
-        return type.asClass();
-    }
-    
     public Port.Type<? extends Port> portType() {
         return type;
     }
     
-    @Deprecated
-    public Port.Type<? extends Port> getPortType() {
-        return type;
-    }
-
     public Direction direction() {
         return direction;
     }
     
-    @Deprecated
-    public Direction getDirection() {
-        return direction;
-    }
-
     public PMap properties() {
         return properties;
     }
     
-    @Deprecated
-    public PMap getProperties() {
-        return properties;
-    }
-
     @Override
     public String toString() {
         String str = string;
@@ -141,8 +120,7 @@ public final class PortInfo extends Value {
      * @return ArgumentInfo
      * @throws ValueFormatException if Value cannot be coerced.
      */
-    @Deprecated
-    public static PortInfo coerce(Value arg) throws ValueFormatException {
+    private static PortInfo coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PortInfo) {
             return (PortInfo) arg;
         } else {
@@ -164,7 +142,7 @@ public final class PortInfo extends Value {
             Port.Type<? extends Port> type = Port.Type.fromName(arr.get(0).toString()).get();
             Direction direction = Direction.valueOf(arr.get(1).toString());
             PMap properties = arr.size() > 2 ?
-                    PMap.coerce(arr.get(2)) :
+                    PMap.from(arr.get(2)).orElseThrow() :
                     PMap.EMPTY;
             return new PortInfo(type, direction, properties, string);
         } catch (Exception ex) {

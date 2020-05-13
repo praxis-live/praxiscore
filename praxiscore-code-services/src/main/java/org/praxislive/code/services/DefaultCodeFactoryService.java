@@ -121,8 +121,8 @@ public class DefaultCodeFactoryService extends AbstractRoot
     }
 
     private Class<? extends CodeDelegate> extractCodeDelegateClass(Value response) throws Exception {
-        PMap data = PMap.coerce(response);
-        PMap classes = PMap.coerce(data.get(CodeCompilerService.KEY_CLASSES));
+        PMap data = PMap.from(response).orElseThrow();
+        PMap classes = PMap.from(data.get(CodeCompilerService.KEY_CLASSES)).orElseThrow();
         PArray.from(data.get(DefaultCompilerService.EXT_CLASSPATH)).ifPresent(this::processExtClasspath);
         ClassLoader classLoader = new PMapClassLoader(classes, libClassloader);
         return (Class<? extends CodeDelegate>) classLoader.loadClass("$");
@@ -152,8 +152,8 @@ public class DefaultCodeFactoryService extends AbstractRoot
     }
 
     private void extractCompilerLog(Value response, LogBuilder logBuilder) throws Exception {
-        PMap data = PMap.coerce(response);
-        PArray log = PArray.coerce(data.get(CodeCompilerService.KEY_LOG));
+        PMap data = PMap.from(response).orElseThrow();
+        PArray log = PArray.from(data.get(CodeCompilerService.KEY_LOG)).orElseThrow();
         for (int i = 0; i < log.size(); i += 2) {
             logBuilder.log(LogLevel.valueOf(log.get(i).toString()), log.get(i + 1).toString());
         }
@@ -263,7 +263,10 @@ public class DefaultCodeFactoryService extends AbstractRoot
         }
 
         private CodeContextFactoryService.Task<CodeDelegate> findTask() throws Exception {
-            return (CodeContextFactoryService.Task<CodeDelegate>) PReference.coerce(getActiveCall().args().get(0)).getReference();
+            return PReference.from(getActiveCall().args().get(0))
+                    .flatMap(r -> r.as(CodeContextFactoryService.Task.class))
+                    .orElseThrow();
+            
         }
 
         private CodeContextFactoryService.Result<CodeDelegate> createContext(

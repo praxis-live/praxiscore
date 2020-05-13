@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,8 +22,6 @@
 package org.praxislive.core.types;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.praxislive.core.Value;
@@ -31,9 +29,8 @@ import org.praxislive.core.ValueFormatException;
 
 /**
  *
- * @author Neil C Smith
  */
-public class PMap extends Value {
+public final class PMap extends Value {
 
 //    public final static PMap EMPTY = new PMap(Collections.<String, Value>emptyMap(), "");
     public final static PMap EMPTY = new PMap(PArray.EMPTY, "");
@@ -62,39 +59,24 @@ public class PMap extends Value {
     }
 
     public boolean getBoolean(String key, boolean def) {
-        Value val = get(key);
-        if (val != null) {
-            try {
-                return PBoolean.coerce(val).value();
-            } catch (Exception ex) {
-                // fall through
-            }
-        }
-        return def;
+        return Optional.ofNullable(get(key))
+                .flatMap(PBoolean::from)
+                .map(PBoolean::value)
+                .orElse(def);
     }
 
     public int getInt(String key, int def) {
-        Value val = get(key);
-        if (val != null) {
-            try {
-                return PNumber.coerce(val).toIntValue();
-            } catch (Exception ex) {
-                // fall through
-            }
-        }
-        return def;
+        return Optional.ofNullable(get(key))
+                .flatMap(PNumber::from)
+                .map(PNumber::toIntValue)
+                .orElse(def);
     }
 
     public double getDouble(String key, double def) {
-        Value val = get(key);
-        if (val != null) {
-            try {
-                return PNumber.coerce(val).value();
-            } catch (Exception ex) {
-                // fall through
-            }
-        }
-        return def;
+        return Optional.ofNullable(get(key))
+                .flatMap(PNumber::from)
+                .map(PNumber::value)
+                .orElse(def);
     }
 
     public String getString(String key, String def) {
@@ -109,17 +91,11 @@ public class PMap extends Value {
         return array.size() / 2;
     }
     
-    @Deprecated
-    public int getSize() {
-        return array.size() / 2;
-    }
-    
     public List<String> keys() {
-        return Collections.unmodifiableList(Arrays.asList(getKeys()));
+        return List.of(getKeys());
     }
 
-    @Deprecated
-    public String[] getKeys() {
+    private String[] getKeys() {
         int size = size();
         String[] keys = new String[size];
         for (int i = 0; i < size; i++) {
@@ -215,11 +191,6 @@ public class PMap extends Value {
         return new PMap(array, null);
     }
 
-    @Deprecated
-    public static PMap create(String key, Object value) {
-        return PMap.of(key, value);
-    }
-
     public static PMap of(String key1, Object value1,
             String key2, Object value2) {
         if (key1 == null || key2 == null) {
@@ -232,12 +203,6 @@ public class PMap extends Value {
                 PString.of(key1), objToValue(value1),
                 PString.of(key2), objToValue(value2));
         return new PMap(array, null);
-    }
-
-    @Deprecated
-    public static PMap create(String key1, Object value1,
-            String key2, Object value2) {
-        return PMap.of(key1, value1, key2, value2);
     }
 
     public static PMap of(String key1, Object value1,
@@ -254,13 +219,6 @@ public class PMap extends Value {
                 PString.of(key2), objToValue(value2),
                 PString.of(key3), objToValue(value3));
         return new PMap(array, null);
-    }
-
-    @Deprecated
-    public static PMap create(String key1, Object value1,
-            String key2, Object value2,
-            String key3, Object value3) {
-        return PMap.of(key1, value1, key2, value2, key3, value3);
     }
 
     public static PMap parse(String str) throws ValueFormatException {
@@ -292,13 +250,7 @@ public class PMap extends Value {
         return builder.build(str);
     }
 
-    @Deprecated
-    public static PMap valueOf(String str) throws ValueFormatException {
-        return parse(str);
-    }
-
-    @Deprecated
-    public static PMap coerce(Value arg) throws ValueFormatException {
+    private static PMap coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PMap) {
             return (PMap) arg;
         } else {
@@ -335,15 +287,6 @@ public class PMap extends Value {
 //            put(key, value instanceof Value ? (Value) value : PString.valueOf(value));
 //            return this;
 //        }
-        
-        @Deprecated
-        public Builder put(PString key, Value value) {
-            if (key == null || value == null) {
-                throw new NullPointerException();
-            }
-            putImpl(key, value);
-            return this;
-        }
         
 //        @Deprecated
 //        public Builder put(String key, Value value) {

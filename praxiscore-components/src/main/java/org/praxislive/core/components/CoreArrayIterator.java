@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,6 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 @GenerateTemplate(CoreArrayIterator.TEMPLATE_PATH)
 public class CoreArrayIterator extends CoreCodeDelegate {
@@ -45,8 +44,8 @@ public class CoreArrayIterator extends CoreCodeDelegate {
 
     // PXJ-BEGIN:body
     
-    @P(1) @Type(cls = PArray.class) @OnChange("valuesChanged")
-    Property values;
+    @P(1) @OnChange("valuesChanged")
+    PArray values;
     @P(2) @ReadOnly
     int index;
     @P(3) @Type.Integer(min = 1, max = 1024, def = 1) @Config.Port(false)
@@ -62,16 +61,10 @@ public class CoreArrayIterator extends CoreCodeDelegate {
     
     @Out(1) Output out;
     
-    PArray array;
     boolean forwards;
     
-    @Override
-    public void init() {
-        extractArray();
-    }
-
     @T(1) void trigger() {
-        int count = array.size();
+        int count = values.size();
         boolean r = reset;
         reset = false;
         if (count == 0) {
@@ -79,30 +72,20 @@ public class CoreArrayIterator extends CoreCodeDelegate {
             out.send();
         } else if (count == 1) {
             index = 0;
-            out.send(array.get(0));
+            out.send(values.get(0));
         } else {
             if (r) {
                 index = 0;
             } else {
                 index = nextIdx();
             }
-            out.send(array.get(index));
+            out.send(values.get(index));
         }
     }
     
     void valuesChanged() {
-        extractArray();
         if (resetOnChange) {
             reset = true;
-        }
-    }
-    
-    void extractArray() {
-        try {
-            array = PArray.coerce(values.get());
-        } catch (ValueFormatException ex) {
-            log(ERROR, ex, "values isn't an array");
-            array = PArray.EMPTY;
         }
     }
     
@@ -116,7 +99,7 @@ public class CoreArrayIterator extends CoreCodeDelegate {
         int max = max(min, maxSkip);
         int idx = index;
         int oldIdx = idx;
-        int count = array.size();
+        int count = values.size();
         
         int delta;
         

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,6 @@ import org.praxislive.core.ValueFormatException;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public final class PError extends Value {
 
@@ -52,23 +51,8 @@ public final class PError extends Value {
         return type;
     }
 
-    @Deprecated
-    public Class<? extends Exception> getType() {
-        return type;
-    }
-
     public String message() {
         return message;
-    }
-    
-    @Deprecated
-    public String getMessage() {
-        return message;
-    }
-
-    @Deprecated
-    public Exception getWrappedException() {
-        return ex;
     }
     
     public Optional<Exception> exception() {
@@ -144,17 +128,12 @@ public final class PError extends Value {
         }
     }
 
-    @Deprecated
-    public static PError coerce(Value arg) throws ValueFormatException {
+    private static PError coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PError) {
             return (PError) arg;
         } else if (arg instanceof PReference) {
-            Object o = ((PReference) arg).getReference();
-            if (o instanceof Exception) {
-                return PError.of((Exception) o);
-            } else {
-                throw new ValueFormatException();
-            }
+            return PError.of( ((PReference) arg).as(Exception.class)
+                    .orElseThrow(ValueFormatException::new));
         }
         return parse(arg.toString());
     }
@@ -176,31 +155,17 @@ public final class PError extends Value {
         return new PError(type, msg, ex, null);
     }
     
-    @Deprecated
-    public static PError create(Exception ex) {
-        return PError.of(ex);
-    }
-
     public static PError of(Exception ex, String msg) {
         return new PError(ex.getClass(),
                 Objects.requireNonNull(msg),
                 ex,
                 null);
     }
-    
-    @Deprecated
-    public static PError create(Exception ex, String msg) {
-        return PError.of(ex, msg);
-    }
 
     public static PError of(String msg) {
         return of(Exception.class, msg);
     }
     
-    @Deprecated
-    public static PError create(String msg) {
-        return of(Exception.class, msg);
-    }
 
     public static PError of(Class<? extends Exception> type, String msg) {
         return new PError(Objects.requireNonNull(type),
@@ -209,9 +174,4 @@ public final class PError extends Value {
                 null);
     }
     
-    @Deprecated
-    public static PError create(Class<? extends Exception> type, String msg) {
-        return of(type, msg);
-    }
-
 }
