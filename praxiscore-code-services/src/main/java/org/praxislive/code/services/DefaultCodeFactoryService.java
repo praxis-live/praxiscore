@@ -185,7 +185,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             try {
                 CodeFactory<CodeDelegate> codeFactory = findCodeFactory();
                 Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
-                CodeDelegate delegate = cls.newInstance();
+                CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 CodeComponent<CodeDelegate> cmp = codeFactory.task().createComponent(delegate);
                 CODE_CACHE.putIfAbsent(new ClassCacheKey(codeFactory.getClassBodyContext(), codeFactory.getSourceTemplate()), cls);
                 return getActiveCall().reply(PReference.of(cmp));
@@ -208,7 +208,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         private CodeComponent<CodeDelegate> createComponent(
                 CodeFactory<CodeDelegate> codeFactory,
                 Class<? extends CodeDelegate> delegateClass) throws Exception {
-            return codeFactory.task().createComponent(delegateClass.newInstance());
+            return codeFactory.task().createComponent(delegateClass.getDeclaredConstructor().newInstance());
         }
 
     }
@@ -232,7 +232,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             }
             if (cls != null) {
                 LogBuilder log = new LogBuilder(task.getLogLevel());
-                CodeDelegate delegate = cls.newInstance();
+                CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 return call.reply(PReference.of(createContext(task, log, delegate)));
             } else {
                 return Call.create(
@@ -249,7 +249,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             try {
                 CodeContextFactoryService.Task<CodeDelegate> task = findTask();
                 Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
-                CodeDelegate delegate = cls.newInstance();
+                CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 LogBuilder log = new LogBuilder(task.getLogLevel());
                 extractCompilerLog(call.args().get(0), log);
                 return getActiveCall().reply(PReference.of(createContext(task, log, delegate)));
