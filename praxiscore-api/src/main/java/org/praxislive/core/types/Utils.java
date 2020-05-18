@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,15 +25,20 @@ import org.praxislive.core.Value;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class Utils {
+    
+    private static final String REQUIRE_QUOTING = "{}[];'\"\\";
+    private static final String REQUIRE_QUOTING_START = ".#" + REQUIRE_QUOTING;
 
     private Utils() {
     }
 
     static String escape(String input) {
         String res = doPlain(input);
+        if (res == null) {
+            res = doBraced(input);
+        }
         if (res == null) {
             res = doQuoted(input);
         }
@@ -49,27 +54,69 @@ class Utils {
         return arg1.equivalent(arg2) || arg2.equivalent(arg1);
     }
     
-    private static String doPlain(String input) {
+    static String doPlain(String input) {
         int len = input.length();
         if (len == 0 || len > 128) {
             return null;
         }
-        if (input.startsWith(".")) {
-            // script executor would change this into address
+        char c = input.charAt(0);
+        if (Character.isWhitespace(c) || REQUIRE_QUOTING_START.indexOf(c) > -1) {
             return null;
         }
-        for (int i = 0; i < len; i++) {
-            char c = input.charAt(i);
-            if (Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_') {
-                continue;
-            } else {
+        for (int i = 1; i < len; i++) {
+            c = input.charAt(i);
+            if (Character.isWhitespace(c) || REQUIRE_QUOTING.indexOf(c) > -1) {
                 return null;
             }
         }
         return input;
     }
+    
+    static String doBraced(String input) {
+        int len = input.length();
+        if (len == 0) {
+            return null;
+        }
+        boolean shouldBrace = false;
+        int level = 0;
+        int idx = 0;
+        for (; idx < len && level > -1; idx++) {
+            char ch = input.charAt(idx);
+            switch (ch) {
+                case '}':
+                    shouldBrace = true;
+                    if (idx > 0 && input.charAt(idx - 1) == '\\') {
+                        // escaped
+                    } else {
+                        level--;
+                    }
+                    break;
+                case '{':
+                    shouldBrace = true;
+                    if (idx > 0 && input.charAt(idx - 1) == '\\') {
+                        // escaped
+                    } else {
+                        level++;
+                    }
+                    break;
+                case '[':
+                case ']':
+                case '\n':
+                case '\r':
+                    shouldBrace = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (shouldBrace && idx == len && level == 0) {
+            return "{" + input + "}";
+        } else {
+            return null;
+        }
+    }
 
-    private static String doQuoted(String input) {
+    static String doQuoted(String input) {
         int len = input.length();
         if (len == 0) {
             return "\"\"";
