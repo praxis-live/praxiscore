@@ -202,8 +202,9 @@ public final class PArray extends Value implements Iterable<Value> {
                         String s = t.getText();
                         list.add(PString.of(s));
                         break;
+                    case COMMENT:
                     case EOL:
-                        break tokenize;
+                        continue;
                     default:
                         throw new ValueFormatException();
                 }

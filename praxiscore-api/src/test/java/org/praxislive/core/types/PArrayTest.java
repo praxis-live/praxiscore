@@ -92,6 +92,15 @@ public class PArrayTest {
     }
     
     @Test
+    public void testParse() throws Exception {
+        var a1 = PArray.parse("This is an array");
+        var a2 = PArray.parse("This\n is \n an \n #comment \n array");
+        assertEquals(4, a2.size());
+        assertEquals("array", a2.get(3).toString());
+        assertTrue(a1.equivalent(a2));
+    }
+    
+    @Test
     public void testCollector() throws Exception {
         PArray arr1 = PArray.parse("a3 104 {some string} c#5");
         PArray arr2 = arr1.stream().collect(PArray.collector());
