@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,27 +19,36 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.hub.net;
+package org.praxislive.hub.net.internal;
 
 import java.util.List;
-import org.praxislive.core.Root;
-import org.praxislive.hub.Hub;
+import java.util.stream.Stream;
+import org.praxislive.core.ControlInfo;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.types.PMap;
 
+/**
+ *
+ */
+public class HubConfigurationService implements Service {
+    
+    public static final String HUB_CONFIGURE = "hub-configure";
+    public static final ControlInfo HUB_CONFIGURE_INFO =
+            ControlInfo.createFunctionInfo(List.of(PMap.info()),
+                    List.of(),
+                    PMap.EMPTY);
 
-public class MasterFactory extends Hub.CoreRootFactory {
-    
-    private final List<? extends SlaveInfo> slaves;
-    
-    public MasterFactory(List<? extends SlaveInfo> slaves) {
-        if (slaves == null) {
-            throw new NullPointerException();
-        }
-        this.slaves = slaves;
+    @Override
+    public Stream<String> controls() {
+        return Stream.of(HUB_CONFIGURE);
     }
 
     @Override
-    public Root createCoreRoot(Hub.Accessor accessor, List<Root> extensions) {
-        return new MasterCoreRoot(accessor, extensions, slaves);
+    public ControlInfo getControlInfo(String control) {
+        if (HUB_CONFIGURE.equals(control)) {
+            return HUB_CONFIGURE_INFO;
+        }
+        throw new IllegalArgumentException();
     }
     
 }

@@ -29,6 +29,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,7 +44,6 @@ import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PResource;
-import org.praxislive.hub.BasicCoreRoot;
 import org.praxislive.hub.Hub;
 import org.praxislive.internal.osc.OSCListener;
 import org.praxislive.internal.osc.OSCMessage;
@@ -53,13 +53,12 @@ import org.praxislive.internal.osc.OSCServer;
 /**
  *
  */
-class SlaveCoreRoot extends BasicCoreRoot {
+class ServerCoreRoot extends NetworkCoreRoot {
 
-    private final static Logger LOG = Logger.getLogger(SlaveCoreRoot.class.getName());
-    private final String MASTER_SYS_PREFIX = "/_remote";
+    private final static Logger LOG = Logger.getLogger(ServerCoreRoot.class.getName());
+    private final String SERVER_SYS_PREFIX = "/_remote";
     
-    private final int port;
-    private final boolean loopBack;
+    private final InetSocketAddress address;
     private final CIDRUtils clientValidator;
     private final PraxisPacketCodec codec;
     private final Dispatcher dispatcher;
@@ -70,25 +69,29 @@ class SlaveCoreRoot extends BasicCoreRoot {
     private long lastPurgeTime;
     private URI remoteUserDir;
     private URI remoteFileServer;
+    private CompletableFuture<NetworkCoreFactory.Info> futureInfo;
 
-    SlaveCoreRoot(Hub.Accessor hubAccess,
+    ServerCoreRoot(Hub.Accessor hubAccess,
             List<Root> exts,
-            int port,
-            boolean loopBack,
-            CIDRUtils clientValidator) {
-        super(hubAccess, exts);
-        this.port = port;
-        this.loopBack = loopBack;
+            List<Class<? extends Service>> services,
+            ChildLauncher childLauncher,
+            HubConfiguration configuration,
+            InetSocketAddress address,
+            CIDRUtils clientValidator,
+            CompletableFuture<NetworkCoreFactory.Info> futureInfo) {
+        super(hubAccess, exts, services, childLauncher, configuration);
+        this.address = address;
         this.clientValidator = clientValidator;
         this.codec = new PraxisPacketCodec();
         this.dispatcher = new Dispatcher(codec);
         this.resourceResolver = new ResourceResolver();
+        this.futureInfo = futureInfo;
     }
 
     @Override
-    protected void activating() {
+    protected void starting() {
         try {
-            server = OSCServer.newUsing(codec, OSCServer.TCP, port, loopBack);
+            server = OSCServer.newUsing(codec, OSCServer.TCP, address);
             server.setBufferSize(65536);
             server.addOSCListener(new OSCListener() {
 
@@ -98,15 +101,22 @@ class SlaveCoreRoot extends BasicCoreRoot {
 
                         @Override
                         public void run() {
-                            SlaveCoreRoot.this.messageReceived(msg, sender, time);
+                            ServerCoreRoot.this.messageReceived(msg, sender, time);
                         }
                     });
                 }
             });
-
             server.start();
+            if (futureInfo != null) {
+                futureInfo.complete(new NetworkCoreFactory.Info(server.getLocalAddress()));
+                futureInfo = null;
+            }
         } catch (IOException ex) {
-            Logger.getLogger(SlaveCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+            if (futureInfo != null) {
+                futureInfo.completeExceptionally(ex);
+                futureInfo = null;
+            }
             forceTermination();
             throw new RuntimeException(ex);
         }
@@ -116,11 +126,10 @@ class SlaveCoreRoot extends BasicCoreRoot {
 
                     @Override
                     public void tick(ExecutionContext source) {
-                        SlaveCoreRoot.this.tick(source);
+                        ServerCoreRoot.this.tick(source);
                     }
                 });
-        super.activating();
-        setRunning();
+        super.starting();
     }
 
     @Override
@@ -189,7 +198,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
             try {
                 server.send(new OSCMessage("/HLO", new Object[]{"OK"}), sender);
             } catch (IOException ex) {
-                Logger.getLogger(SlaveCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
                 master = null;
             }
         }
@@ -205,7 +214,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
             try {
                 return clientValidator.isInRange(inet.getHostString());
             } catch (UnknownHostException ex) {
-                Logger.getLogger(SlaveCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
                 // fall through
             }
         }
@@ -230,7 +239,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
                             Class.forName(serviceName, true,
                             Thread.currentThread().getContextClassLoader());
                     ComponentAddress serviceAddress = ComponentAddress.of(
-                            MASTER_SYS_PREFIX + services.getString(serviceName, null));
+                            SERVER_SYS_PREFIX + services.getString(serviceName, null));
                     getHubAccessor().registerService(service, serviceAddress);
                 }
             }
@@ -242,7 +251,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
             
             return true;
         } catch (Exception ex) {
-            Logger.getLogger(SlaveCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
             return false;
         }
     }
@@ -263,7 +272,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
             try {
                 server.send(packet, master);
             } catch (IOException ex) {
-                Logger.getLogger(SlaveCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
@@ -274,7 +283,7 @@ class SlaveCoreRoot extends BasicCoreRoot {
 
         @Override
         String getRemoteSysPrefix() {
-            return MASTER_SYS_PREFIX;
+            return SERVER_SYS_PREFIX;
         }
 
         @Override

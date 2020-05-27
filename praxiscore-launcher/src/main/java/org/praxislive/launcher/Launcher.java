@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,31 +32,64 @@ import java.util.logging.Logger;
 import org.praxislive.core.MainThread;
 import org.praxislive.core.Root;
 import org.praxislive.hub.Hub;
-import org.praxislive.hub.net.SlaveFactory;
 import java.io.File;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.file.Files;
+import org.praxislive.code.CodeCompilerService;
+import org.praxislive.hub.net.NetworkCoreFactory;
 
 /**
  *
  */
-public class Main {
-
-    public static void main(String[] args) {
+public class Launcher {
+    
+    static final String LISTENING_STATUS = "Listening at : ";
+    
+    private final Launcher.Context context;
+    private final String[] args;
+    
+    private Launcher(Context context, String[] args) {
+        this.context = context;
+        this.args = args;
+    }
+    
+    private void launch() {
         System.out.println("PraxisCORE");
         System.out.println(Arrays.toString(args));
-
-        if (args.length >= 1 && args[0].equals("--slave")) {
-            processSlave(args);
+        
+        if (args.length >= 1 && args[0].equals("--child")) {
+            processChild(args);
         } else {
             processFile(args);
         }
-
     }
     
-    private static void processFile(String[] args) {
+    public static void main(Launcher.Context context, String[] args) {
+        new Launcher(context, args).launch();
+    }
+    
+    static SocketAddress parseListeningLine(String line) {
+        if (line.startsWith(LISTENING_STATUS)) {
+            try {
+                int port = Integer.parseInt(line.substring(LISTENING_STATUS.length()).trim());
+                return new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException(ex);
+            }
+        }
+        throw new IllegalArgumentException();
+    }
+    
+    private void processFile(String[] args) {
         try {
+            NetworkCoreFactory sf = NetworkCoreFactory.builder()
+                    .childLauncher(new ChildLauncherImpl(context))
+                    .exposeServices(List.of(CodeCompilerService.class))
+                    .build();
             List<Root> exts = new ArrayList<>();
-            if (args.length == 1) {
+            if (args.length == 1 && !args[0].startsWith("-")) {
                 File file = new File(args[0]);
                 if (!file.isAbsolute()) {
                     file = file.getAbsoluteFile();
@@ -70,6 +103,7 @@ public class Main {
             }
             exts.add(new TerminalIO());
             var builder = Hub.builder();
+            builder.setCoreRootFactory(sf);
             exts.forEach(builder::addExtension);
             var main = new MainThreadImpl();
             builder.extendLookup(main);
@@ -77,17 +111,22 @@ public class Main {
             hub.start();
             main.run(hub);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Launcher.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
         }
     }
     
-    private static void processSlave(String[] args) {
-        int port = SlaveFactory.DEFAULT_PORT;
+    private void processChild(String[] args) {
+        int port = 0;
         try {
             var main = new MainThreadImpl();
             while (true) {
-                SlaveFactory sf = new SlaveFactory(port, true);
+                NetworkCoreFactory sf = NetworkCoreFactory.builder()
+                        .enableServer()
+                        .serverPort(port)
+                        .childLauncher(new ChildLauncherImpl(context))
+                        .exposeServices(List.of(CodeCompilerService.class))
+                        .build();
                 List<Root> exts = new ArrayList<>();
                 exts.add(new TerminalIO());
                 var builder = Hub.builder();
@@ -96,13 +135,26 @@ public class Main {
                 builder.extendLookup(main);
                 var hub = builder.build();
                 hub.start();
+                var serverInfo = sf.awaitInfo(30, TimeUnit.SECONDS);
+                port = serverInfo.serverAddress()
+                        .filter(a -> a instanceof InetSocketAddress)
+                        .map(a -> (InetSocketAddress) a)
+                        .orElseThrow().getPort();
+                System.out.println(LISTENING_STATUS + port);
                 main.run(hub);
             }
             
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Launcher.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
         }
+    }
+    
+    public static interface Context {
+        
+        public ProcessBuilder createChildProcessBuilder(List<String> javaOptions,
+                List<String> arguments);
+        
     }
     
     private static class MainThreadImpl implements MainThread {
@@ -114,12 +166,12 @@ public class Main {
             this.main = Thread.currentThread();
             this.queue = new LinkedBlockingQueue<>();
         }
-
+        
         @Override
         public void runLater(Runnable task) {
             queue.add(task);
         }
-
+        
         @Override
         public boolean isMainThread() {
             return Thread.currentThread() == main;
@@ -133,7 +185,7 @@ public class Main {
                         task.run();
                     }
                 } catch (Throwable t) {
-                    System.getLogger(Main.class.getName())
+                    System.getLogger(Launcher.class.getName())
                             .log(System.Logger.Level.ERROR,
                                     "", t);
                 }
@@ -149,7 +201,7 @@ public class Main {
                         break drain;
                     }
                 } catch (Throwable t) {
-                    System.getLogger(Main.class.getName())
+                    System.getLogger(Launcher.class.getName())
                             .log(System.Logger.Level.ERROR,
                                     "", t);
                 }
@@ -157,7 +209,7 @@ public class Main {
         }
         
     }
-
+    
 }
 
 //

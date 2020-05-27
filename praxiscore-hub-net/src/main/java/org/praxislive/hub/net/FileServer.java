@@ -3,7 +3,7 @@
  * Forked from NanoHttpd-Webserver
  * %%
  * Copyright (C) 2012 - 2015 nanohttpd
- * Copyright 2018 Neil C Smith
+ * Copyright 2020 Neil C Smith
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -55,7 +55,6 @@ import org.praxislive.internal.httpd.NanoHTTPD.Response.IStatus;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class FileServer extends NanoHTTPD {
 
@@ -86,7 +85,6 @@ class FileServer extends NanoHTTPD {
 
     private final boolean quiet = true;
     private final File homeDir;
-    private final Info info;
 
     FileServer(int port, File homeDir) {
         super(null, port);
@@ -94,11 +92,10 @@ class FileServer extends NanoHTTPD {
             throw new IllegalArgumentException();
         }
         this.homeDir = homeDir;
-        this.info = new Info(port);
     }
 
     Info getInfo() {
-        return info;
+        return new Info(getListeningPort());
     }
     
     private boolean canServeUri(String uri) {

@@ -84,6 +84,7 @@ public class BasicCoreRoot extends AbstractRoot {
         buildControlMap(ctrls);
         controls.putAll(ctrls);
         installExtensions();
+        setRunning();
     }
 
     @Override
@@ -101,10 +102,19 @@ public class BasicCoreRoot extends AbstractRoot {
 
     @Override
     protected void processCall(Call call, PacketRouter router) {
+        Control control = controls.get(call.to().controlID());
         try {
-            controls.get(call.to().controlID()).call(call, router);
+            if (control != null) {
+                control.call(call, router);
+            } else {
+                if (call.isRequest()) {
+                    router.route(call.error(PError.of("Unknown control address : " + call.to())));
+                }
+            }
         } catch (Exception ex) {
-            router.route(call.error(PError.of(ex)));
+            if (call.isRequest()) {
+                router.route(call.error(PError.of(ex)));
+            }
         }
     }
 

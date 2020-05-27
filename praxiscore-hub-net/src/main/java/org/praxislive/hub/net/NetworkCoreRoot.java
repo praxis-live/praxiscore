@@ -21,22 +21,25 @@
  */
 package org.praxislive.hub.net;
 
+import org.praxislive.hub.net.internal.HubConfigurationService;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.RootFactoryService;
 import org.praxislive.core.services.RootManagerService;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 import org.praxislive.hub.BasicCoreRoot;
 import org.praxislive.hub.Hub;
@@ -44,22 +47,30 @@ import org.praxislive.hub.Hub;
 /**
  *
  */
-class MasterCoreRoot extends BasicCoreRoot {
+class NetworkCoreRoot extends BasicCoreRoot {
 
-    private final static Logger LOG = Logger.getLogger(MasterCoreRoot.class.getName());
-    private final static String SLAVE_PREFIX = Hub.SYS_PREFIX + "net_";
+    private final static String PROXY_PREFIX = Hub.SYS_PREFIX + "proxy_";
 
+    private final Hub.Accessor hubAccess;
+    private final List<ProxyData> proxies;
+    private final List<Class<? extends Service>> services;
+    private final ChildLauncher childLauncher;
     private final Map<String, String> remotes;
-    private final SlaveInfo[] slaves;
-    
-    private ComponentAddress[] slaveClients;
+
+    private HubConfiguration configuration;
     private FileServer fileServer;
-    
-    MasterCoreRoot(Hub.Accessor hubAccess,
+
+    NetworkCoreRoot(Hub.Accessor hubAccess,
             List<Root> exts,
-            List<? extends SlaveInfo> slaves) {
+            List<Class<? extends Service>> services,
+            ChildLauncher childLauncher,
+            HubConfiguration configuration) {
         super(hubAccess, exts);
-        this.slaves = slaves.toArray(new SlaveInfo[slaves.size()]);
+        this.hubAccess = hubAccess;
+        this.services = services;
+        this.childLauncher = childLauncher;
+        this.configuration = configuration;
+        this.proxies = new ArrayList<>();
         this.remotes = new HashMap<>();
     }
 
@@ -67,63 +78,100 @@ class MasterCoreRoot extends BasicCoreRoot {
     protected void buildControlMap(Map<String, Control> ctrls) {
         ctrls.put(RootManagerService.ADD_ROOT, new AddRootControl());
         ctrls.put(RootManagerService.REMOVE_ROOT, new RemoveRootControl());
+        ctrls.put(HubConfigurationService.HUB_CONFIGURE, new HubConfigurationControl());
         super.buildControlMap(ctrls);
     }
 
     @Override
-    protected void activating() {
-        super.activating();
-        FileServer.Info fileServerInfo = activateFileServer();
-        slaveClients = new ComponentAddress[slaves.length];
-        for (int i = 0; i < slaves.length; i++) {
-            String id = SLAVE_PREFIX + (i + 1);
-            try {
-                installRoot(id, "netex", new MasterClientRoot(slaves[i], fileServerInfo));
-            } catch (Exception ex) {
-                Logger.getLogger(MasterCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
-//                throw new RuntimeException(ex);
-            }
-            slaveClients[i] = ComponentAddress.of("/" + id);
+    protected void registerServices() {
+        super.registerServices();
+        hubAccess.registerService(HubConfigurationService.class, getAddress());
+    }
+    
+    
+
+    @Override
+    protected void starting() {
+        if (configuration != null) {
+            configure();
         }
-        setRunning();
     }
 
     @Override
     protected void terminating() {
-        super.terminating(); 
+        super.terminating();
         if (fileServer != null) {
             fileServer.stop();
             fileServer = null;
         }
     }
 
-    private FileServer.Info activateFileServer() {
-        boolean reqServer = false;
-        for (SlaveInfo slave : slaves) {
-            if (!slave.isLocal() && slave.getUseRemoteResources()) {
-                reqServer = true;
-                break;
-            }
+    private void ensureConfigured() {
+        if (configuration == null) {
+            configuration = HubConfiguration.fromMap(PMap.EMPTY);
+            configure();
         }
-        
-        if (reqServer) {
+    }
+
+    private void configure() {
+
+        var proxyInfo = configuration.proxies();
+
+        if (proxyInfo.isEmpty()) {
+            return;
+        }
+
+        var requireServer = configuration.isFileServerEnabled()
+                && proxyInfo.stream().anyMatch(p -> !p.isLocal());
+        var serverInfo = requireServer ? activateFileServer() : null;
+
+        for (int i = 0; i < proxyInfo.size(); i++) {
+            var id = PROXY_PREFIX + (i + 1);
+            var info = proxyInfo.get(i);
             try {
-                fileServer = new FileServer(Utils.getFileServerPort(), Utils.getUserDirectory());
-                fileServer.start();
-                return fileServer.getInfo();
-            } catch (IOException ex) {
-                Logger.getLogger(MasterCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
-                fileServer = null;
+                installRoot(id, "netex", new ProxyClientRoot(info, services,
+                        childLauncher, serverInfo));
+                proxies.add(new ProxyData(info, ComponentAddress.of("/" + id)));
+            } catch (Exception ex) {
+                System.getLogger(NetworkCoreRoot.class.getName())
+                        .log(System.Logger.Level.ERROR, "", ex);
             }
         }
         
+    }
+
+    private FileServer.Info activateFileServer() {
+        try {
+            fileServer = new FileServer(Utils.getFileServerPort(), Utils.getUserDirectory());
+            fileServer.start();
+            return fileServer.getInfo();
+        } catch (IOException ex) {
+            System.getLogger(NetworkCoreRoot.class.getName())
+                        .log(System.Logger.Level.ERROR, "", ex);
+            fileServer = null;
+        }
         return null;
+    }
+
+    
+
+    private static class ProxyData {
+
+        private final ProxyInfo info;
+        private final ComponentAddress address;
+
+        public ProxyData(ProxyInfo info, ComponentAddress address) {
+            this.info = info;
+            this.address = address;
+        }
+
     }
 
     private class AddRootControl extends AbstractAsyncControl {
 
         @Override
         protected Call processInvoke(Call call) throws Exception {
+            ensureConfigured();
             List<Value> args = call.args();
             if (args.size() < 2) {
                 throw new IllegalArgumentException("Invalid arguments");
@@ -132,15 +180,14 @@ class MasterCoreRoot extends BasicCoreRoot {
             if (!ComponentAddress.isValidID(id)) {
                 throw new IllegalArgumentException("Invalid Component ID");
             }
-            ComponentType type = ComponentType.from(args.get(1)).orElseThrow();
+            ComponentType type = ComponentType.from(args.get(1))
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid Component type"));
 
-            ComponentAddress proxy = null;
-            for (int i = 0; i < slaves.length; i++) {
-                if (slaves[i].matches(id, type)) {
-                    proxy = slaveClients[i];
-                }
-            }
-
+            ComponentAddress proxy = proxies.stream()
+                    .filter(p -> p.info.matches(id, type))
+                    .map(p -> p.address)
+                    .findFirst().orElse(null);
+            
             ControlAddress to;
             if (proxy != null) {
                 to = ControlAddress.of(proxy, RootManagerService.ADD_ROOT);
@@ -157,7 +204,7 @@ class MasterCoreRoot extends BasicCoreRoot {
             Call active = getActiveCall();
             String id = active.args().get(0).toString();
             String source = call.from().component().rootID();
-            if (source.startsWith(SLAVE_PREFIX)) {
+            if (source.startsWith(PROXY_PREFIX)) {
                 Root.Controller ctrl = getHubAccessor().getRootController(source);
                 getHubAccessor().registerRootController(id, ctrl);
                 remotes.put(id, source);
@@ -202,6 +249,27 @@ class MasterCoreRoot extends BasicCoreRoot {
             return call.reply();
         }
 
+    }
+    
+    private class HubConfigurationControl implements Control {
+
+        @Override
+        public void call(Call call, PacketRouter router) throws Exception {
+            if (call.isRequest()) {
+                if (configuration != null) {
+                    throw new IllegalStateException("Hub Configuration already fixed");
+                }
+                configuration = HubConfiguration.fromMap(
+                        PMap.from(call.args().get(0)).orElseThrow());
+                configure();
+                if (call.isReplyRequired()) {
+                    router.route(call.reply());
+                }
+            }
+            
+            
+        }
+        
     }
 
 }

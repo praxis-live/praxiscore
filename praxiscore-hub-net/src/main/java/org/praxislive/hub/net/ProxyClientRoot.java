@@ -32,7 +32,6 @@ import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.Clock;
 import org.praxislive.core.Control;
-import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
@@ -47,25 +46,34 @@ import org.praxislive.internal.osc.OSCPacket;
 /**
  *
  */
-class MasterClientRoot extends AbstractRoot {
+class ProxyClientRoot extends AbstractRoot {
 
-    private final static Logger LOG = Logger.getLogger(MasterClientRoot.class.getName());
+    private final static Logger LOG = Logger.getLogger(ProxyClientRoot.class.getName());
     private final static String HLO = "/HLO";
     private final static String BYE = "/BYE";
 
+    private final ProxyInfo proxyInfo;
+    private final List<Class<? extends Service>> services;
+    private final ChildLauncher childLauncher;
+    private final FileServer.Info fileServerInfo;
     private final PraxisPacketCodec codec;
     private final Dispatcher dispatcher;
-    private final SlaveInfo slaveInfo;
-    private final FileServer.Info fileServerInfo;
     private final Control addRootControl;
     private final Control removeRootControl;
 
     private OSCClient client;
     private long lastPurgeTime;
     private Watchdog watchdog;
+    private Process execProcess;
     
-    MasterClientRoot(SlaveInfo slaveInfo, FileServer.Info fileServerInfo) {
-        this.slaveInfo = slaveInfo;
+    
+    ProxyClientRoot(ProxyInfo proxyInfo,
+            List<Class<? extends Service>> services,
+            ChildLauncher childLauncher,
+            FileServer.Info fileServerInfo) {
+        this.proxyInfo = proxyInfo;
+        this.services = services;
+        this.childLauncher = childLauncher;
         this.fileServerInfo = fileServerInfo;
         codec = new PraxisPacketCodec();
         dispatcher = new Dispatcher(codec);
@@ -75,9 +83,7 @@ class MasterClientRoot extends AbstractRoot {
 
     @Override
     protected void activating() {
-        ExecutionContext context = getExecutionContext();
-        context.addClockListener(MasterClientRoot.this::tick);
-        lastPurgeTime = context.getTime();
+        lastPurgeTime = getExecutionContext().getTime();
         dispatcher.remoteSysPrefix = getAddress().toString() + "/_remote";
         setRunning();
     }
@@ -93,7 +99,7 @@ class MasterClientRoot extends AbstractRoot {
                 LOG.log(Level.FINE, null, ex);
             }
         }
-        clientDispose();
+        dispose();
     }
 
     @Override
@@ -125,7 +131,9 @@ class MasterClientRoot extends AbstractRoot {
         }
     }
 
-    private void tick(ExecutionContext source) {
+    @Override
+    protected void update() {
+        var source = getExecutionContext();
         if ((source.getTime() - lastPurgeTime) > TimeUnit.SECONDS.toNanos(1)) {
 //            LOG.fine("Triggering dispatcher purge");
             dispatcher.purge(10, TimeUnit.SECONDS);
@@ -146,22 +154,19 @@ class MasterClientRoot extends AbstractRoot {
                 client.send(packet);
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, "", ex);
-                clientDispose();
+                dispose();
             }
         }
     }
 
     private void connect() {
-        LOG.fine("Connecting to slave");
         try {
-            // connect to slave
+            SocketAddress target = checkAndExecChild();
             client = OSCClient.newUsing(codec, OSCClient.TCP);
             client.setBufferSize(65536);
-            client.setTarget(slaveInfo.getAddress());
+            client.setTarget(target);
             watchdog = new Watchdog(getRootHub().getClock(), client);
             watchdog.start();
-//            client.connect();
-//            LOG.fine("Connected - sending /HLO");
 
             // HLO request
             CountDownLatch hloLatch = new CountDownLatch(1);
@@ -171,40 +176,59 @@ class MasterClientRoot extends AbstractRoot {
             if (hloLatch.await(10, TimeUnit.SECONDS)) {
                 LOG.fine("/HLO received OK");
             } else {
-                LOG.severe("Unable to connect to slave");
-                clientDispose();
+                LOG.severe("Unable to connect");
+                dispose();
             }
 
-        } catch (IOException | InterruptedException ex) {
-            LOG.log(Level.SEVERE, "Unable to connect to slave", ex);
-            clientDispose();
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Unable to connect", ex);
+            dispose();
+        }
+    }
+    
+    private SocketAddress checkAndExecChild() throws Exception {
+        ProxyInfo.Exec exec = proxyInfo.exec().orElse(null);
+        if (exec == null) {
+            return proxyInfo.socketAddress();
+        }
+        String cmd = exec.command().orElse(null);
+        if (cmd == null) {
+            if (childLauncher == null) {
+                throw new IllegalStateException("No child launcher for exec");
+            }
+            var childInfo = childLauncher.launch(exec.javaOptions(), exec.arguments());
+            execProcess = childInfo.handle();
+            return childInfo.address();
+        } else {
+            throw new UnsupportedOperationException("Only default command supported at present");
         }
     }
 
     private PMap buildHLOParams() {
         PMap.Builder params = PMap.builder();
-        if (!slaveInfo.isLocal() && slaveInfo.getUseLocalResources()) {
+        params.put(Utils.KEY_REMOTE_SERVICES, buildServiceMap());
+        if (!proxyInfo.isLocal()) {
             params.put(Utils.KEY_MASTER_USER_DIRECTORY, Utils.getUserDirectory().toURI().toString());
-        }
-        List<Class<? extends Service>> remoteServices = slaveInfo.getRemoteServices();
-        if (!remoteServices.isEmpty()) {
-            PMap.Builder srvs = PMap.builder(remoteServices.size());
-            for (Class<? extends Service> service : remoteServices) {
-                try {
-                    srvs.put(service.getName(), findService(service));
-                } catch (ServiceUnavailableException ex) {
-                    Logger.getLogger(MasterClientRoot.class.getName()).log(Level.SEVERE, null, ex);
-                }
+            if (fileServerInfo != null) {
+                params.put(Utils.KEY_FILE_SERVER_PORT, fileServerInfo.getPort());
             }
-            params.put(Utils.KEY_REMOTE_SERVICES, srvs.build());
-        }
-        if (!slaveInfo.isLocal() && slaveInfo.getUseRemoteResources() && fileServerInfo != null) {
-            params.put(Utils.KEY_FILE_SERVER_PORT, fileServerInfo.getPort());
         }
         return params.build();
     }
+    
+    private PMap buildServiceMap() {
+        PMap.Builder srvs = PMap.builder(services.size());
+        services.forEach(service -> {
+            try {
+                srvs.put(service.getName(), findService(service));
+            } catch (ServiceUnavailableException ex) {
+                Logger.getLogger(ProxyClientRoot.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+        return srvs.build();
+    }
 
-    private void clientDispose() {
+    private void dispose() {
         if (client != null) {
             client.dispose();
             client = null;
@@ -214,6 +238,10 @@ class MasterClientRoot extends AbstractRoot {
             watchdog = null;
         }
         dispatcher.purge(0, TimeUnit.NANOSECONDS);
+        if (execProcess != null) {
+            execProcess.destroy();
+            execProcess = null;
+        }
     }
 
 
@@ -232,7 +260,7 @@ class MasterClientRoot extends AbstractRoot {
 
         @Override
         void send(OSCPacket packet) {
-            MasterClientRoot.this.send(packet);
+            ProxyClientRoot.this.send(packet);
         }
 
         @Override
@@ -310,7 +338,7 @@ class MasterClientRoot extends AbstractRoot {
 
                 @Override
                 public void run() {
-                    MasterClientRoot.this.messageReceived(msg, sender, timeTag);
+                    ProxyClientRoot.this.messageReceived(msg, sender, timeTag);
                 }
             });
         }

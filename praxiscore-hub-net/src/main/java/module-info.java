@@ -13,4 +13,7 @@ module org.praxislive.hub.net {
     
     exports org.praxislive.hub.net;
     
+    provides org.praxislive.script.CommandInstaller with
+            org.praxislive.hub.net.internal.HubNetCommands;
+    
 }
