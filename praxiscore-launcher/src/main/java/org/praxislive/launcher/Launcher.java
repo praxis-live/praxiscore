@@ -21,55 +21,67 @@
  */
 package org.praxislive.launcher;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.MainThread;
-import org.praxislive.core.Root;
 import org.praxislive.hub.Hub;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Files;
+import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.hub.net.NetworkCoreFactory;
+import picocli.CommandLine;
 
 /**
- *
+ * Main entry point for parsing command line arguments and launching a
+ * {@link Hub}. This launcher uses {@link NetworkCoreFactory} to build a
+ * distributed hub capable of proxying to other local or remote hubs. It can
+ * also support a server to allow the built hub to be controlled externally.
+ * <p>
+ * This class is mainly intended to be called from the main method entry point.
+ * The additional required context should provide support to launch another
+ * instance of this process.
+ * <p>
+ * This launcher understands the following command line switches -
+ * <ul>
+ * <li>-f / --file {file} : a script file or project directory to run.</li>
+ * <li>-p / --port {auto | 0 .. 65535} : launch a server on the specified port.
+ * If 0 or auto, a port is automatically chosen. Unless --network is specified,
+ * connections are only supported over local loopback. The port is reported to
+ * standard out as "Listening at : [port]".</li>
+ * <li>-n / --network {all | CIDR mask} : launch a server that supports remote
+ * connections, from all addresses or matching mask. Implies --port auto if not
+ * otherwise specified.</li>
+ * <li>-i / --interactive : allow for controlling the hub via PCL commands over
+ * the command line.</li>
+ * <li>--child : configure the process to run as a child process. Implies --port
+ * auto unless specified.</li>
+ * </ul>
+ * <p>
+ * For other purposes, use the {@link Hub#builder()} directly to create and
+ * launch a Hub.
  */
 public class Launcher {
-    
+
     static final String LISTENING_STATUS = "Listening at : ";
-    
-    private final Launcher.Context context;
-    private final String[] args;
-    
-    private Launcher(Context context, String[] args) {
-        this.context = context;
-        this.args = args;
-    }
-    
-    private void launch() {
-        System.out.println("PraxisCORE");
-        System.out.println(Arrays.toString(args));
-        
-        if (args.length >= 1 && args[0].equals("--child")) {
-            processChild(args);
-        } else {
-            processFile(args);
-        }
-    }
-    
+
+    /**
+     * Main entry point.
+     *
+     * @param context a context implementation providing for launching a child
+     * of this process
+     * @param args the command line arguments, possibly amended
+     */
     public static void main(Launcher.Context context, String[] args) {
-        new Launcher(context, args).launch();
+        int ret = new CommandLine(new Exec(context)).execute(args);
+        System.exit(ret);
     }
-    
+
     static SocketAddress parseListeningLine(String line) {
         if (line.startsWith(LISTENING_STATUS)) {
             try {
@@ -81,102 +93,189 @@ public class Launcher {
         }
         throw new IllegalArgumentException();
     }
-    
-    private void processFile(String[] args) {
-        try {
-            NetworkCoreFactory sf = NetworkCoreFactory.builder()
-                    .childLauncher(new ChildLauncherImpl(context))
-                    .exposeServices(List.of(CodeCompilerService.class))
-                    .build();
-            List<Root> exts = new ArrayList<>();
-            if (args.length == 1 && !args[0].startsWith("-")) {
-                File file = new File(args[0]);
-                if (!file.isAbsolute()) {
-                    file = file.getAbsoluteFile();
+
+    /**
+     * Context for launching child processes.
+     */
+    public static interface Context {
+
+        /**
+         * Create a {@link ProcessBuilder} to launch another instance of this
+         * process.
+         *
+         * @param javaOptions additional JVM options to pass to process
+         * @param arguments additional command line arguments for process
+         * @return process builder
+         */
+        public ProcessBuilder createChildProcessBuilder(List<String> javaOptions,
+                List<String> arguments);
+
+    }
+
+    @CommandLine.Command(mixinStandardHelpOptions = true)
+    private static class Exec implements Callable<Integer> {
+
+        @CommandLine.Option(names = {"-f", "--file"},
+                description = "a script file or project directory to run.")
+        private File file;
+
+        @CommandLine.Option(names = {"-p", "--port"},
+                converter = PortConverter.class,
+                description = "{auto | 0 .. 65535} : launch a server on the specified port. " +
+                    "If 0 or auto, a port is automatically chosen. " +
+                    "Unless --network is specified, connections are only supported over local loopback. " +
+                    "The port is reported to standard out as \"Listening at : [port]\".")
+        private Integer port;
+
+        @CommandLine.Option(names = {"-n", "--network"},
+                description = "{all | CIDR mask} : launch a server that supports remote" +
+                    "connections, from all addresses or matching mask. " +
+                    "Implies --port auto if not otherwise specified.")
+        private String network;
+
+        @CommandLine.Option(names = {"-i", "--interactive"},
+                description = {"allow for controlling the hub via PCL commands over the command line."})
+        private boolean interactive;
+
+        @CommandLine.Option(names = "--child",
+                description = "Configure the process to run as a child process. " +
+                    "Implies --port auto unless specified.")
+        private boolean child;
+
+        @CommandLine.Parameters(description = "Extra command line arguments.")
+        private List<String> extraArgs;
+
+        private final Launcher.Context context;
+
+        private Exec(Launcher.Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public Integer call() throws Exception {
+
+            if (child) {
+                if (port == null) {
+                    port = 0;
+                    // script == null?
                 }
+            }
+
+            final boolean requireServer = network != null || port != null;
+            if (requireServer && port == null) {
+                port = 0;
+            }
+            final boolean allowRemote = requireServer && network != null;
+
+            final String cidr;
+            if (allowRemote && !network.equalsIgnoreCase("all")) {
+                cidr = network;
+            } else {
+                cidr = null;
+            }
+
+            final String script;
+            if (file != null) {
+                file = file.getAbsoluteFile();
                 if (file.isDirectory()) {
                     file = new File(file, "project.pxp");
                 }
-                String script = Files.readString(file.toPath());
-                script = "set _PWD " + file.getParentFile().toURI() + "\n" + script;
-                exts.add(new NonGuiPlayer(List.of(script)));
+                script = "set _PWD " + file.getParentFile().toURI() + "\n"
+                        + Files.readString(file.toPath());
+            } else {
+                script = null;
             }
-            exts.add(new TerminalIO());
-            var builder = Hub.builder();
-            builder.setCoreRootFactory(sf);
-            exts.forEach(builder::addExtension);
-            var main = new MainThreadImpl();
-            builder.extendLookup(main);
-            var hub = builder.build();
-            hub.start();
-            main.run(hub);
-        } catch (Exception ex) {
-            Logger.getLogger(Launcher.class.getName()).log(Level.SEVERE, null, ex);
-            System.exit(1);
-        }
-    }
-    
-    private void processChild(String[] args) {
-        int port = 0;
-        try {
-            var main = new MainThreadImpl();
-            while (true) {
-                NetworkCoreFactory sf = NetworkCoreFactory.builder()
-                        .enableServer()
-                        .serverPort(port)
+
+            if (!requireServer && !interactive && file == null) {
+                return 1;
+            }
+
+            final var main = new MainThreadImpl();
+
+            do {
+                var coreBuilder = NetworkCoreFactory.builder()
                         .childLauncher(new ChildLauncherImpl(context))
-                        .exposeServices(List.of(CodeCompilerService.class))
-                        .build();
-                List<Root> exts = new ArrayList<>();
-                exts.add(new TerminalIO());
-                var builder = Hub.builder();
-                builder.setCoreRootFactory(sf);
-                exts.forEach(builder::addExtension);
-                builder.extendLookup(main);
-                var hub = builder.build();
+                        .exposeServices(List.of(CodeCompilerService.class));
+
+                if (requireServer) {
+                    coreBuilder.enableServer();
+                    coreBuilder.serverPort(port);
+                }
+
+                if (allowRemote && cidr != null) {
+                    coreBuilder.allowRemoteServerConnection(cidr);
+                } else if (allowRemote) {
+                    coreBuilder.allowRemoteServerConnection();
+                }
+
+                var coreFactory = coreBuilder.build();
+
+                var hubBuilder = Hub.builder()
+                        .setCoreRootFactory(coreFactory)
+                        .extendLookup(main);
+                if (script != null) {
+                    hubBuilder.addExtension(new ScriptRunner(List.of(script)));
+                }
+                if (interactive) {
+                    hubBuilder.addExtension(new FallbackTerminalIO());
+                }
+
+                var hub = hubBuilder.build();
                 hub.start();
-                var serverInfo = sf.awaitInfo(30, TimeUnit.SECONDS);
-                port = serverInfo.serverAddress()
-                        .filter(a -> a instanceof InetSocketAddress)
-                        .map(a -> (InetSocketAddress) a)
-                        .orElseThrow().getPort();
-                System.out.println(LISTENING_STATUS + port);
+
+                if (requireServer) {
+                    var serverInfo = coreFactory.awaitInfo(30, TimeUnit.SECONDS);
+                    port = serverInfo.serverAddress()
+                            .filter(a -> a instanceof InetSocketAddress)
+                            .map(a -> (InetSocketAddress) a)
+                            .orElseThrow().getPort();
+                    System.out.println(LISTENING_STATUS + port);
+                }
                 main.run(hub);
-            }
-            
-        } catch (Exception ex) {
-            Logger.getLogger(Launcher.class.getName()).log(Level.SEVERE, null, ex);
-            System.exit(1);
+
+            } while (requireServer);
+
+            return 0;
         }
+
     }
-    
-    public static interface Context {
-        
-        public ProcessBuilder createChildProcessBuilder(List<String> javaOptions,
-                List<String> arguments);
-        
+
+    private static class PortConverter implements CommandLine.ITypeConverter<Integer> {
+
+        @Override
+        public Integer convert(String arg0) throws Exception {
+            if (arg0.equalsIgnoreCase("auto")) {
+                return 0;
+            }
+            int port = Integer.parseInt(arg0);
+            if (port < 0 || port > 65535) {
+                throw new IllegalArgumentException("Port value out of range");
+            }
+            return port;
+        }
+
     }
-    
+
     private static class MainThreadImpl implements MainThread {
-        
+
         private final Thread main;
         private final BlockingQueue<Runnable> queue;
-        
+
         private MainThreadImpl() {
             this.main = Thread.currentThread();
             this.queue = new LinkedBlockingQueue<>();
         }
-        
+
         @Override
         public void runLater(Runnable task) {
             queue.add(task);
         }
-        
+
         @Override
         public boolean isMainThread() {
             return Thread.currentThread() == main;
         }
-        
+
         private void run(Hub hub) {
             while (hub.isAlive()) {
                 try {
@@ -190,7 +289,7 @@ public class Launcher {
                                     "", t);
                 }
             }
-            
+
             drain:
             for (;;) {
                 try {
@@ -207,56 +306,7 @@ public class Launcher {
                 }
             }
         }
-        
+
     }
-    
+
 }
-
-//
-//    private void processScript(Env env, String[] args) throws CommandException {
-//        if (args.length < 1) {
-//            throw new CommandException(1, "Too many script files specified on command line.");
-//        }
-//        String script;
-//        try {
-//            script = loadScript(env, args[0]);
-//        } catch (Exception ex) {
-//            LOG.log(Level.SEVERE, "Error loading script file", ex);
-//            throw new CommandException(1, "Error loading script file.");
-//        }
-//        try {
-//            Hub hub = Hub.builder()
-//                    .addExtension(new NonGuiPlayer(Collections.singletonList(script)))
-//                    .build();
-//            hub.start();
-//            hub.await();
-//        } catch (Exception ex) {
-//            throw new CommandException(1, "Error starting hub");
-//        }
-//    }
-//
-//    private String loadScript(Env env, String filename) throws IOException {
-//
-//        LOG.log(Level.FINE, "File : {0}", filename);
-//        File f = new File(filename);
-//        if (!f.isAbsolute()) {
-//            f = new File(env.getCurrentDirectory(), filename);
-//        }
-//        LOG.log(Level.FINE, "java.io.File : {0}", f);
-//        FileObject target = FileUtil.toFileObject(f);
-//        if (target == null) {
-//            LOG.log(Level.FINE, "Can't find script file");
-//            throw new IOException("Can't find script file");
-//        }
-//        if (target.isFolder()) {
-//            target = target.getFileObject(PROJECT_PXP);
-//            if (target == null) {
-//                throw new IOException("No project file found in target folder");
-//            }
-//        }
-//        LOG.log(Level.FINE, "Loading script : {0}", target);
-//        String script = target.asText();
-//        script = "set _PWD " + FileUtil.toFile(target.getParent()).toURI() + "\n" + script;
-//        return script;
-//    }
-

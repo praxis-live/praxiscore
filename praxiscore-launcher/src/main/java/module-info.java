@@ -9,6 +9,10 @@ module org.praxislive.launcher {
     requires org.praxislive.hub;
     requires org.praxislive.hub.net;
     
+    requires info.picocli;
+    
     exports org.praxislive.launcher;
+    
+    opens org.praxislive.launcher to info.picocli;
 
 }

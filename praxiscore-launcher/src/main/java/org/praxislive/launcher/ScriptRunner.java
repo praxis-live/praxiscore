@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -43,15 +43,15 @@ import org.praxislive.core.types.PError;
 /**
  *
  */
-class NonGuiPlayer extends AbstractRoot {
+class ScriptRunner extends AbstractRoot {
 
-    private final static Logger LOG = Logger.getLogger(NonGuiPlayer.class.getName());
+    private final static Logger LOG = Logger.getLogger(ScriptRunner.class.getName());
     private final String SCRIPT_CONTROL_ID = "_script-control";
     
     private final ScriptControl scriptControl;
     private final Map<String, Control> controls;
 
-    public NonGuiPlayer(List<String> scripts) {
+    public ScriptRunner(List<String> scripts) {
         if (scripts == null) {
             throw new NullPointerException();
         }
