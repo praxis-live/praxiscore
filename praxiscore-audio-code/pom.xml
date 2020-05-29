@@ -32,11 +32,6 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-internal-audioio</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.jaudiolibs</groupId>
       <artifactId>audioops-impl</artifactId>
       <version>1.0.0</version>

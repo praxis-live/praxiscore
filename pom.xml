@@ -39,7 +39,6 @@
     <module>praxiscore-audio</module>
     <module>praxiscore-audio-code</module>
     <module>praxiscore-audio-components</module>
-    <module>praxiscore-internal-audioio</module>
     <module>praxiscore-tinkerforge</module>
     <module>praxiscore-tinkerforge-lib</module>
     <module>praxiscore-gui</module>
