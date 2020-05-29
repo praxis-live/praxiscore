@@ -27,7 +27,7 @@ import org.praxislive.audio.AudioContext;
 import org.praxislive.audio.AudioPort;
 import org.praxislive.audio.ClientRegistrationException;
 import org.jaudiolibs.pipes.Pipe;
-import org.jaudiolibs.pipes.impl.Placeholder;
+import org.jaudiolibs.pipes.Placeholder;
 import org.praxislive.audio.DefaultAudioOutputPort;
 import org.praxislive.base.AbstractComponent;
 import org.praxislive.base.AbstractProperty;

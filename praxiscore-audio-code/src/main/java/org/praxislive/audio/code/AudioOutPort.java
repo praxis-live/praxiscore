@@ -23,6 +23,7 @@
 package org.praxislive.audio.code;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import org.praxislive.audio.AudioPort;
 import org.praxislive.audio.code.userapi.AudioOut;
 import org.praxislive.code.CodeConnector;
@@ -84,30 +85,33 @@ class AudioOutPort extends DefaultAudioOutputPort {
         public void process(Pipe sink, Buffer buffer, long time) {
             try {
                 super.process(sink, buffer, time);
+                if (!isProcessRequired(time)) {
+                    last = 0;
+                    switchAndRamp = false;
+                }
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
         }
         
         @Override
-        protected void process(Buffer buffer, boolean rendering) {
-            if (rendering) {
-                float[] data = buffer.getData();
-                int bsize = buffer.getSize();
-                if (switchAndRamp) {
-                    float factor = last - data[0];
-                    float delta = factor / bsize;
-                    for (int i = 0; i < bsize; i++) {
-                        data[i] = data[i] + factor;
-                        factor -= delta;
-                    }
-                    switchAndRamp = false;
-                } else {
-                    last = data[bsize - 1];
+        protected void process(List<Buffer> list) {
+            process(list.get(0));
+        }
+        
+        void process(Buffer buffer) {
+            float[] data = buffer.getData();
+            int bsize = buffer.getSize();
+            if (switchAndRamp) {
+                float factor = last - data[0];
+                float delta = factor / bsize;
+                for (int i = 0; i < bsize; i++) {
+                    data[i] = data[i] + factor;
+                    factor -= delta;
                 }
-            } else {
-                last = 0;
                 switchAndRamp = false;
+            } else {
+                last = data[bsize - 1];
             }
         }
         

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.praxislive.audio.code.userapi.AudioIn;
 import org.praxislive.audio.code.userapi.AudioOut;
-import org.praxislive.audio.code.userapi.AudioTable;
 import org.praxislive.audio.code.userapi.UGen;
 import org.praxislive.code.CodeConnector;
 import org.praxislive.code.CodeFactory;
@@ -36,10 +35,10 @@ import org.praxislive.code.userapi.In;
 import org.praxislive.code.userapi.Out;
 import org.praxislive.code.userapi.P;
 import org.jaudiolibs.pipes.Pipe;
+import org.jaudiolibs.pipes.units.AudioTable;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnector<D> {
 

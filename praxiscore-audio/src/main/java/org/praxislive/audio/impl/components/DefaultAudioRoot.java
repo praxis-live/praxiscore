@@ -38,9 +38,7 @@ import org.jaudiolibs.audioservers.AudioServer;
 import org.jaudiolibs.audioservers.AudioServerProvider;
 import org.jaudiolibs.audioservers.ext.ClientID;
 import org.jaudiolibs.audioservers.ext.Device;
-import org.jaudiolibs.pipes.BufferRateListener;
-import org.jaudiolibs.pipes.BufferRateSource;
-import org.jaudiolibs.pipes.impl.BusClient;
+import org.jaudiolibs.pipes.client.PipesAudioClient;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.DefaultExecutionContext;
@@ -71,7 +69,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     private Map<String, LibraryInfo> libraries;
     private AudioContext.InputClient inputClient;
     private AudioContext.OutputClient outputClient;
-    private BusClient bus;
+    private PipesAudioClient bus;
     private AudioDelegate delegate;
     private AudioServer server;
 
@@ -227,12 +225,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             if (outputClient == null) {
                 setIdle();
             }
-            bus = new BusClient(blockSize.value.toIntValue(),
+            bus = new PipesAudioClient(blockSize.value.toIntValue(),
                     inputClient == null ? 0 : inputClient.getInputCount(),
                     outputClient.getOutputCount());
             delegate = new AudioDelegate(getRootHub().getClock());
-            bus.addBufferRateListener(delegate);
-            bus.addConfigurationListener(delegate);
+            bus.addListener(delegate);
             if (inputClient != null) {
                 makeInputConnections();
             }
@@ -247,7 +244,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     }
 
-    private AudioServer createServer(BusClient bus) throws Exception {
+    private AudioServer createServer(PipesAudioClient bus) throws Exception {
         float srate = sampleRate.value.toIntValue();
         int buffersize = getBuffersize();
 
@@ -405,7 +402,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         if (s != null) {
             s.shutdown();
         }
-        BusClient b = bus;
+        PipesAudioClient b = bus;
         bus = null;
         if (b != null) {
             b.disconnectAll();
@@ -418,7 +415,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     }
 
     private class AudioDelegate extends Delegate
-            implements BufferRateListener, BusClient.ConfigurationListener {
+            implements PipesAudioClient.Listener {
 
         private final long offset;
 
@@ -437,9 +434,9 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
 
         @Override
-        public void nextBuffer(BufferRateSource source) {
+        public void process() {
             try {
-                boolean ok = doUpdate(source.getTime() - offset);
+                boolean ok = doUpdate(bus.getTime() - offset);
                 if (!ok) {
                     server.shutdown();
                 }

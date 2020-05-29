@@ -22,14 +22,15 @@
  */
 package org.praxislive.audio.code.userapi;
 
-import org.jaudiolibs.pipes.impl.SingleInOut;
+import org.jaudiolibs.pipes.Pipe;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
-public abstract class AudioOut extends SingleInOut {
+public abstract class AudioOut extends Pipe {
 
-    
-    
+    public AudioOut() {
+        super(1, 1);
+    }
+
 }

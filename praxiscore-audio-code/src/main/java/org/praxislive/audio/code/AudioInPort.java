@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@
 package org.praxislive.audio.code;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import org.praxislive.audio.AudioPort;
 import org.praxislive.audio.code.userapi.AudioIn;
 import org.praxislive.code.CodeConnector;
@@ -39,7 +40,6 @@ import org.praxislive.audio.DefaultAudioInputPort;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class AudioInPort extends DefaultAudioInputPort {
 
@@ -76,8 +76,7 @@ class AudioInPort extends DefaultAudioInputPort {
     static class AudioInPipe extends AudioIn {
 
         @Override
-        protected void process(Buffer buffer, boolean rendering) {
-
+        protected void process(List<Buffer> list) {
         }
 
     }

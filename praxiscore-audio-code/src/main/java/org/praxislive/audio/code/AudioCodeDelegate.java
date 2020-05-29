@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,17 +24,16 @@ package org.praxislive.audio.code;
 
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
-import org.praxislive.audio.code.userapi.Add;
-import org.praxislive.audio.code.userapi.Mod;
-import org.praxislive.audio.code.userapi.OpGen;
-import org.praxislive.audio.code.userapi.Tee;
+import org.jaudiolibs.pipes.Add;
 import org.praxislive.code.DefaultCodeDelegate;
 import org.jaudiolibs.pipes.Pipe;
-import org.praxislive.audio.code.userapi.AudioTable;
+import org.jaudiolibs.pipes.Tee;
+import org.jaudiolibs.pipes.units.AudioTable;
+import org.jaudiolibs.pipes.units.Fn;
+import org.jaudiolibs.pipes.units.Mod;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AudioCodeDelegate extends DefaultCodeDelegate {
 
@@ -104,8 +103,8 @@ public class AudioCodeDelegate extends DefaultCodeDelegate {
         return new Tee();
     }
     
-    public final OpGen fn(DoubleUnaryOperator function) {
-        return new OpGen().function(function);
+    public final Fn fn(DoubleUnaryOperator function) {
+        return new Fn(function);
     }
     
     public final double noteToFrequency(String note) {

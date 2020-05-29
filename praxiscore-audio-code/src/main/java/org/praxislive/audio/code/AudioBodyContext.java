@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,7 +26,6 @@ import org.praxislive.code.ClassBodyContext;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AudioBodyContext extends ClassBodyContext<AudioCodeDelegate> {
     
@@ -35,6 +34,8 @@ public class AudioBodyContext extends ClassBodyContext<AudioCodeDelegate> {
     
     private final static String[] IMPORTS = CodeUtils.join(
             CodeUtils.defaultImports(), new String[]{
+                "org.jaudiolibs.pipes.*",
+                "org.jaudiolibs.pipes.units.*",
                 "org.praxislive.audio.code.userapi.*",
                 "static org.praxislive.audio.code.userapi.AudioConstants.*"
             });

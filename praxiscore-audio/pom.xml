@@ -28,13 +28,18 @@
     </dependency>
     <dependency>
       <groupId>org.jaudiolibs</groupId>
-      <artifactId>pipes</artifactId>
-      <version>1.1.0</version>
+      <artifactId>audioops-api</artifactId>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.jaudiolibs</groupId>
       <artifactId>audioservers-api</artifactId>
       <version>1.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jaudiolibs</groupId>
+      <artifactId>pipes-core</artifactId>
+      <version>2.0.0-beta-1</version>
     </dependency>
   </dependencies>
   

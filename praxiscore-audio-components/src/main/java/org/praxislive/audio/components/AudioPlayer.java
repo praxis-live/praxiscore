@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,12 +33,13 @@ import org.praxislive.core.*;
 import org.praxislive.core.types.*;
 import org.praxislive.code.userapi.*;
 import static org.praxislive.code.userapi.Constants.*;
+import org.jaudiolibs.pipes.*;
+import org.jaudiolibs.pipes.units.*;
 import org.praxislive.audio.code.userapi.*;
 import static org.praxislive.audio.code.userapi.AudioConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 @GenerateTemplate(AudioPlayer.TEMPLATE_PATH)
 public class AudioPlayer extends AudioCodeDelegate {

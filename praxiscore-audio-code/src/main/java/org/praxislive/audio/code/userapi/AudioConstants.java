@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,14 +22,15 @@
  */
 package org.praxislive.audio.code.userapi;
 
+import org.jaudiolibs.pipes.units.Waveform;
+
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AudioConstants {
     
     private AudioConstants() {}
-    
+
     public final static Waveform SINE = Waveform.Sine;
     public final static Waveform SQUARE = Waveform.Square;
     public final static Waveform SAW = Waveform.Saw;

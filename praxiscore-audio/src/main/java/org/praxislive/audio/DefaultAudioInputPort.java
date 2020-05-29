@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,18 +30,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.praxislive.util.PortListenerSupport;
 import org.jaudiolibs.pipes.Pipe;
-import org.jaudiolibs.pipes.impl.Mixer;
+import org.jaudiolibs.pipes.Add;
 
 /**
  *
- * @author Neil C Smith
  */
 public class DefaultAudioInputPort extends AudioPort.Input {
 
     private final static Logger logger = Logger.getLogger(DefaultAudioInputPort.class.getName());
     private Pipe sink;
     private Pipe portSink;
-    private Mixer mixer;
+    private Add mixer;
     private List<AudioPort.Output> connections;
     private boolean multiChannelCapable;
     private PortListenerSupport pls;
@@ -117,7 +116,7 @@ public class DefaultAudioInputPort extends AudioPort.Input {
         Pipe[] sources = removeSources(sink);
         try {
             if (mixer == null) {
-                mixer = new Mixer(16); // @TODO make channels configurable
+                mixer = new Add(16); // @TODO make channels configurable
             }
             sink.addSource(mixer);
             for (Pipe source : sources) {

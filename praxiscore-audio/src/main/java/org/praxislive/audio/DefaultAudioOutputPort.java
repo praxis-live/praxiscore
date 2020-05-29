@@ -30,7 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.praxislive.util.PortListenerSupport;
 import org.jaudiolibs.pipes.Pipe;
-import org.jaudiolibs.pipes.impl.Splitter;
+import org.jaudiolibs.pipes.Tee;
 
 /**
  *
@@ -41,7 +41,7 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
     private final static Logger logger = Logger.getLogger(DefaultAudioOutputPort.class.getName());
     private Pipe source;
     private Pipe portSource;
-    private Splitter splitter;
+    private Tee splitter;
     private List<AudioPort.Input> connections;
     private boolean multiChannelCapable;
     private PortListenerSupport pls;
@@ -125,7 +125,7 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
         Pipe[] sinks = removeSinks(source);
         try {
             if (splitter == null) {
-                splitter = new Splitter(16); // @TODO make channels configurable
+                splitter = new Tee(16); // @TODO make channels configurable
             }
             splitter.addSource(source);
             for (Pipe sink : sinks) {

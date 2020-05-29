@@ -41,6 +41,16 @@
       <artifactId>audioops-impl</artifactId>
       <version>1.0.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.jaudiolibs</groupId>
+      <artifactId>pipes-units</artifactId>
+      <version>2.0.0-beta-1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jaudiolibs</groupId>
+      <artifactId>pipes-units-javasound</artifactId>
+      <version>2.0.0-beta-1</version>
+    </dependency>
   </dependencies>
   
 </project>
