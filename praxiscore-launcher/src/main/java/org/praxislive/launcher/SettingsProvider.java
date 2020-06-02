@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,7 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.settings;
+package org.praxislive.launcher;
 
 import java.util.Map;
 import java.util.Properties;
@@ -28,19 +28,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
+import org.praxislive.core.Settings;
 
 /**
  *
- * @author nsigma
  */
-class DefaultProvider extends Settings.Provider {
+public class SettingsProvider extends Settings.Provider {
 
-    private final static Preferences PREFS = Preferences.userNodeForPackage(DefaultProvider.class);
-    private final static Logger LOGGER = Logger.getLogger(DefaultProvider.class.getName());
+    private final static Preferences PREFS = Preferences.userNodeForPackage(SettingsProvider.class);
+    private final static Logger LOGGER = Logger.getLogger(SettingsProvider.class.getName());
     private final static String SYS_PREFIX = "praxis.";
     private final Map<String, String> map = new ConcurrentHashMap<String, String>();
 
-    DefaultProvider() {
+    public SettingsProvider() {
         initPersisted();
         initSystemProperties();
     }

@@ -6,7 +6,6 @@ module org.praxislive.audio {
     requires org.praxislive.core;
     requires org.praxislive.base;
     requires org.praxislive.util;
-    requires org.praxislive.settings;
     requires org.jaudiolibs.pipes;
     requires org.jaudiolibs.audioops;
     requires org.jaudiolibs.audioservers;

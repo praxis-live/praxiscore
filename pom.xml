@@ -26,7 +26,6 @@
     <module>praxiscore-bin</module>
     <module>praxiscore-data</module>
     <module>praxiscore-video</module>
-    <module>praxiscore-settings</module>
     <module>praxiscore-video-code</module>
     <module>praxiscore-video-components</module>
     <module>praxiscore-video-gstreamer</module>

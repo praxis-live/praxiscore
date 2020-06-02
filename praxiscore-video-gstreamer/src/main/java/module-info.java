@@ -12,7 +12,6 @@ module org.praxislive.video.gstreamer {
     requires org.praxislive.logging;
     requires org.praxislive.video.code;
     requires org.praxislive.video;
-    requires org.praxislive.settings;
     
     exports org.praxislive.video.gstreamer;
     exports org.praxislive.video.gstreamer.configuration;

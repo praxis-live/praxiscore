@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,10 @@
 package org.praxislive.video.gstreamer.configuration;
 
 import com.sun.jna.Platform;
-import org.praxislive.settings.Settings;
+import org.praxislive.core.Settings;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class GStreamerSettings {
 

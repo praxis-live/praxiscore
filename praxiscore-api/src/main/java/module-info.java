@@ -12,4 +12,5 @@ module org.praxislive.core {
     uses org.praxislive.core.Lookup;
     uses org.praxislive.core.Port.TypeProvider;
     uses org.praxislive.core.Protocol.TypeProvider;
+    uses org.praxislive.core.Settings.Provider;
 }

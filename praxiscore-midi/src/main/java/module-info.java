@@ -7,7 +7,6 @@ module org.praxislive.midi {
     requires org.praxislive.core;
     requires org.praxislive.base;
     requires org.praxislive.util;
-    requires org.praxislive.settings;
     
     provides org.praxislive.core.services.ComponentFactoryProvider with
             org.praxislive.midi.components.MidiFactoryProvider;

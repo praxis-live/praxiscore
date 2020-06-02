@@ -21,11 +21,6 @@
       <artifactId>praxiscore-base</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-settings</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
   
 </project>
