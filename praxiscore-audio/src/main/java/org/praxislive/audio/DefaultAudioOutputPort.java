@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,25 +26,27 @@ import org.praxislive.core.Port;
 import org.praxislive.core.PortConnectionException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.praxislive.util.PortListenerSupport;
 import org.jaudiolibs.pipes.Pipe;
 import org.jaudiolibs.pipes.Tee;
 
 /**
  *
- * @author Neil C Smith
  */
 public class DefaultAudioOutputPort extends AudioPort.Output {
 
     private final static Logger logger = Logger.getLogger(DefaultAudioOutputPort.class.getName());
+    
+    private final List<AudioPort.Input> connections;
+    private final List<PortListener> listeners;
+    
     private Pipe source;
     private Pipe portSource;
     private Tee splitter;
-    private List<AudioPort.Input> connections;
     private boolean multiChannelCapable;
-    private PortListenerSupport pls;
 
     public DefaultAudioOutputPort(Pipe source) {
         this(source, false);
@@ -57,10 +59,11 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
         this.source = source;
         this.portSource = source;
         this.multiChannelCapable = multiChannelCapable;
-        connections = new ArrayList<AudioPort.Input>();
-        pls = new PortListenerSupport(this);
+        connections = new ArrayList<>();
+        listeners = new CopyOnWriteArrayList<>();
     }
 
+    @Override
     public void connect(Port port) throws PortConnectionException {
         if (port instanceof AudioPort.Input) {
             AudioPort.Input aport = (AudioPort.Input) port;
@@ -80,12 +83,13 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
                 }
                 throw ex;
             }
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         } else {
             throw new PortConnectionException();
         }
     }
 
+    @Override
     public void disconnect(Port port) {
         if (port instanceof AudioPort.Input) {
             AudioPort.Input aport = (AudioPort.Input) port;
@@ -95,27 +99,31 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
                 if (connections.size() == 1) {
                     switchToSingleChannel();
                 }
-                pls.fireListeners();
+                listeners.forEach(l -> l.connectionsChanged(this));
             }
         }
     }
 
+    @Override
     public void disconnectAll() {
-        for (AudioPort.Input port : getConnections()) {
+        for (AudioPort.Input port : connections()) {
             disconnect(port);
         }
     }
 
-    public AudioPort.Input[] getConnections() {
-        return connections.toArray(new AudioPort.Input[connections.size()]);
+    @Override
+    public List<AudioPort.Input> connections() {
+        return List.copyOf(connections);
     }
 
+    @Override
     public void addListener(PortListener listener) {
-        pls.addListener(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
+    @Override
     public void removeListener(PortListener listener) {
-        pls.removeListener(listener);
+        listeners.remove(listener);
     }
 
     private void switchToMultichannel() {

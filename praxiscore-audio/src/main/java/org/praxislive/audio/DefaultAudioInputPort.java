@@ -26,9 +26,10 @@ import org.praxislive.core.PortConnectionException;
 import org.praxislive.audio.AudioPort.Output;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.praxislive.util.PortListenerSupport;
 import org.jaudiolibs.pipes.Pipe;
 import org.jaudiolibs.pipes.Add;
 
@@ -38,12 +39,14 @@ import org.jaudiolibs.pipes.Add;
 public class DefaultAudioInputPort extends AudioPort.Input {
 
     private final static Logger logger = Logger.getLogger(DefaultAudioInputPort.class.getName());
+    
+    private final List<AudioPort.Output> connections;
+    private final List<PortListener> listeners;
+    
     private Pipe sink;
     private Pipe portSink;
     private Add mixer;
-    private List<AudioPort.Output> connections;
     private boolean multiChannelCapable;
-    private PortListenerSupport pls;
     
     public DefaultAudioInputPort(Pipe sink) {
         this(sink, false);
@@ -56,26 +59,30 @@ public class DefaultAudioInputPort extends AudioPort.Input {
         this.sink = sink;
         this.portSink = sink;
         this.multiChannelCapable = multiChannelCapable;
-        connections = new ArrayList<AudioPort.Output>();
-        pls = new PortListenerSupport(this);
+        connections = new ArrayList<>();
+        listeners = new CopyOnWriteArrayList<>();
     }
 
+    @Override
     public void disconnectAll() {
-        for (AudioPort.Output connection : getConnections()) {
+        for (AudioPort.Output connection : connections()) {
             disconnect(connection);
         }
     }
 
-    public AudioPort.Output[] getConnections() {
-        return connections.toArray(new AudioPort.Output[connections.size()]);
+    @Override
+    public List<AudioPort.Output> connections() {
+        return List.copyOf(connections);
     }
-
+    
+    @Override
     public void addListener(PortListener listener) {
-        pls.addListener(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
+    @Override
     public void removeListener(PortListener listener) {
-        pls.removeListener(listener);
+        listeners.remove(listener);
     }
 
     @Override
@@ -89,7 +96,7 @@ public class DefaultAudioInputPort extends AudioPort.Input {
         try {
             portSink.addSource(source);
             connections.add(port);
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         } catch (Exception ex) {
             if (connections.size() == 1) {
                 switchToSingleChannel();
@@ -105,7 +112,7 @@ public class DefaultAudioInputPort extends AudioPort.Input {
             if (connections.size() == 1) {
                 switchToSingleChannel();
             }
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
     }
 
@@ -128,7 +135,7 @@ public class DefaultAudioInputPort extends AudioPort.Input {
             removeSources(mixer);
             removeSources(sink);
             connections.clear();
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
     }
 
@@ -148,7 +155,7 @@ public class DefaultAudioInputPort extends AudioPort.Input {
             removeSources(sink);
             removeSources(mixer);
             connections.clear();
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
 
     }

@@ -297,8 +297,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
         @Override
         public void connectionsChanged(Port source) {
-            if (Arrays.asList(p1.getConnections()).contains(p2)
-                    && Arrays.asList(p2.getConnections()).contains(p1)) {
+            if (p1.isConnectedTo(p2) && p2.isConnectedTo(p1)) {
             } else {
                 LOG.log(Level.FINEST, "Removing connection\n{0}", connection);
                 connections.remove(connection);

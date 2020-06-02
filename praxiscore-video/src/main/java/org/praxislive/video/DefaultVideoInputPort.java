@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,9 +25,11 @@ import org.praxislive.core.PortListener;
 import org.praxislive.core.PortConnectionException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.praxislive.util.PortListenerSupport;
+import org.praxislive.core.Port;
 import org.praxislive.video.pipes.VideoPipe;
 import org.praxislive.video.pipes.impl.MultiInOut;
 import org.praxislive.video.render.Surface;
@@ -36,7 +38,6 @@ import org.praxislive.video.render.ops.Blit;
 
 /**
  *
- * @author Neil C Smith
  */
 public class DefaultVideoInputPort extends VideoPort.Input {
     
@@ -45,7 +46,7 @@ public class DefaultVideoInputPort extends VideoPort.Input {
 
     private final VideoPipe sink;
     private final List<VideoPort.Output> connections;
-    private final PortListenerSupport pls;
+    private final List<PortListener> listeners;
     
     private VideoPipe portSink;
     private Mixer mixer;
@@ -56,18 +57,20 @@ public class DefaultVideoInputPort extends VideoPort.Input {
         }
         this.sink = sink;
         this.portSink = sink;
-        connections = new ArrayList<Output>(MAX_CONNECTIONS);
-        pls = new PortListenerSupport(this);
+        connections = new ArrayList<>(MAX_CONNECTIONS);
+        listeners = new CopyOnWriteArrayList<>();
     }
 
+    @Override
     public void disconnectAll() {
-        for (VideoPort.Output connection : getConnections()) {
+        for (VideoPort.Output connection : connections()) {
             disconnect(connection);
         }
     }
 
-    public VideoPort.Output[] getConnections() {
-        return connections.toArray(new VideoPort.Output[connections.size()]);
+    @Override
+    public List<VideoPort.Output> connections() {
+        return List.copyOf(connections);
     }
 
     @Override
@@ -81,7 +84,7 @@ public class DefaultVideoInputPort extends VideoPort.Input {
         try {
             portSink.addSource(source);
             connections.add(port);
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         } catch (Exception ex) {
             if (connections.size() == 1) {
                 switchToSingleChannel();
@@ -97,16 +100,18 @@ public class DefaultVideoInputPort extends VideoPort.Input {
             if (connections.size() == 1) {
                 switchToSingleChannel();
             }
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
     }
 
+    @Override
     public void addListener(PortListener listener) {
-        pls.addListener(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
+    @Override
     public void removeListener(PortListener listener) {
-        pls.removeListener(listener);
+        listeners.remove(listener);
     }
 
      private void switchToMultichannel() {
@@ -129,7 +134,7 @@ public class DefaultVideoInputPort extends VideoPort.Input {
             removeSources(mixer);
             removeSources(sink);
             connections.clear();
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
     }
 
@@ -150,7 +155,7 @@ public class DefaultVideoInputPort extends VideoPort.Input {
             removeSources(sink);
             removeSources(mixer);
             connections.clear();
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
 
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,26 +23,25 @@ package org.praxislive.code;
 
 import org.praxislive.core.PortListener;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.praxislive.core.Value;
 import org.praxislive.core.ControlPort;
-import org.praxislive.core.Port;
 import org.praxislive.core.PortConnectionException;
 import org.praxislive.core.PortInfo;
 
 /**
  *
- * @author Neil C Smith
  */
 public class ControlInput extends ControlPort.Input {
     
     public final static PortInfo INFO =
             PortInfo.create(ControlPort.class, PortInfo.Direction.IN, null);
     
-    private final PortListenerSupport pls;
-
-    private ControlPort.Output[] connections;
+    private final List<ControlPort.Output> connections;
+    private final List<PortListener> listeners;
+    
     private Link link;
 
     public ControlInput(Link link) {
@@ -50,8 +49,8 @@ public class ControlInput extends ControlPort.Input {
             throw new NullPointerException();
         }
         this.link = link;
-        connections = new ControlPort.Output[0];
-        pls = new PortListenerSupport(this);
+        connections = new ArrayList<>();
+        listeners = new CopyOnWriteArrayList<>();
     }
 
     public void setLink(Link link) {
@@ -67,52 +66,40 @@ public class ControlInput extends ControlPort.Input {
 
     @Override
     protected void addControlOutputPort(ControlPort.Output port) throws PortConnectionException {
-        List<ControlPort.Output> cons = Arrays.asList(connections);
-        if (cons.contains(port)) {
+        if (connections.contains(port)) {
             throw new PortConnectionException();
         }
-        cons = new ArrayList<>(cons);
-        cons.add(port);
-        connections = cons.toArray(new ControlPort.Output[cons.size()]);
-        pls.fireListeners();
+        connections.add(port);
+        listeners.forEach(l -> l.connectionsChanged(this));
     }
 
     @Override
     protected void removeControlOutputPort(ControlPort.Output port) {
-        List<ControlPort.Output> cons = Arrays.asList(connections);
-        int idx = cons.indexOf(port);
-        if (idx > -1) {
-            cons = new ArrayList<>(cons);
-            cons.remove(idx);
-            connections = cons.toArray(new ControlPort.Output[cons.size()]);
-            pls.fireListeners();
+        if (connections.remove(port)) {
+            listeners.forEach(l -> l.connectionsChanged(this));
         }
     }
 
     @Override
     public void disconnectAll() {
-        if (connections.length == 0) {
-            return;
+        for (ControlPort.Output connection : connections()) {
+            disconnect(connection);
         }
-        for (ControlPort.Output port : connections) {
-            port.disconnect(this);
-        }
-        pls.fireListeners();
     }
 
     @Override
     public void addListener(PortListener listener) {
-        pls.addListener(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
     @Override
     public void removeListener(PortListener listener) {
-        pls.removeListener(listener);
+        listeners.remove(listener);
     }
 
     @Override
-    public Port[] getConnections() {
-        return Arrays.copyOf(connections, connections.length);
+    public List<ControlPort.Output> connections() {
+        return List.copyOf(connections);
     }
 
     @Override

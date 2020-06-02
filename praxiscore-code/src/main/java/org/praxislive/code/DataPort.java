@@ -104,15 +104,14 @@ public abstract class DataPort<T> implements Port {
 
         @Override
         public void disconnectAll() {
-            for (Output<T> connection : getConnections()) {
+            for (Output<T> connection : connections()) {
                 disconnect(connection);
             }
         }
 
         @Override
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        public Output<T>[] getConnections() {
-            return connections.toArray(new Output[connections.size()]);
+        public List<Output<T>> connections() {
+            return List.copyOf(connections);
         }
 
         @Override
@@ -270,15 +269,14 @@ public abstract class DataPort<T> implements Port {
 
         @Override
         public void disconnectAll() {
-            for (Input<T> port : getConnections()) {
+            for (Input<T> port : connections()) {
                 disconnect(port);
             }
         }
 
         @Override
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        public Input<T>[] getConnections() {
-            return connections.toArray(new Input[connections.size()]);
+        public List<Input<T>> connections() {
+            return List.copyOf(connections);
         }
 
         @Override

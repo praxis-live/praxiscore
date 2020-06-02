@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,16 +26,16 @@ import org.praxislive.core.Port;
 import org.praxislive.core.PortConnectionException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.praxislive.util.PortListenerSupport;
 import org.praxislive.video.pipes.VideoPipe;
 import org.praxislive.video.pipes.impl.MultiInOut;
 import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith
  */
 public class DefaultVideoOutputPort extends VideoPort.Output {
 
@@ -44,7 +44,7 @@ public class DefaultVideoOutputPort extends VideoPort.Output {
     
     private final VideoPipe source;
     private final List<VideoPort.Input> connections;
-    private final PortListenerSupport pls;
+    private final List<PortListener> listeners;
     
     private VideoPipe portSource;
     private Splitter splitter;
@@ -55,10 +55,11 @@ public class DefaultVideoOutputPort extends VideoPort.Output {
         }
         this.source = source;
         this.portSource = source;
-        connections = new ArrayList<Input>(MAX_CONNECTIONS);
-        pls = new PortListenerSupport(this);
+        connections = new ArrayList<>(MAX_CONNECTIONS);
+        listeners = new CopyOnWriteArrayList<>();
     }
 
+    @Override
     public void connect(Port port) throws PortConnectionException {
         if (port instanceof VideoPort.Input) {
             VideoPort.Input input = (VideoPort.Input) port;
@@ -77,13 +78,14 @@ public class DefaultVideoOutputPort extends VideoPort.Output {
                 }
                 throw ex;
             }
-            pls.fireListeners();
+            listeners.forEach(l -> l.connectionsChanged(this));
         } else {
             throw new PortConnectionException();
         }
 
     }
 
+    @Override
     public void disconnect(Port port) {
         if (port instanceof VideoPort.Input) {
             VideoPort.Input input = (VideoPort.Input) port;
@@ -93,27 +95,31 @@ public class DefaultVideoOutputPort extends VideoPort.Output {
                 if (connections.size() == 1) {
                     switchToSingleChannel();
                 }
-                pls.fireListeners();
+                listeners.forEach(l -> l.connectionsChanged(this));
             }
         }
     }
 
+    @Override
     public void disconnectAll() {
-        for (VideoPort.Input port : getConnections()) {
+        for (VideoPort.Input port : connections()) {
             disconnect(port);
         }
     }
 
-    public VideoPort.Input[] getConnections() {
-        return connections.toArray(new VideoPort.Input[connections.size()]);
+    @Override
+    public List<VideoPort.Input> connections() {
+        return List.copyOf(connections);
     }
 
+    @Override
     public void addListener(PortListener listener) {
-        pls.addListener(listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
+    @Override
     public void removeListener(PortListener listener) {
-        pls.removeListener(listener);
+        listeners.remove(listener);
     }
 
     private void switchToMultichannel() {
