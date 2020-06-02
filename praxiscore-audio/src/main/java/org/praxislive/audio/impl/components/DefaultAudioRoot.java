@@ -105,30 +105,30 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
                 .control("sample-rate", c -> c
-                .property()
-                .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
-                .input(a -> a
-                .number().min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
-                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .property()
+                    .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
+                    .input(a -> a
+                        .number().min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
+                        .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("block-size", c -> c
-                .property()
-                .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
-                .input(a -> a
-                .number().min(1).max(MAX_BLOCKSIZE)
-                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .property()
+                    .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
+                    .input(a -> a
+                        .number().min(1).max(MAX_BLOCKSIZE)
+                        .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("library", c -> c
-                .property()
-                .defaultValue(PString.EMPTY)
-                .input(a -> a
-                .string()
-                .emptyIsDefault()
-                .allowed(
-                        Stream.concat(Stream.of(""),
-                                libraries.keySet().stream().sorted())
-                                .toArray(String[]::new)
-                )
+                    .property()
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a
+                        .string()
+                        .emptyIsDefault()
+                        .allowed(
+                            Stream.concat(Stream.of(""),
+                                    libraries.keySet().stream().sorted())
+                                    .toArray(String[]::new)
+                        )
                 ))
         );
 
@@ -388,6 +388,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
         server.shutdown();
         bus.disconnectAll();
+        bus.removeListener(delegate);
         server = null;
         bus = null;
         delegate = null;
@@ -437,11 +438,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         public void process() {
             try {
                 boolean ok = doUpdate(bus.getTime() - offset);
-                if (!ok) {
+                if (!ok && server != null) {
                     server.shutdown();
                 }
             } catch (Exception ex) {
-                server.shutdown();
+//                server.shutdown();
             }
         }
 
