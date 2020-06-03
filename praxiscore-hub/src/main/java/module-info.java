@@ -6,7 +6,6 @@ module org.praxislive.hub {
     requires org.praxislive.base;
     requires org.praxislive.core;
     requires org.praxislive.script;
-    requires org.praxislive.util;
     
     exports org.praxislive.hub;
     

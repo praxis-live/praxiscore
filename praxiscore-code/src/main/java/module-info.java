@@ -7,7 +7,6 @@ module org.praxislive.code {
 
     requires org.praxislive.core;
     requires org.praxislive.logging;
-    requires org.praxislive.util;
     
     exports org.praxislive.code;
     exports org.praxislive.code.userapi;

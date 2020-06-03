@@ -29,10 +29,11 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.praxislive.util.ArrayUtils;
 
 /**
  *
@@ -43,13 +44,13 @@ public class TFContext {
     private final Map<String, Device> devices;
     private final Set<Device> locked;
     private final TFRoot root;
-    private Listener[] listeners;
+    private final List<Listener> listeners;
 
     TFContext(TFRoot root) {
         devices = new LinkedHashMap<>();
         locked = new HashSet<>();
         this.root = root;
-        listeners = new Listener[0];
+        listeners = new CopyOnWriteArrayList<>();
     }
 
     void addDevice(String uid, Class<? extends Device> type) throws Exception {
@@ -76,9 +77,7 @@ public class TFContext {
     }
 
     private void fireListeners() {
-        for (Listener listener : listeners) {
-            listener.stateChanged(this);
-        }
+        listeners.forEach(l -> l.stateChanged(this));
     }
 
 //    public <T extends Device> T acquireDevice(Class<T> type) {
@@ -161,11 +160,11 @@ public class TFContext {
     }
 
     public void addListener(Listener listener) {
-        listeners = ArrayUtils.add(listeners, listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
     public void removeListener(Listener listener) {
-        listeners = ArrayUtils.remove(listeners, listener);
+        listeners.remove(listener);
     }
 
     // @TODO change to deviceAdded, deviceRemoved, deviceReset?

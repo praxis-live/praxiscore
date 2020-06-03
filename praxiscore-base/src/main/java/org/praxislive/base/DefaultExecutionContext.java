@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,8 +21,10 @@
  */
 package org.praxislive.base;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.praxislive.core.ExecutionContext;
-import org.praxislive.util.ArrayUtils;
 
 /**
  * Default implementation of {@link ExecutionContext} for use with
@@ -30,8 +32,9 @@ import org.praxislive.util.ArrayUtils;
  */
 public class DefaultExecutionContext implements ExecutionContext {
 
-    private ExecutionContext.StateListener[] stateListeners;
-    private ExecutionContext.ClockListener[] clockListeners;
+    private final List<ExecutionContext.StateListener> stateListeners;
+    private final List<ExecutionContext.ClockListener> clockListeners;
+    
     private ExecutionContext.State state;
     long time;
     private long startTime;
@@ -42,30 +45,30 @@ public class DefaultExecutionContext implements ExecutionContext {
      * @param time initial clock time / start time
      */
     public DefaultExecutionContext(long time) {
-        this.stateListeners = new ExecutionContext.StateListener[0];
-        this.clockListeners = new ExecutionContext.ClockListener[0];
+        this.stateListeners = new CopyOnWriteArrayList<>();
+        this.clockListeners = new CopyOnWriteArrayList<>();
         this.state = ExecutionContext.State.NEW;
         this.time = this.startTime = time;
     }
 
     @Override
     public void addStateListener(ExecutionContext.StateListener listener) {
-        stateListeners = ArrayUtils.add(stateListeners, listener);
+        stateListeners.add(Objects.requireNonNull(listener));
     }
 
     @Override
     public void removeStateListener(ExecutionContext.StateListener listener) {
-        stateListeners = ArrayUtils.remove(stateListeners, listener);
+        stateListeners.remove(listener);
     }
 
     @Override
     public void addClockListener(ExecutionContext.ClockListener listener) {
-        clockListeners = ArrayUtils.add(clockListeners, listener);
+        clockListeners.add(Objects.requireNonNull(listener));
     }
 
     @Override
     public void removeClockListener(ExecutionContext.ClockListener listener) {
-        clockListeners = ArrayUtils.remove(clockListeners, listener);
+        clockListeners.remove(listener);
     }
 
     /**
@@ -135,15 +138,11 @@ public class DefaultExecutionContext implements ExecutionContext {
     }
 
     private void fireStateListeners() {
-        for (ExecutionContext.StateListener l : stateListeners) {
-            l.stateChanged(this);
-        }
+        stateListeners.forEach(l -> l.stateChanged(this));
     }
 
     private void fireClockListeners() {
-        for (ExecutionContext.ClockListener l : clockListeners) {
-            l.tick(this);
-        }
+        clockListeners.forEach(l -> l.tick(this));
     }
 
 }

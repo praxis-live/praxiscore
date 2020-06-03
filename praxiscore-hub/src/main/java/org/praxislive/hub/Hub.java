@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -42,11 +43,9 @@ import org.praxislive.core.RootHub;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.script.impl.ScriptServiceImpl;
-import org.praxislive.util.ArrayUtils;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public final class Hub {
 
@@ -59,9 +58,9 @@ public final class Hub {
     private final Root core;
     private final Lookup lookup;
     private final RootHubImpl rootHub;
+    private final List<String> rootIDs;
 
 //    private Thread coreThread;
-    private String[] rootIDs;
     private Thread coreThread;
     private Root.Controller coreController;
     long startTime;
@@ -78,7 +77,7 @@ public final class Hub {
         roots = new ConcurrentHashMap<>();
         services = new ConcurrentHashMap<>();
         rootHub = new RootHubImpl();
-        rootIDs = new String[0];
+        rootIDs = new CopyOnWriteArrayList<>();
     }
 
     private void extractExtensions(Builder builder, List<Root> exts) {
@@ -128,7 +127,7 @@ public final class Hub {
         }
         Root.Controller existing = roots.putIfAbsent(id, controller);
         if (existing == null) {
-            rootIDs = ArrayUtils.add(rootIDs, id);
+            rootIDs.add(id);
             return true;
         } else {
             return false;
@@ -136,7 +135,7 @@ public final class Hub {
     }
 
     private Root.Controller unregisterRootController(String id) {
-        rootIDs = ArrayUtils.remove(rootIDs, id);
+        rootIDs.remove(id);
         return roots.remove(id);
     }
 
@@ -145,7 +144,7 @@ public final class Hub {
     }
 
     private String[] getRootIDs() {
-        return rootIDs;
+        return rootIDs.toArray(String[]::new);
     }
     
     private RootHub getRootHub() {

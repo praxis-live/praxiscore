@@ -16,7 +16,6 @@
     <module>praxiscore-base</module>
     <module>praxiscore-code</module>
     <module>praxiscore-logging</module>
-    <module>praxiscore-util</module>
     <module>praxiscore-components</module>
     <module>praxiscore-core-code</module>
     <module>praxiscore-code-services</module>

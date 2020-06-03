@@ -28,11 +28,6 @@
       <artifactId>praxiscore-logging</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-util</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
   
   <build>

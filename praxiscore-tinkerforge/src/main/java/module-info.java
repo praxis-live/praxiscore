@@ -6,7 +6,6 @@ module org.praxislive.tinkerforge {
     requires org.praxislive.base;
     requires org.praxislive.code;
     requires org.praxislive.core;
-    requires org.praxislive.util;
 
     requires com.tinkerforge;
     

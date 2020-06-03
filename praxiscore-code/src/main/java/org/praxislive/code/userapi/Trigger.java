@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.function.IntConsumer;
 import org.praxislive.code.CodeContext;
 import org.praxislive.logging.LogLevel;
-import org.praxislive.util.ArrayUtils;
 
 /**
  * A field type for triggers (actions) - see {@link T @T}. The Trigger type

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,15 +21,14 @@
  *
  */
 
-package org.praxislive.util;
+package org.praxislive.code.userapi;
 
 import java.lang.reflect.Array;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
-public class ArrayUtils {
+class ArrayUtils {
 
     private ArrayUtils() {}
 

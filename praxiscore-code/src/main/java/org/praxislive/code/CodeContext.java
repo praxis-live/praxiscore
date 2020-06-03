@@ -26,8 +26,10 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
 import org.praxislive.core.Call;
@@ -44,7 +46,6 @@ import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.logging.LogBuilder;
 import org.praxislive.logging.LogLevel;
-import org.praxislive.util.ArrayUtils;
 
 /**
  *
@@ -60,12 +61,12 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final LogBuilder log;
     private final Driver driver;
     private final boolean requireClock;
+    private final List<ClockListener> clockListeners;
 
     private ExecutionContext execCtxt;
     private ExecutionContext.State execState = ExecutionContext.State.NEW;
     private CodeComponent<D> cmp;
     private long time;
-    private ClockListener[] clockListeners;
 
     protected CodeContext(CodeConnector<D> connector) {
         this(connector, false);
@@ -73,7 +74,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
     protected CodeContext(CodeConnector<D> connector, boolean requireClock) {
         this.driver = new Driver();
-        clockListeners = new ClockListener[0];
+        clockListeners = new CopyOnWriteArrayList<>();
         // @TODO what is maximum allowed amount a root can be behind system time?
         try {
             connector.process();
@@ -293,11 +294,11 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     public void addClockListener(ClockListener listener) {
-        clockListeners = ArrayUtils.add(clockListeners, listener);
+        clockListeners.add(Objects.requireNonNull(listener));
     }
 
     public void removeClockListener(ClockListener listener) {
-        clockListeners = ArrayUtils.remove(clockListeners, listener);
+        clockListeners.remove(listener);
     }
 
     protected ExecutionContext getExecutionContext() {
@@ -320,9 +321,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
     protected void update(long time) {
         if (time - this.time > 0) {
             this.time = time;
-            for (ClockListener l : clockListeners) {
-                l.tick();
-            }
+            clockListeners.forEach(ClockListener::tick);
         }
     }
     

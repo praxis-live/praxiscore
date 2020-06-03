@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,37 +23,36 @@
 
 package org.praxislive.midi;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.ShortMessage;
-import org.praxislive.util.ArrayUtils;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public abstract class MidiInputContext {
 
-    private Listener[] listeners;
+    private final List<Listener> listeners;
 
     protected MidiInputContext() {
-        listeners = new Listener[0];
+        listeners = new CopyOnWriteArrayList<>();
     }
 
 
     public void addListener(Listener listener) {
-        listeners = ArrayUtils.add(listeners, listener);
+        listeners.add(Objects.requireNonNull(listener));
     }
 
     public void removeListener(Listener listener) {
-        listeners = ArrayUtils.remove(listeners, listener);
+        listeners.remove(listener);
     }
 
     protected void dispatch(MidiMessage msg, long time) {
         if (msg instanceof ShortMessage) {
             ShortMessage smsg = (ShortMessage) msg;
-            for (Listener listener : listeners) {
-                listener.midiReceived(smsg, time);
-            }
+            listeners.forEach(l -> l.midiReceived(smsg, time));
         }
     }
 

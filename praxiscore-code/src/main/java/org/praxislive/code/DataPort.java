@@ -27,6 +27,7 @@ import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 import org.praxislive.code.userapi.AuxIn;
 import org.praxislive.code.userapi.AuxOut;
@@ -52,14 +53,14 @@ public abstract class DataPort<T> implements Port {
         private final java.lang.reflect.Type type;
         private final PortInfo info;
         private final List<Output<T>> connections;
-        private final PortListenerSupport pls;
+        private final List<PortListener> listeners;
 
         private Input(java.lang.reflect.Type type, PortInfo info) {
             this.type = Objects.requireNonNull(type);
             this.info = Objects.requireNonNull(info);
             in = new InPipe<>();
             connections = new ArrayList<>();
-            pls = new PortListenerSupport(this);
+            listeners = new CopyOnWriteArrayList<>();
         }
 
         @Override
@@ -89,7 +90,7 @@ public abstract class DataPort<T> implements Port {
             try {
                 in.addSource(source);
                 connections.add(port);
-                pls.fireListeners();
+                listeners.forEach(l -> l.connectionsChanged(this));
             } catch (Exception ex) {
                 throw new PortConnectionException(ex);
             }
@@ -98,7 +99,7 @@ public abstract class DataPort<T> implements Port {
         private void removeDataOutputPort(Output<T> port, Data.Pipe<T> source) {
             if (connections.remove(port)) {
                 in.removeSource(source);
-                pls.fireListeners();
+                listeners.forEach(l -> l.connectionsChanged(this));
             }
         }
 
@@ -116,12 +117,12 @@ public abstract class DataPort<T> implements Port {
 
         @Override
         public void addListener(PortListener listener) {
-            pls.addListener(listener);
+            listeners.add(Objects.requireNonNull(listener));
         }
 
         @Override
         public void removeListener(PortListener listener) {
-            pls.removeListener(listener);
+            listeners.remove(listener);
         }
     }
     
@@ -221,14 +222,14 @@ public abstract class DataPort<T> implements Port {
         private final java.lang.reflect.Type type;
         private final PortInfo info;
         private final List<Input<T>> connections;
-        private final PortListenerSupport pls;
+        private final List<PortListener> listeners;
 
         private Output(java.lang.reflect.Type type, PortInfo info) {
             this.type = Objects.requireNonNull(type);
             this.info = Objects.requireNonNull(info);
             out = new OutPipe<>();
             connections = new ArrayList<>();
-            pls = new PortListenerSupport(this);
+            listeners = new CopyOnWriteArrayList<>();
         }
 
         public final PortInfo getInfo() {
@@ -248,7 +249,7 @@ public abstract class DataPort<T> implements Port {
                 }
                 iPort.addDataOutputPort(this, out);
                 connections.add(iPort);
-                pls.fireListeners();
+                listeners.forEach(l -> l.connectionsChanged(this));
             } else {
                 throw new PortConnectionException();
             }
@@ -262,7 +263,7 @@ public abstract class DataPort<T> implements Port {
                 if (connections.contains(iPort)) {
                     iPort.removeDataOutputPort(this, out);
                     connections.remove(iPort);
-                    pls.fireListeners();
+                    listeners.forEach(l -> l.connectionsChanged(this));
                 }
             }
         }
@@ -281,12 +282,12 @@ public abstract class DataPort<T> implements Port {
 
         @Override
         public void addListener(PortListener listener) {
-            pls.addListener(listener);
+            listeners.add(Objects.requireNonNull(listener));
         }
 
         @Override
         public void removeListener(PortListener listener) {
-            pls.removeListener(listener);
+            listeners.remove(listener);
         }
     }
 
