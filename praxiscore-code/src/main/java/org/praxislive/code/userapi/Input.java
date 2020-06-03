@@ -29,7 +29,7 @@ import java.util.function.Function;
 import org.praxislive.code.CodeContext;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.Value;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * A field type providing a control input port. Use with @In or @AuxIn.

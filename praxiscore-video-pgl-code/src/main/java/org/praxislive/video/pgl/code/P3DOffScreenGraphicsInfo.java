@@ -23,7 +23,7 @@
 package org.praxislive.video.pgl.code;
 
 import java.lang.reflect.Field;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.pgl.PGLGraphics3D;
 import org.praxislive.video.pgl.PGLSurface;
 import org.praxislive.video.pgl.code.userapi.OffScreen;

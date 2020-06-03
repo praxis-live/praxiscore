@@ -24,7 +24,7 @@ package org.praxislive.core.code;
 
 import org.praxislive.code.CodeContext;
 import org.praxislive.core.ExecutionContext;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

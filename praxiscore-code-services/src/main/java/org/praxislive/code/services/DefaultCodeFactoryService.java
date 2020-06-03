@@ -59,8 +59,8 @@ import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PResource;
-import org.praxislive.logging.LogBuilder;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

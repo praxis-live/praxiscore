@@ -26,7 +26,7 @@ import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PError;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

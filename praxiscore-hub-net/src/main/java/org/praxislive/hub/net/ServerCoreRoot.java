@@ -40,6 +40,7 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
+import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
@@ -235,9 +236,15 @@ class ServerCoreRoot extends NetworkCoreRoot {
             PMap services = PMap.parse(params.getString(Utils.KEY_REMOTE_SERVICES, ""));
             if (!services.isEmpty()) {
                 for (String serviceName : services.keys()) {
-                    Class<? extends Service> service = (Class<? extends Service>)
-                            Class.forName(serviceName, true,
-                            Thread.currentThread().getContextClassLoader());
+                    // @TODO temporary workaround for v4 - v5 change
+                    Class<? extends Service> service;
+                    if ("org.praxislive.logging.LogService".equals(serviceName)) {
+                        service = LogService.class;
+                    } else {
+                        service = (Class<? extends Service>)
+                                Class.forName(serviceName, true,
+                                Thread.currentThread().getContextClassLoader());
+                    }
                     ComponentAddress serviceAddress = ComponentAddress.of(
                             SERVER_SYS_PREFIX + services.getString(serviceName, null));
                     getHubAccessor().registerService(service, serviceAddress);

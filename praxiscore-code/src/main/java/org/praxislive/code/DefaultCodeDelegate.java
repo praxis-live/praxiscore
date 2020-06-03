@@ -40,7 +40,7 @@ import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.Value;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * Default base for code delegates providing a variety of functions.

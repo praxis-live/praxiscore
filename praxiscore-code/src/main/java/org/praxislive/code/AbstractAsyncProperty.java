@@ -32,7 +32,7 @@ import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

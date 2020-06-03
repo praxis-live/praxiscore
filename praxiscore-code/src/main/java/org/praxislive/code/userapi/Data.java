@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import org.praxislive.code.CodeContext;
 import org.praxislive.core.Lookup;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * Support for creating data pipes to work with data of any type. All data

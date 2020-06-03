@@ -24,7 +24,7 @@ package org.praxislive.code.userapi;
 import java.util.Objects;
 import java.util.function.IntConsumer;
 import org.praxislive.code.CodeContext;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * A field type for triggers (actions) - see {@link T @T}. The Trigger type

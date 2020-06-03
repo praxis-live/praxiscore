@@ -4,7 +4,6 @@ module org.praxislive.video.pgl.code {
     
     requires org.praxislive.core;
     requires org.praxislive.code;
-    requires org.praxislive.logging;
     requires org.praxislive.video;
     requires org.praxislive.video.pgl;
     requires org.praxislive.libp5x.core;

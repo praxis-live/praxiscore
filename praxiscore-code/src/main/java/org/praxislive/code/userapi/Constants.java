@@ -30,7 +30,7 @@
 
 package org.praxislive.code.userapi;
 
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

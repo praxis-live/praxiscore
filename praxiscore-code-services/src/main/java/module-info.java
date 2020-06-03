@@ -7,7 +7,6 @@ module org.praxislive.code.services {
     requires org.praxislive.base;
     requires org.praxislive.core;
     requires org.praxislive.code;
-    requires org.praxislive.logging;
     requires org.praxislive.script;
 
     provides org.praxislive.core.RootHub.ExtensionProvider with

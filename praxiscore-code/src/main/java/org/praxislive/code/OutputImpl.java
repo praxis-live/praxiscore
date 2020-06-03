@@ -28,7 +28,7 @@ import org.praxislive.code.userapi.Output;
 import org.praxislive.core.Value;
 import org.praxislive.core.Port;
 import org.praxislive.core.PortInfo;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

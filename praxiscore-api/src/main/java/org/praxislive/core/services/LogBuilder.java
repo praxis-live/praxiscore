@@ -20,7 +20,7 @@
  * have any questions.
  *
  */
-package org.praxislive.logging;
+package org.praxislive.core.services;
 
 import java.util.ArrayList;
 import java.util.List;

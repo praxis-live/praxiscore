@@ -24,7 +24,7 @@ package org.praxislive.audio.code;
 
 import java.lang.reflect.Field;
 import org.praxislive.code.CodeContext;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.jaudiolibs.pipes.Pipe;
 
 /**

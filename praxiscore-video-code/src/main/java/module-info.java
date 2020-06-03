@@ -5,7 +5,6 @@ module org.praxislive.video.code {
     
     requires org.praxislive.core;
     requires org.praxislive.code;
-    requires org.praxislive.logging;
     requires org.praxislive.video;
     
     exports org.praxislive.video.code;

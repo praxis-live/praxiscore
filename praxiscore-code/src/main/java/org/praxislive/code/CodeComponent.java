@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,14 +32,12 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
-import org.praxislive.logging.LogLevel;
-import org.praxislive.logging.LogService;
+import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.LogService;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
  */
 public final class CodeComponent<D extends CodeDelegate> implements Component {
 

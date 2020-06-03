@@ -25,7 +25,7 @@ import java.lang.reflect.Field;
 import org.praxislive.code.CodeConnector;
 import org.praxislive.code.ReferenceDescriptor;
 import org.praxislive.code.userapi.Inject;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.code.VideoCodeConnector;
 import org.praxislive.video.gstreamer.VideoCapture;
 import org.praxislive.video.gstreamer.VideoPlayer;

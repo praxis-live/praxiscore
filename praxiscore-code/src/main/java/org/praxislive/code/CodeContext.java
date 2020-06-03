@@ -44,8 +44,8 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
-import org.praxislive.logging.LogBuilder;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

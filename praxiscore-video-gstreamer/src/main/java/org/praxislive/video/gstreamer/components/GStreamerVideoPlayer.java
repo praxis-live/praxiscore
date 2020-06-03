@@ -46,7 +46,7 @@ import org.praxislive.code.CodeContext;
 import org.praxislive.code.ReferenceDescriptor;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.types.PResource;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.code.userapi.PImage;
 import org.praxislive.video.gstreamer.VideoPlayer;
 

@@ -33,7 +33,7 @@ import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
 import org.praxislive.core.ExecutionContext;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.code.userapi.PGraphics;
 import org.praxislive.video.code.userapi.PImage;
 import org.praxislive.video.render.Surface;

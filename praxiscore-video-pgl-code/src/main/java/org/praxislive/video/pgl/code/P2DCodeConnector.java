@@ -33,7 +33,7 @@ import org.praxislive.code.ResourceProperty;
 import org.praxislive.code.userapi.In;
 import org.praxislive.code.userapi.P;
 import org.praxislive.core.Port;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.pgl.code.userapi.OffScreen;
 import org.praxislive.video.pgl.code.userapi.PFont;
 import org.praxislive.video.pgl.code.userapi.PImage;

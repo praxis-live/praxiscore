@@ -21,15 +21,13 @@
  *
  */
 
-package org.praxislive.logging;
+package org.praxislive.core.services;
 
 import java.util.stream.Stream;
 import org.praxislive.core.Value;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
-import org.praxislive.core.Protocol;
-import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PBoolean;
 
 /**
@@ -61,15 +59,6 @@ public class LogService implements Service {
             return LOG_INFO;
         }
         throw new IllegalArgumentException();
-    }
-    
-    public static class Provider implements Protocol.TypeProvider {
-
-        @Override
-        public Stream<Type> types() {
-            return Stream.of(new Protocol.Type<>(LogService.class));
-        }
-        
     }
     
 }

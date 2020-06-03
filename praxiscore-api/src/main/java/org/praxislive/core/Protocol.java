@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,6 +30,7 @@ import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.services.ComponentFactoryService;
+import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.RootFactoryService;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.ScriptService;
@@ -38,7 +39,6 @@ import org.praxislive.core.services.TaskService;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 public interface Protocol {
     
@@ -127,6 +127,7 @@ public interface Protocol {
             register(new Type<>(ScriptService.class));
             register(new Type<>(SystemManagerService.class));
             register(new Type<>(TaskService.class));
+            register(new Type<>(LogService.class));
             
             Lookup.SYSTEM.findAll(TypeProvider.class)
                     .flatMap(TypeProvider::types)

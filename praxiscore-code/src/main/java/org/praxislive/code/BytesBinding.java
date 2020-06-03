@@ -35,7 +35,7 @@ import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.types.PBytes;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.Value;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

@@ -39,7 +39,7 @@ import org.praxislive.core.PortConnectionException;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.PortListener;
 import org.praxislive.core.types.PMap;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

@@ -57,7 +57,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
-import org.praxislive.logging.LogBuilder;
+import org.praxislive.core.services.LogBuilder;
 
 /**
  *

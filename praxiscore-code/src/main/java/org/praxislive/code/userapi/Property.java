@@ -32,7 +32,7 @@ import org.praxislive.code.DefaultCodeDelegate;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.Value;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * A field type for properties (see {@link P @P}). The Property type also backs

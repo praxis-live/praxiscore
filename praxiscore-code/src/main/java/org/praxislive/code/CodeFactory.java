@@ -23,7 +23,7 @@ package org.praxislive.code;
 
 import java.util.Optional;
 import org.praxislive.core.ComponentType;
-import org.praxislive.logging.LogBuilder;
+import org.praxislive.core.services.LogBuilder;
 
 /**
  *

@@ -26,8 +26,8 @@ import org.praxislive.audio.AudioContext;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
 import org.praxislive.core.ExecutionContext;
-import org.praxislive.logging.LogLevel;
 import org.jaudiolibs.pipes.Pipe;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

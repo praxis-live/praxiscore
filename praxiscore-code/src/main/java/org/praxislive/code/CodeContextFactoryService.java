@@ -27,8 +27,8 @@ import org.praxislive.core.ControlInfo;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
-import org.praxislive.logging.LogBuilder;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogLevel;
 
 /**
  *

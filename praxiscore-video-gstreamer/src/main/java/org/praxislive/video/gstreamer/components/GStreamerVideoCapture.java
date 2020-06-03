@@ -36,7 +36,7 @@ import org.freedesktop.gstreamer.elements.AppSink;
 import org.praxislive.code.CodeConnector;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.ReferenceDescriptor;
-import org.praxislive.logging.LogLevel;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.code.userapi.PImage;
 import org.praxislive.video.gstreamer.VideoCapture;
 import org.praxislive.video.gstreamer.configuration.GStreamerSettings;
