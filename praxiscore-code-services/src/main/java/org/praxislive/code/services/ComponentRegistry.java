@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,7 +24,6 @@ package org.praxislive.code.services;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.praxislive.code.CodeComponentFactoryService;
 import org.praxislive.core.services.ComponentFactory;
@@ -34,7 +33,6 @@ import org.praxislive.core.Lookup;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class ComponentRegistry {
 
@@ -59,18 +57,17 @@ class ComponentRegistry {
         Map<ComponentType, ComponentFactory> componentCache
                 = new LinkedHashMap<>();
 
-        ComponentFactoryProvider[] providers =
-                Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
-                .toArray(ComponentFactoryProvider[]::new);
-        for (ComponentFactoryProvider provider : providers) {
-            ComponentFactory factory = provider.getFactory();
-            if (factory.getFactoryService() == CodeComponentFactoryService.class) {
-                logger.log(Level.INFO, "Adding components from : {0}", factory.getClass());
-                for (ComponentType type : factory.getComponentTypes()) {
-                    componentCache.put(type, factory);
+        Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
+                .map(ComponentFactoryProvider::getFactory)
+                .filter(factory
+                        -> factory.getFactoryService() == CodeComponentFactoryService.class)
+                .forEachOrdered(factory -> {
+                    factory.componentTypes().forEachOrdered(type -> {
+                        componentCache.put(type, factory);
+                    });
                 }
-            }
-        }
+                );
+
         return new ComponentRegistry(componentCache);
     }
 }

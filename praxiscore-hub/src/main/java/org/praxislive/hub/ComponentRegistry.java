@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,12 +33,11 @@ import org.praxislive.core.Lookup;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 class ComponentRegistry {
 
-    private final static Logger logger =
-            Logger.getLogger(ComponentRegistry.class.getName());
+    private final static Logger logger
+            = Logger.getLogger(ComponentRegistry.class.getName());
     private final Map<ComponentType, ComponentFactory> componentCache;
     private final Map<ComponentType, ComponentFactory> rootCache;
 
@@ -61,30 +60,44 @@ class ComponentRegistry {
     ComponentFactory getComponentFactory(ComponentType type) {
         return componentCache.get(type);
     }
-    
+
     ComponentFactory getRootComponentFactory(ComponentType type) {
         return rootCache.get(type);
     }
 
     static ComponentRegistry getInstance() {
-        Map<ComponentType, ComponentFactory> componentCache =
-                new LinkedHashMap<>();
-        Map<ComponentType, ComponentFactory> rootCache =
-                new LinkedHashMap<>();
+        Map<ComponentType, ComponentFactory> componentCache
+                = new LinkedHashMap<>();
+        Map<ComponentType, ComponentFactory> rootCache
+                = new LinkedHashMap<>();
 
-        ComponentFactoryProvider[] providers =
-                Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
-                .toArray(ComponentFactoryProvider[]::new);
-        for (ComponentFactoryProvider provider : providers) {
-            ComponentFactory factory = provider.getFactory();
-            logger.log(Level.INFO, "Adding components from : {0}", factory.getClass());
-            for (ComponentType type : factory.getComponentTypes()) {
-                componentCache.putIfAbsent(type, factory);
-            }
-            for (ComponentType type : factory.getRootComponentTypes()) {
-                rootCache.putIfAbsent(type, factory);
-            }
-        }
+//        ComponentFactoryProvider[] providers =
+//                Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
+//                .toArray(ComponentFactoryProvider[]::new);
+//        for (ComponentFactoryProvider provider : providers) {
+//            ComponentFactory factory = provider.getFactory();
+//            logger.log(Level.INFO, "Adding components from : {0}", factory.getClass());
+//            for (ComponentType type : factory.componentTypes()) {
+//                componentCache.putIfAbsent(type, factory);
+//            }
+//            for (ComponentType type : factory.rootTypes()) {
+//                rootCache.putIfAbsent(type, factory);
+//            }
+//        }
+        Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
+                .map(ComponentFactoryProvider::getFactory)
+                .forEachOrdered(factory -> {
+                    logger.log(Level.CONFIG, "Adding components from : {0}", factory.getClass());
+                    factory.componentTypes().forEachOrdered(type -> {
+                        logger.log(Level.CONFIG, "Adding component type : {0}", type);
+                        componentCache.put(type, factory);
+                    });
+                    factory.rootTypes().forEachOrdered(type -> {
+                        logger.log(Level.CONFIG, "Adding root type : {0}", type);
+                        rootCache.put(type, factory);
+                    });
+                });
+
         return new ComponentRegistry(componentCache, rootCache);
     }
 }

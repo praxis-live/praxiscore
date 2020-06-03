@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,6 +22,7 @@
 package org.praxislive.core.services;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Lookup;
@@ -29,13 +30,12 @@ import org.praxislive.core.Root;
 
 /**
  *
- * @author Neil C Smith
  */
 public interface ComponentFactory {
 
-    public ComponentType[] getComponentTypes();
+    public Stream<ComponentType> componentTypes();
 
-    public ComponentType[] getRootComponentTypes();
+    public Stream<ComponentType> rootTypes();
 
     public MetaData<? extends Component> getMetaData(ComponentType type);
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,7 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.stream.Stream;
 import org.praxislive.core.Component;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.ComponentType;
@@ -36,7 +36,6 @@ import org.praxislive.core.services.ComponentFactoryService;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class AbstractComponentFactory implements ComponentFactory {
 
@@ -47,14 +46,13 @@ public class AbstractComponentFactory implements ComponentFactory {
     }
 
     @Override
-    public ComponentType[] getComponentTypes() {
-        Set<ComponentType> keys = componentMap.keySet();
-        return keys.toArray(new ComponentType[keys.size()]);
+    public Stream<ComponentType> componentTypes() {
+        return componentMap.keySet().stream();
     }
 
     @Override
-    public ComponentType[] getRootComponentTypes() {
-        return new ComponentType[0];
+    public Stream<ComponentType> rootTypes() {
+        return Stream.empty();
     }
 
     @Override
