@@ -27,9 +27,9 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-tinkerforge-lib</artifactId>
-      <version>${project.version}</version>
+      <groupId>com.tinkerforge</groupId>
+      <artifactId>tinkerforge</artifactId>
+      <version>2.1.27</version>
     </dependency>
   </dependencies>
   
