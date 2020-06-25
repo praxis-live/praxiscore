@@ -32,6 +32,7 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
+import org.praxislive.core.PortConnectionException;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PBoolean;
@@ -117,6 +118,22 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
                 router.route(call.error(PError.of(ex)));
             }
         }
+    }
+
+    protected final void addChild(String id, Component child) throws VetoException {
+        delegate.addChild(id, child);
+    }
+
+    protected final Component removeChild(String id) {
+        return delegate.removeChild(id);
+    }
+
+    protected final void connect(String component1, String port1, String component2, String port2) throws PortConnectionException {
+        delegate.connect(component1, port1, component2, port2);
+    }
+
+    protected final void disconnect(String component1, String port1, String component2, String port2) {
+        delegate.disconnect(component1, port1, component2, port2);
     }
 
     protected final void registerControl(String id, Control control) {
