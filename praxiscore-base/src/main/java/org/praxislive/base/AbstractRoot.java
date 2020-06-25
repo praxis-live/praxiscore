@@ -354,6 +354,12 @@ public abstract class AbstractRoot implements Root {
 
         State currentState = state.get();
         if (currentState != State.ACTIVE_IDLE && currentState != State.ACTIVE_RUNNING) {
+            // ensure stopping() called and context changed to idle before termination
+            if (cachedState == State.ACTIVE_RUNNING) {
+                cachedState = currentState;
+                stopping();
+                context.updateState(time, ExecutionContext.State.IDLE);
+            }
             return false;
         }
 
