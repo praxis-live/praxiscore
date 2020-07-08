@@ -180,10 +180,14 @@ public final class Hub {
         @Override
         public boolean dispatch(Packet packet) {
             Root.Controller dest = roots.get(packet.rootID());
-            if (dest != null) {
-                return dest.submitPacket(packet);
-            } else {
-                return coreController.submitPacket(packet);
+            try {
+                if (dest != null) {
+                    return dest.submitPacket(packet);
+                } else {
+                    return coreController.submitPacket(packet);
+                }
+            } catch (Exception e) {
+                return false;
             }
         }
 

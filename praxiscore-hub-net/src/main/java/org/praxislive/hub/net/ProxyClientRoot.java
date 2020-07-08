@@ -65,8 +65,8 @@ class ProxyClientRoot extends AbstractRoot {
     private long lastPurgeTime;
     private Watchdog watchdog;
     private Process execProcess;
-    
-    
+    private SocketAddress socketAddress;
+
     ProxyClientRoot(ProxyInfo proxyInfo,
             List<Class<? extends Service>> services,
             ChildLauncher childLauncher,
@@ -100,10 +100,17 @@ class ProxyClientRoot extends AbstractRoot {
             }
         }
         dispose();
+        destroyChild();
     }
 
     @Override
     protected void processCall(Call call, PacketRouter router) {
+        if (getState() != State.ACTIVE_RUNNING) {
+            if (call.isReplyRequired()) {
+                router.route(call.error(PError.of("Terminated")));
+            }
+            return;
+        }
         if (call.to().component().equals(getAddress())) {
             try {
                 switch (call.to().controlID()) {
@@ -161,10 +168,10 @@ class ProxyClientRoot extends AbstractRoot {
 
     private void connect() {
         try {
-            SocketAddress target = checkAndExecChild();
+            checkAndExecChild();
             client = OSCClient.newUsing(codec, OSCClient.TCP);
             client.setBufferSize(65536);
-            client.setTarget(target);
+            client.setTarget(socketAddress);
             watchdog = new Watchdog(getRootHub().getClock(), client);
             watchdog.start();
 
@@ -185,11 +192,20 @@ class ProxyClientRoot extends AbstractRoot {
             dispose();
         }
     }
-    
-    private SocketAddress checkAndExecChild() throws Exception {
+
+    private void checkAndExecChild() throws Exception {
+        if (execProcess != null) {
+            if (execProcess.isAlive()) {
+                LOG.log(Level.INFO, "Child process already running");
+                return;
+            } else {
+                throw new IllegalStateException("Child process terminated");
+            }
+        }
         ProxyInfo.Exec exec = proxyInfo.exec().orElse(null);
         if (exec == null) {
-            return proxyInfo.socketAddress();
+            socketAddress = proxyInfo.socketAddress();
+            return;
         }
         String cmd = exec.command().orElse(null);
         if (cmd == null) {
@@ -198,7 +214,7 @@ class ProxyClientRoot extends AbstractRoot {
             }
             var childInfo = childLauncher.launch(exec.javaOptions(), exec.arguments());
             execProcess = childInfo.handle();
-            return childInfo.address();
+            socketAddress = childInfo.address();
         } else {
             throw new UnsupportedOperationException("Only default command supported at present");
         }
@@ -215,7 +231,7 @@ class ProxyClientRoot extends AbstractRoot {
         }
         return params.build();
     }
-    
+
     private PMap buildServiceMap() {
         PMap.Builder srvs = PMap.builder(services.size());
         services.forEach(service -> {
@@ -238,15 +254,31 @@ class ProxyClientRoot extends AbstractRoot {
             watchdog = null;
         }
         dispatcher.purge(0, TimeUnit.NANOSECONDS);
+    }
+
+    private void destroyChild() {
         if (execProcess != null) {
-            execProcess.destroy();
+            boolean exited = false;
+            try {
+                execProcess.destroy();
+                exited = execProcess.waitFor(10, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                // fall through
+            }
+            if (!exited) {
+                execProcess.destroyForcibly();
+                try {
+                    execProcess.waitFor(5, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {
+                    LOG.log(Level.SEVERE, "Child process won't quit", ex);
+                }
+            }
             execProcess = null;
         }
     }
 
-
     private class Dispatcher extends OSCDispatcher {
-        
+
         private String remoteSysPrefix;
 
         private Dispatcher(PraxisPacketCodec codec) {
@@ -273,8 +305,6 @@ class ProxyClientRoot extends AbstractRoot {
             assert remoteSysPrefix != null;
             return remoteSysPrefix;
         }
-        
-        
 
     }
 
@@ -282,7 +312,7 @@ class ProxyClientRoot extends AbstractRoot {
 
         private final Clock clock;
         private final OSCClient client;
-        
+
         private volatile long lastTickTime;
         private volatile boolean active;
 

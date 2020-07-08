@@ -22,6 +22,7 @@
 package org.praxislive.base;
 
 import java.util.ArrayDeque;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -455,7 +456,20 @@ public abstract class AbstractRoot implements Root {
 
         @Override
         public void route(Packet packet) {
-            hub.dispatch(packet);
+            boolean success;
+            try {
+                success = hub.dispatch(packet);
+            } catch (Exception ex) {
+                success = false;
+            }
+            if (!success) {
+                if (packet instanceof Call) {
+                    Call call = (Call) packet;
+                    if (call.isReplyRequired()) {
+                        route(call.error(List.of()));
+                    }
+                }
+            }
         }
 
     }

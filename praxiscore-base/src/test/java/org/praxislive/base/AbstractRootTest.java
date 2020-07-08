@@ -1,11 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.praxislive.base;
 
 import java.util.Queue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -24,11 +20,11 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 /**
  *
- * @author Neil C Smith - https://www.neilcsmith.net
  */
 public class AbstractRootTest {
 
@@ -67,8 +63,13 @@ public class AbstractRootTest {
             fail();
         }
         hub.ctrl.shutdown();
+        try {
+            assertTrue(root.latch.await(10, TimeUnit.SECONDS));
+        } catch (InterruptedException ex) {
+            fail();
+        }
     }
-    
+
     @Test
     public void testDelegateProcessCall() {
         DelegatingRootImpl root = new DelegatingRootImpl();
@@ -85,24 +86,40 @@ public class AbstractRootTest {
             fail();
         }
         hub.ctrl.shutdown();
+        try {
+            assertTrue(root.latch.await(10, TimeUnit.SECONDS));
+        } catch (InterruptedException ex) {
+            fail();
+        }
     }
 
     public class RootImpl extends AbstractRoot {
+        
+        CountDownLatch latch = new CountDownLatch(1);
 
         @Override
         protected void activating() {
             setRunning();
         }
 
+        @Override
         public void processCall(Call call, PacketRouter router) {
             router.route(call.reply(PString.of("OK")));
         }
-    }
-    
-     public class DelegatingRootImpl extends AbstractRoot {
 
+        @Override
+        protected void terminating() {
+            System.out.println("Terminate called");
+            latch.countDown();
+        }
+        
+    }
+
+    public class DelegatingRootImpl extends AbstractRoot {
+
+        CountDownLatch latch = new CountDownLatch(1);
         Delegate del;
-         
+
         @Override
         protected void activating() {
             setRunning();
@@ -116,25 +133,24 @@ public class AbstractRootTest {
             System.out.println("Terminate called");
             assertNotEquals(del.active, Thread.currentThread());
             assertTrue(!del.active.isAlive());
-            
+            latch.countDown();
         }
-        
-        
 
+        @Override
         public void processCall(Call call, PacketRouter router) {
             assertEquals(del.active, Thread.currentThread());
             router.route(call.reply(PString.of("OK")));
         }
-        
+
         class Delegate extends AbstractRoot.Delegate {
-            
+
             Thread active;
             RootHub hub;
-            
+
             Delegate(RootHub hub) {
                 this.hub = hub;
             }
-            
+
             void start() {
                 active = getThreadFactory().newThread(() -> {
                     while (doUpdate(hub.getClock().getTime())) {
@@ -148,10 +164,9 @@ public class AbstractRootTest {
                 });
                 active.start();
             }
-            
+
         }
     }
-    
 
     public class RootHubImpl implements RootHub {
 
