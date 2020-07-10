@@ -551,7 +551,7 @@ public abstract class AbstractRoot implements Root {
                 // do clock check
                 if (Math.abs(hub.getClock().getTime() - time) > 10_000_000_000L) {
                     LOG.log(Level.SEVERE, "Delegate not updating time");
-                    detachDelegate(del);
+//                    detachDelegate(del);
                 }
             } else {
                 if (lock.tryLock()) {
