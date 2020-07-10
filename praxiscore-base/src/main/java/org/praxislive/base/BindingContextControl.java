@@ -52,9 +52,9 @@ public class BindingContextControl implements Control, BindingContext {
 
     private final static Logger LOG
             = Logger.getLogger(BindingContextControl.class.getName());
-    private static final int LOW_SYNC_DELAY = 1000;
-    private static final int MED_SYNC_DELAY = 200;
-    private static final int HIGH_SYNC_DELAY = 50;
+    private static final long LOW_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(1000);
+    private static final long MED_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(200);
+    private static final long HIGH_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(50);
     private static final long INVOKE_TIMEOUT = TimeUnit.MILLISECONDS.toNanos(5000);
     private static final long QUIET_TIMEOUT = TimeUnit.MILLISECONDS.toNanos(200);
 
@@ -132,43 +132,54 @@ public class BindingContextControl implements Control, BindingContext {
         }
     }
 
-    private class BindingSyncQueue {
+    private static class BindingSyncQueue {
 
-        private final PriorityQueue<BindingImpl> q;
+        private final PriorityQueue<BindingSyncElement> q;
         private long time;
 
         private BindingSyncQueue(long time) {
-            q = new PriorityQueue<>(this::compare);
+            q = new PriorityQueue<>();
             this.time = time;
-        }
-
-        private int compare(BindingImpl b1, BindingImpl b2) {
-            if (b1 == b2) {
-                return 0;
-            }
-            long timeDiff = b1.syncTime - b2.syncTime;
-            if (timeDiff == 0) {
-                int diff = b1.boundAddress.hashCode() - b2.boundAddress.hashCode();
-                return diff < 0 ? -1 : 1;
-            }
-            return timeDiff < 0 ? -1 : 1;
         }
 
         private void setTime(long time) {
             this.time = time;
         }
 
-        private void add(BindingImpl binding) {
-            q.add(binding);
+        private void add(BindingImpl binding, long time) {
+            q.add(new BindingSyncElement(binding, time));
         }
 
         private BindingImpl poll() {
-            if (!q.isEmpty() && q.peek().syncTime - time <= 0) {
-                return q.poll();
+            if (!q.isEmpty() && q.peek().time - time <= 0) {
+                var element = q.poll();
+                return element != null ? element.binding : null;
             }
             return null;
         }
 
+    }
+    
+    private static class BindingSyncElement
+            implements Comparable<BindingSyncElement> {
+        
+        private final BindingImpl binding;
+        private final long time;
+        
+        private BindingSyncElement(BindingImpl binding, long time) {
+            this.binding = binding;
+            this.time = time;
+        }
+
+        @Override
+        public int compareTo(BindingSyncElement o) {
+            long timeDiff = time - o.time;
+            if (timeDiff == 0) {
+                return hashCode() - o.hashCode();
+            }
+            return timeDiff < 0 ? -1 : 1;
+        }
+        
     }
 
     private class BindingImpl extends Binding {
@@ -176,7 +187,6 @@ public class BindingContextControl implements Control, BindingContext {
         private final List<Binding.Adaptor> adaptors;
         private final ControlAddress boundAddress;
         private ControlInfo bindingInfo;
-        private long syncTime;
         private long syncPeriod;
 
 //        private int lastCallID;
@@ -279,7 +289,7 @@ public class BindingContextControl implements Control, BindingContext {
 
         }
 
-        private int delayForRate(SyncRate rate) {
+        private long delayForRate(SyncRate rate) {
             switch (rate) {
                 case Low:
                     return LOW_SYNC_DELAY;
@@ -378,8 +388,7 @@ public class BindingContextControl implements Control, BindingContext {
         private void processSync() {
             long now = context.getTime();
             if (syncPeriod > 0) {
-                syncTime = now + syncPeriod;
-                syncQueue.add(this);
+                syncQueue.add(this, now + syncPeriod);
             }
 
             if (activeCall != null) {
