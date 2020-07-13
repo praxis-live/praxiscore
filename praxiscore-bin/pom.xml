@@ -18,6 +18,7 @@
         <version>2.1.0</version>
         <configuration>
           <repositoryLayout>flat</repositoryLayout>
+          <repositoryName>mods</repositoryName>
           <useWildcardClassPath>true</useWildcardClassPath>
           <unixScriptTemplate>${project.basedir}/src/bin/unixBinTemplate</unixScriptTemplate>
           <programs>
