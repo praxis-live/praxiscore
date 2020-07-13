@@ -107,16 +107,18 @@ public class BindingContextControl implements Control, BindingContext {
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isReply() || call.isError()) {
-            BindingImpl binding = bindings.get(call.from());
-            if (binding != null) {
-                binding.process(call);
-            } else if (call.from().controlID().equals(ComponentProtocol.INFO)) {
+            if (call.from().controlID().equals(ComponentProtocol.INFO)) {
                 ComponentAddress infoOf = call.from().component();
                 bindings.forEach((a, b) -> {
                     if (infoOf.equals(a.component())) {
                         b.process(call);
                     }
                 });
+            } else {
+                var binding = bindings.get(call.from());
+                if (binding != null) {
+                    binding.process(call);
+                }
             }
         } else {
             throw new UnsupportedOperationException();
