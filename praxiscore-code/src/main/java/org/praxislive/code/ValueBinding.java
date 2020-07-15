@@ -181,10 +181,8 @@ abstract class ValueBinding extends PropertyControl.Binding {
 
         @Override
         public ArgumentInfo getArgumentInfo() {
-            return defaultValue.isEmpty() ?
-                    ArgumentInfo.of(type.asClass(),
-                            PMap.of(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, true)) :
-                    ArgumentInfo.of(type.asClass());
+            return ArgumentInfo.of(type.asClass(),
+                            PMap.of(ArgumentInfo.KEY_ALLOW_EMPTY, true));
         }
 
     }
