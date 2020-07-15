@@ -23,18 +23,18 @@ package org.praxislive.code;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.util.List;
 import org.praxislive.code.userapi.OnChange;
 import org.praxislive.code.userapi.OnError;
 import org.praxislive.code.userapi.P;
+import org.praxislive.code.userapi.Table;
 import org.praxislive.core.Value;
 import org.praxislive.core.Control;
-import org.praxislive.core.Port;
 import org.praxislive.core.ControlInfo;
-import org.praxislive.core.PortInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PMap;
-import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogLevel;
@@ -42,21 +42,23 @@ import org.praxislive.core.services.LogLevel;
 /**
  *
  */
-class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
+class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
 
-    private final TypeConverter<T> converter;
-    private final ControlInfo info;
+    static final ControlInfo INFO = Info.control().property()
+            .input(Info.argument().string().mime("text/x-praxis-table").build())
+            .defaultValue(PString.EMPTY)
+            .build();
+
+    private final boolean isList;
 
     private Field field;
     private Method onChange;
     private Method onError;
     private CodeContext<?> context;
 
-    private TypeConverterProperty(TypeConverter<T> converter, ControlInfo info) {
-        super(PString.EMPTY, converter.getType(), null);
-        this.converter = converter;
-        this.info = info;
-
+    private TableProperty(boolean isList) {
+        super(PString.EMPTY, TableParser.Response.class, new TableParser.Response(List.of()));
+        this.isList = isList;
     }
 
     private void attach(CodeContext<?> context,
@@ -65,8 +67,8 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
         this.context = context;
         this.field = field;
         try {
-            field.set(context.getDelegate(), getValue());
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            updateFieldValue();
+        } catch (Exception ex) {
             context.getLog().log(LogLevel.WARNING, ex);
         }
         this.onChange = onChange;
@@ -74,15 +76,15 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
     }
 
     @Override
-    protected TaskService.Task createTask(Value key) throws Exception {
-        return new Task(converter, key);
+    protected TaskService.Task createTask(Value data) throws Exception {
+        return new Task(data);
     }
 
     @Override
     protected void valueChanged(long time) {
         try {
-            field.set(context.getDelegate(), getValue());
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            updateFieldValue();
+        } catch (Exception ex) {
             context.getLog().log(LogLevel.ERROR, ex);
         }
         if (onChange != null) {
@@ -97,62 +99,70 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
         }
     }
 
+    private void updateFieldValue() throws Exception {
+        var list = getValue().tables();
+        if (isList) {
+            field.set(context.getDelegate(), list);
+        } else {
+            if (list.isEmpty()) {
+                field.set(context.getDelegate(), Table.EMPTY);
+            } else {
+                field.set(context.getDelegate(), list.get(0));
+            }
+        }
+    }
+
     private final static class Task implements TaskService.Task {
 
-        private final TypeConverter converter;
-        private final Value key;
+        private final Value data;
 
-        private Task(TypeConverter converter, Value key) {
-            this.converter = converter;
-            this.key = key;
+        private Task(Value data) {
+            this.data = data;
         }
 
         @Override
         public Value execute() throws Exception {
-            return PReference.of(converter.fromArgument(key));
+            return PReference.of(TableParser.parse(data.toString()));
         }
 
     }
 
-    public static class Descriptor<T> extends ControlDescriptor {
+    static class Descriptor extends ControlDescriptor {
 
-        private final TypeConverter<T> converter;
         private final Field field;
+        private final boolean isList;
         private final Method onChange, onError;
-        private final ControlInfo info;
-
-        private TypeConverterProperty<T> control;
+        
+        private TableProperty control;
 
         private Descriptor(
                 String id,
                 int index,
                 Field field,
-                TypeConverter<T> converter,
+                boolean isList,
                 Method onChange,
                 Method onError
         ) {
             super(id, ControlDescriptor.Category.Property, index);
-            this.converter = converter;
             this.field = field;
+            this.isList = isList;
             this.onChange = onChange;
             this.onError = onError;
-            info = ControlInfo.createPropertyInfo(
-                    converter.getInfo(), PString.EMPTY, PMap.EMPTY);
         }
 
         @Override
         public ControlInfo getInfo() {
-            return info;
+            return INFO;
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public void attach(CodeContext<?> context, Control previous) {
-            if (previous instanceof TypeConverterProperty
-                    && ((TypeConverterProperty) previous).converter.getType() == converter.getType()) {
-                control = (TypeConverterProperty<T>) previous;
+            if (previous instanceof TableProperty
+                    && ((TableProperty) previous).isList == isList) {
+                control = (TableProperty) previous;
             } else {
-                control = new TypeConverterProperty<>(converter, info);
+                control = new TableProperty(isList);
             }
             control.attach(context, field, onChange, onError);
         }
@@ -162,15 +172,12 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
             return control;
         }
 
-        public PortDescriptor createPortDescriptor() {
-            return new PortDescImpl(getID(), getIndex(), this);
-        }
-
-        public static <T> Descriptor<T> create(CodeConnector<?> connector, P ann,
-                Field field, TypeConverter<T> converter) {
-            if (!field.getType().isAssignableFrom(converter.getType())) {
+        public static Descriptor create(CodeConnector<?> connector, P ann,
+                Field field) {
+            if (!isSupportedField(field)) {
                 return null;
             }
+            boolean isList = field.getType() == List.class;
             field.setAccessible(true);
             String id = connector.findID(field);
             int index = ann.value();
@@ -184,7 +191,23 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
             if (onErrorAnn != null) {
                 onError = extractMethod(connector, onErrorAnn.value());
             }
-            return new Descriptor<>(id, index, field, converter, onChange, onError);
+            return new Descriptor(id, index, field, isList, onChange, onError);
+        }
+
+        private static boolean isSupportedField(Field field) {
+            if (field.getType() == List.class) {
+                var genType = field.getGenericType();
+                if (genType instanceof ParameterizedType) {
+                    var parType = (ParameterizedType) genType;
+                    var actualType = parType.getActualTypeArguments();
+                    if (actualType.length == 1 && actualType[0] == Table.class) {
+                        return true;
+                    }
+                }
+            } else if (field.getType() == Table.class) {
+                return true;
+            }
+            return false;
         }
 
         private static Method extractMethod(CodeConnector<?> connector, String methodName) {
@@ -200,51 +223,5 @@ class TypeConverterProperty<T> extends AbstractAsyncProperty<T> {
 
     }
 
-    private static class PortDescImpl extends PortDescriptor implements ControlInput.Link {
-
-        private final Descriptor<?> dsc;
-
-        private ControlInput port;
-
-        private PortDescImpl(String id, int index, Descriptor<?> dsc) {
-            super(id, PortDescriptor.Category.Property, index);
-            this.dsc = dsc;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
-                port.setLink(this);
-            } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
-                port = new ControlInput(this);
-            }
-        }
-
-        @Override
-        public Port getPort() {
-            assert port != null;
-            return port;
-        }
-
-        @Override
-        public PortInfo getInfo() {
-            return ControlInput.INFO;
-        }
-
-        @Override
-        public void receive(long time, double value) {
-            receive(time, PNumber.of(value));
-        }
-
-        @Override
-        public void receive(long time, Value value) {
-            dsc.control.portInvoke(time, value);
-        }
-
-    }
 
 }

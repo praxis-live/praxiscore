@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,30 +19,39 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.tracker;
+package org.praxislive.code.userapi;
+
+import java.util.Optional;
+import org.praxislive.core.Value;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
-public abstract class Patterns {
+public abstract class Table {
     
-    public final static Patterns EMPTY = new Empty();
+    public final static Table EMPTY = new Empty();
     
-    public abstract Pattern getPattern(int index);
+    public abstract Optional<Value> valueAt(int row, int column);
     
-    public abstract int getPatternCount();
+    public abstract int rowCount();
     
-    private static class Empty extends Patterns {
+    public abstract int columnCount();
+    
+    private static class Empty extends Table {
 
         @Override
-        public Pattern getPattern(int index) {
-            return Pattern.EMPTY;
+        public Optional<Value> valueAt(int row, int column) {
+            return Optional.empty();
         }
 
         @Override
-        public int getPatternCount() {
-            return 1;
+        public int rowCount() {
+            return 0;
+        }
+
+        @Override
+        public int columnCount() {
+            return 0;
         }
         
     }

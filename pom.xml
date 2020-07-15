@@ -40,7 +40,6 @@
     <module>praxiscore-gui</module>
     <module>praxiscore-midi</module>
     <module>praxiscore-osc</module>
-    <module>praxiscore-tracker</module>
   </modules>
     
   <scm>

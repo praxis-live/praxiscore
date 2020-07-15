@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,39 +19,51 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.tracker.impl;
+package org.praxislive.code;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import org.praxislive.code.userapi.Table;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.syntax.Token;
 import org.praxislive.core.syntax.Tokenizer;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
-import org.praxislive.tracker.Pattern;
-import org.praxislive.tracker.Patterns;
-
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
-class PatternParser {
+class TableParser {
 
-    private PatternParser() {
+    private TableParser() {
+    }
+    
+    static class Response {
+        
+        private final List<Table> tables;
+        
+        Response(List<Table> tables) {
+            this.tables = tables;
+        }
+        
+        List<Table> tables() {
+            return tables;
+        }
+        
     }
 
-    static Patterns parse(String data) throws ValueFormatException {
+    static Response parse(String data) throws ValueFormatException {
         if (data.isEmpty()) {
-            return Patterns.EMPTY;
+            return new Response(List.of());
         }
-        return parseImpl(data);
+        return new Response(parseImpl(data));
 
     }
     
-    private static Patterns parseImpl(String data) throws ValueFormatException {
-        List<PatternImpl> patterns = new ArrayList<>();
-        List<Value> table = new ArrayList<>();
+    private static List<Table> parseImpl(String data) throws ValueFormatException {
+        List<TableImpl> tables = new ArrayList<>();
+        List<Optional<Value>> table = new ArrayList<>();
         int maxColumn = 0;
         int column = 0;
         Tokenizer tk = new Tokenizer(data);
@@ -64,9 +76,11 @@ class PatternParser {
                     if (maxColumn > 0 && column >= maxColumn) {
                         throw new ValueFormatException();
                     }
-                    table.add(type == Token.Type.PLAIN
-                            ? getPlainArgument(t.getText())
-                            : getQuotedArgument(t.getText()));
+                    if (type == Token.Type.PLAIN) {
+                        table.add(getPlainArgument(t.getText()));
+                    } else {
+                        table.add(getQuotedArgument(t.getText()));
+                    }
                     column++;
                     break;
                 case EOL:
@@ -77,7 +91,7 @@ class PatternParser {
                         } else {
                             // pad to end of row
                             while (column < maxColumn) {
-                                table.add(null);
+                                table.add(Optional.empty());
                                 column++;
                             }
                         }
@@ -87,7 +101,7 @@ class PatternParser {
                         int columns = maxColumn;
                         int size = table.size();
                         int rows = size / columns;
-                        patterns.add(new PatternImpl(table.toArray(new Value[size]), rows, columns));
+                        tables.add(new TableImpl(List.copyOf(table), rows, columns));
                         column = 0;
                         maxColumn = 0;
                         table.clear();
@@ -105,89 +119,70 @@ class PatternParser {
             int columns = maxColumn;
             int size = table.size();
             int rows = size / columns;
-            patterns.add(new PatternImpl(table.toArray(new Value[size]), rows, columns));
+            tables.add(new TableImpl(List.copyOf(table), rows, columns));
         }
 
-        if (patterns.isEmpty()) {
-            return Patterns.EMPTY;
-        }
-        
-        return new PatternsImpl(patterns.toArray(new Pattern[patterns.size()]));
+        return List.copyOf(tables);
     }
 
-    private static Value getPlainArgument(String token) {
+    private static Optional<Value> getPlainArgument(String token) {
         if (".".equals(token)) {
-            return null;
+            return Optional.empty();
         } else if (token.isEmpty()) {
-            return PString.EMPTY;
+            return Optional.of(PString.EMPTY);
         } else if ("0123456789-.".indexOf(token.charAt(0)) > -1) {
             try {
-                return PNumber.parse(token);
+                return Optional.of(PNumber.parse(token));
             } catch (ValueFormatException ex) {
                 // fall through
             }
         }
-        return PString.of(token);
+        return Optional.of(PString.of(token));
     }
 
-    private static Value getQuotedArgument(String token) {
+    private static Optional<Value> getQuotedArgument(String token) {
         if (token.isEmpty()) {
-            return PString.EMPTY;
+            return Optional.of(PString.EMPTY);
         } else {
-            return PString.of(token);
+            return Optional.of(PString.of(token));
         }
     }
 
-    
+    static class TableImpl extends Table {
 
-    static class PatternImpl extends Pattern {
-
-        private final Value[] values;
+        private final List<Optional<Value>> values;
         private final int rows;
         private final int columns;
 
-        private PatternImpl(Value[] values, int rows, int columns) {
-            assert values.length == rows * columns;
+        private TableImpl(List<Optional<Value>> values, int rows, int columns) {
+            assert values.size() == rows * columns;
             this.values = values;
             this.rows = rows;
             this.columns = columns;
         }
 
         @Override
-        public Value getValueAt(int row, int column) {
-            return values[(row * columns) + column];
+        public Optional<Value> valueAt(int row, int column) {
+            if (row < 0 || row >= rows) {
+                return Optional.empty();
+            }
+            if (column < 0 || column >= columns) {
+                return Optional.empty();
+            }
+            return values.get((row * columns) + column);
         }
 
         @Override
-        public int getRowCount() {
+        public int rowCount() {
             return rows;
         }
 
         @Override
-        public int getColumnCount() {
+        public int columnCount() {
             return columns;
         }
 
     }
 
-    static class PatternsImpl extends Patterns {
-
-        private final Pattern[] patterns;
-
-        private PatternsImpl(Pattern[] patterns) {
-            this.patterns = patterns;
-        }
-
-        @Override
-        public Pattern getPattern(int index) {
-            return patterns[index];
-        }
-
-        @Override
-        public int getPatternCount() {
-            return patterns.length;
-        }
-
-    }
 
 }

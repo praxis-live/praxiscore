@@ -19,7 +19,7 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.tracker.impl;
+package org.praxislive.core.components;
 
 import org.praxislive.code.GenerateTemplate;
 
@@ -34,9 +34,6 @@ import org.praxislive.core.types.*;
 import org.praxislive.code.userapi.*;
 import static org.praxislive.code.userapi.Constants.*;
 
-// PXJ-BEGIN:imports
-import org.praxislive.tracker.*;
-// PXJ-END:imports
 
 /**
  *
@@ -48,7 +45,7 @@ public class CoreTracker extends CoreCodeDelegate {
 
     // PXJ-BEGIN:body
     
-    @P(1) Patterns patterns;
+    @P(1) List<Table> patterns;
     @P(2) @Type.Integer(min = 0)
     int pattern;
     @P(3) @Type.Integer(min = 0) @Transient
@@ -75,28 +72,26 @@ public class CoreTracker extends CoreCodeDelegate {
         position = 0;
     }
 
-    @T(1)
-    void trigger() {
-        Pattern p;
-        if (pattern >= patterns.getPatternCount()) {
+    @T(1) void trigger() {
+        if (pattern >= patterns.size()) {
             position = 0;
             return;
         }
-        p = patterns.getPattern(pattern);
-        position %= p.getRowCount();
-        int max = min(p.getColumnCount(), outs.length);
+        Table p = patterns.get(pattern);
+        if (p.rowCount() == 0) {
+            position = 0;
+            return;
+        }
+        position %= p.rowCount();
+        int max = min(p.columnCount(), outs.length);
         for (int i = 0; i < max; i++) {
-            Value arg = p.getValueAt(position, i);
-            if (arg != null) {
-                outs[i].send(arg);
-            }
+            p.valueAt(position, i).ifPresent(outs[i]::send);
         }
         position++;
-        position %= p.getRowCount();
+        position %= p.rowCount();
     }
 
-    @T(2)
-    void reset() {
+    @T(2) void reset() {
         position = 0;
     }
     

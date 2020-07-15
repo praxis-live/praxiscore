@@ -270,7 +270,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             if (analysePropertyField(prop, field)) {
                 return;
             }
-            if (analyseCustomPropertyField(prop, field)) {
+            if (analyseTablePropertyField(prop, field)) {
                 return;
             }
         }
@@ -434,18 +434,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
-    private boolean analyseCustomPropertyField(P ann, Field field) {
-        TypeConverter<?> converter = TypeConverter.find(field.getType());
-        if (converter == null) {
-            return false;
-        }
-        TypeConverterProperty.Descriptor<?> tcpd
-                = TypeConverterProperty.Descriptor.create(this, ann, field, converter);
-        if (tcpd != null) {
-            addControl(tcpd);
-//            if (shouldAddPort(field)) {
-//                addPort(tcpd.createPortDescriptor());
-//            }
+    private boolean analyseTablePropertyField(P ann, Field field) {
+        TableProperty.Descriptor tpd
+                = TableProperty.Descriptor.create(this, ann, field);
+        if (tpd != null) {
+            addControl(tpd);
             return true;
         }
         return false;
