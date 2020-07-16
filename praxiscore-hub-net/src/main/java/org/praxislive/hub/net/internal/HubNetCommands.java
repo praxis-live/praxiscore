@@ -46,6 +46,7 @@ public class HubNetCommands implements CommandInstaller {
 
     @Override
     public void install(Map<String, Command> commands) {
+        commands.put("hub", HUB_CONFIGURE);
         commands.put("hub-configure", HUB_CONFIGURE);
     }
 
