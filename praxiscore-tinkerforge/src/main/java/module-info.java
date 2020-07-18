@@ -9,12 +9,13 @@ module org.praxislive.tinkerforge {
 
     requires com.tinkerforge;
     
+    exports org.praxislive.tinkerforge;
     exports org.praxislive.tinkerforge.userapi;
     
     provides org.praxislive.core.services.ComponentFactoryProvider with
-            org.praxislive.tinkerforge.TFComponents,
+            org.praxislive.tinkerforge.components.TFComponents,
             org.praxislive.tinkerforge.TFRootProvider;
     
-    opens org.praxislive.tinkerforge;
-    opens org.praxislive.tinkerforge.resources;
+    opens org.praxislive.tinkerforge.components;
+    opens org.praxislive.tinkerforge.components.resources;
 }

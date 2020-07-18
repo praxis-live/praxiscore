@@ -1,3 +1,50 @@
+/*
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+ *
+ * Copyright 2020 Neil C Smith.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 3 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * version 3 for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License version 3
+ * along with this work; if not, see http://www.gnu.org/licenses/
+ *
+ *
+ * Please visit https://www.praxislive.org if you need additional information or
+ * have any questions.
+ */
+package org.praxislive.tinkerforge.components;
+
+import org.praxislive.code.GenerateTemplate;
+import org.praxislive.tinkerforge.TFCodeDelegate;
+
+// default imports
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+import com.tinkerforge.*;
+import org.praxislive.tinkerforge.userapi.*;
+import static org.praxislive.code.userapi.Constants.*;
+import static org.praxislive.tinkerforge.userapi.Constants.*;
+
+/**
+ *
+ */
+@GenerateTemplate(TFIO16.TEMPLATE_PATH)
+public class TFIO16 extends TFCodeDelegate {
+
+    final static String TEMPLATE_PATH = "resources/io16.pxj";
+
+    // PXJ-BEGIN:body
 
     @TinkerForge BrickletIO16 io;
     
@@ -56,7 +103,7 @@
         io.addInterruptListener(listener);
         try {
             io.setPortInterrupt('a', (short) 0xFF);
-        } catch (TimeoutException | NotConnectedException ex) {
+        } catch (TinkerforgeException ex) {
         }
         outs = new Output[] {
             a0,a1,a2,a3,a4,a5,a6,a7
@@ -77,7 +124,7 @@
                 io.setPortConfiguration('a', masks[5], BrickletIO16.DIRECTION_IN, pullUpA5);
                 io.setPortConfiguration('a', masks[6], BrickletIO16.DIRECTION_IN, pullUpA6);
                 io.setPortConfiguration('a', masks[7], BrickletIO16.DIRECTION_IN, pullUpA7);
-            } catch (TimeoutException | NotConnectedException ex) {
+            } catch (TinkerforgeException ex) {
             }
             updateInputs = false;
         }
@@ -91,7 +138,7 @@
                 io.setPortConfiguration('b', masks[5], BrickletIO16.DIRECTION_OUT, b5);
                 io.setPortConfiguration('b', masks[6], BrickletIO16.DIRECTION_OUT, b6);
                 io.setPortConfiguration('b', masks[7], BrickletIO16.DIRECTION_OUT, b7);
-            } catch (TimeoutException | NotConnectedException ex) {
+            } catch (TinkerforgeException ex) {
             }
             updateOutputs = false;
         }
@@ -102,7 +149,7 @@
         io.removeInterruptListener(listener);
         try {
             io.setPortInterrupt('a', (short) 0);
-        } catch (TimeoutException | NotConnectedException ex) {
+        } catch (TinkerforgeException ex) {
         }
     }
     
@@ -132,3 +179,6 @@
         }
         
     }
+
+    // PXJ-END:body
+}

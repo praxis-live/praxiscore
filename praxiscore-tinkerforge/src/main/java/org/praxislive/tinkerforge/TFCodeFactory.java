@@ -34,16 +34,10 @@ public class TFCodeFactory extends CodeFactory<TFCodeDelegate> {
    
     private final static TFBodyContext CBC = new TFBodyContext();
 
-    private final boolean emptyDefault;
-
-    public TFCodeFactory(ComponentType type) {
-        super(CBC, type, TFBodyContext.TEMPLATE);
-        emptyDefault = true;
-    }
-
-    public TFCodeFactory(ComponentType type, String sourceCode) {
-        super(CBC, type, sourceCode);
-        emptyDefault = false;
+    public TFCodeFactory(ComponentType type,
+            Class<? extends TFCodeDelegate> baseClass,
+            String sourceTemplate) {
+        super(CBC, type, baseClass, sourceTemplate);
     }
 
     @Override

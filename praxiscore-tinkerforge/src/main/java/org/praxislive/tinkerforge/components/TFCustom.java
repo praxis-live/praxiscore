@@ -19,30 +19,47 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.tinkerforge;
+package org.praxislive.tinkerforge.components;
 
-import org.praxislive.code.CodeUtils;
-import org.praxislive.code.ClassBodyContext;
+import org.praxislive.code.GenerateTemplate;
+import org.praxislive.tinkerforge.TFCodeDelegate;
+
+// default imports
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+import com.tinkerforge.*;
+import org.praxislive.tinkerforge.userapi.*;
+import static org.praxislive.code.userapi.Constants.*;
+import static org.praxislive.tinkerforge.userapi.Constants.*;
 
 /**
  *
  */
-public class TFBodyContext extends ClassBodyContext<TFCodeDelegate> {
+@GenerateTemplate(TFCustom.TEMPLATE_PATH)
+public class TFCustom extends TFCodeDelegate {
 
-    private final static String[] IMPORTS = CodeUtils.join(
-            CodeUtils.defaultImports(), new String[]{
-                "com.tinkerforge.*",
-                "org.praxislive.tinkerforge.userapi.*",
-                "static org.praxislive.tinkerforge.userapi.Constants.*"
-            });
+    final static String TEMPLATE_PATH = "resources/custom.pxj";
 
-    public TFBodyContext() {
-        super(TFCodeDelegate.class);
+    // PXJ-BEGIN:body
+
+    @Override
+    public void setup() {
+
     }
 
     @Override
-    public String[] getDefaultImports() {
-        return IMPORTS.clone();
+    public void update() {
+
     }
 
+    @Override
+    public void dispose() {
+
+    }
+
+    // PXJ-END:body
 }
