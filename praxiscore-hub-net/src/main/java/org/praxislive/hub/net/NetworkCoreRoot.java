@@ -245,6 +245,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
         protected Call processResponse(Call call) throws Exception {
             Call active = getActiveCall();
             String id = active.args().get(0).toString();
+            getHubAccessor().unregisterRootController(id);
             remotes.remove(id);
             return call.reply();
         }
