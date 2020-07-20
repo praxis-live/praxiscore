@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,7 +42,6 @@ import processing.core.PSurface;
 
 /**
  *
- * @author Neil C Smith
  */
 public class PGLPlayer implements Player {
 
@@ -109,7 +108,6 @@ public class PGLPlayer implements Player {
 
     @Override
     public void run() {
-        LOG.info("Starting experimental PGL renderer.");
         running = true;
         time = clock.getTime();
         try {
@@ -306,16 +304,13 @@ public class PGLPlayer implements Player {
             }
         }
 
-//        @Override
-//        protected PSurface initSurface() {
+        @Override
+        protected PSurface initSurface() {
 //            PSurfaceJOGL.profile = null;
-//            PSurface s = super.initSurface();
-//            s.setTitle(wHints.getTitle());
-//            GLWindow window = (GLWindow) surface.getNative();
-//            window.setAlwaysOnTop(wHints.isAlwaysOnTop());
-//            window.setUndecorated(wHints.isUndecorated());
-//            return s;
-//        }
+            PSurface s = super.initSurface();
+            s.setTitle(wHints.getTitle());
+            return s;
+        }
         @Override
         public void setup() {
             assert pglSurface == null;
@@ -324,6 +319,9 @@ public class PGLPlayer implements Player {
             }
             if (!wHints.isShowCursor()) {
                 noCursor();
+            }
+            if (wHints.isAlwaysOnTop()) {
+                surface.setAlwaysOnTop(wHints.isAlwaysOnTop());
             }
             frameRate((float) fps);
         }
