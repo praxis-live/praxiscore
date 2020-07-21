@@ -39,6 +39,7 @@ import processing.core.PApplet;
 import processing.core.PGraphics;
 import processing.core.PImage;
 import processing.core.PSurface;
+import processing.lwjgl.PLWJGL;
 
 /**
  *
@@ -272,20 +273,20 @@ public class PGLPlayer implements Player {
 
         @Override
         public void settings() {
-//            switch (profile) {
-//                case GL2:
-//                    PJOGL.profile = 1;
-//                    break;
-//                case GL3:
-//                    PJOGL.profile = 3;
-//                    break;
-//                case GL4:
-//                    PJOGL.profile = 4;
-//                    break;
-//                case GLES2:
-//                    PJOGL.profile = 2;
-//                    break;
-//            }
+            switch (profile) {
+                case GL2:
+                    PLWJGL.profile = 1;
+                    break;
+                case GL3:
+                    PLWJGL.profile = 3;
+                    break;
+                case GL4:
+                    PLWJGL.profile = 4;
+                    break;
+                case GLES2:
+                    PLWJGL.profile = 2;
+                    break;
+            }
             if (wHints.isFullScreen()) {
                 if (outputDevice > -1) {
                     fullScreen(PGLGraphics.ID, outputDevice + 1);

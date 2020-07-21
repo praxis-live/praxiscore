@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,7 +33,6 @@ import org.praxislive.video.WindowHints;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
  */
 public class PGLPlayerFactory implements PlayerFactory {
 
@@ -42,7 +41,7 @@ public class PGLPlayerFactory implements PlayerFactory {
     private PGLPlayerFactory() {
         this(null);
     }
-    
+
     private PGLPlayerFactory(PGLProfile profile) {
         this.profile = profile;
     }
@@ -56,23 +55,22 @@ public class PGLPlayerFactory implements PlayerFactory {
 
         int width = config.getWidth();
         int height = config.getHeight();
-        
+
         Lookup configLookup = config.getLookup();
-        
+
         RenderingHints renderHints = configLookup.find(RenderingHints.class).orElseGet(RenderingHints::new);
 
-        // @TODO fix profile support
-//        PGLProfile glProfile = profile;
-//        if (profile == null) {
-//            glProfile = GLProfile.isAvailable(GLProfile.GL2GL3) ? PGLProfile.GL3 : PGLProfile.GLES2;
-//        }
-        
+        // @TODO fix default profile lookup support
+        PGLProfile glProfile = profile;
+        if (profile == null) {
+            glProfile = PGLProfile.GL3;
+        }
         Lookup clientLookup = clients[0].getLookup();
 
         int outWidth = clientLookup.find(ClientConfiguration.Dimension.class)
                 .map(ClientConfiguration.Dimension::getWidth)
                 .orElse(width);
-        
+
         int outHeight = clientLookup.find(ClientConfiguration.Dimension.class)
                 .map(ClientConfiguration.Dimension::getHeight)
                 .orElse(height);
@@ -105,13 +103,10 @@ public class PGLPlayerFactory implements PlayerFactory {
                 wHints,
                 main,
                 queue,
-                PGLProfile.GL3);
-                // @TODO fix profile support
-//                glProfile);
+                glProfile);
 
     }
-    
-    
+
     public static class Default implements PlayerFactory.Provider {
 
         @Override
@@ -123,9 +118,9 @@ public class PGLPlayerFactory implements PlayerFactory {
         public String getLibraryName() {
             return "OpenGL";
         }
-        
+
     }
-    
+
     public static class GL2 implements PlayerFactory.Provider {
 
         @Override
@@ -137,9 +132,9 @@ public class PGLPlayerFactory implements PlayerFactory {
         public String getLibraryName() {
             return "OpenGL:GL2";
         }
-        
+
     }
-    
+
     public static class GL3 implements PlayerFactory.Provider {
 
         @Override
@@ -151,9 +146,9 @@ public class PGLPlayerFactory implements PlayerFactory {
         public String getLibraryName() {
             return "OpenGL:GL3";
         }
-        
+
     }
-    
+
     public static class GL4 implements PlayerFactory.Provider {
 
         @Override
@@ -165,9 +160,9 @@ public class PGLPlayerFactory implements PlayerFactory {
         public String getLibraryName() {
             return "OpenGL:GL4";
         }
-        
+
     }
-    
+
     public static class GLES2 implements PlayerFactory.Provider {
 
         @Override
@@ -179,7 +174,7 @@ public class PGLPlayerFactory implements PlayerFactory {
         public String getLibraryName() {
             return "OpenGL:GLES2";
         }
-        
+
     }
-    
+
 }

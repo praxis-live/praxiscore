@@ -17,7 +17,11 @@ module org.praxislive.video.pgl {
     exports org.praxislive.video.pgl;
     
     provides org.praxislive.video.PlayerFactory.Provider with
-            org.praxislive.video.pgl.PGLPlayerFactory.Default;
+            org.praxislive.video.pgl.PGLPlayerFactory.Default,
+            org.praxislive.video.pgl.PGLPlayerFactory.GLES2,
+            org.praxislive.video.pgl.PGLPlayerFactory.GL2,
+            org.praxislive.video.pgl.PGLPlayerFactory.GL3,
+            org.praxislive.video.pgl.PGLPlayerFactory.GL4;
     
     opens org.praxislive.video.pgl to org.praxislive.video;
     
