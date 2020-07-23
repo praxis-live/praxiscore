@@ -32,6 +32,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.hub.net.NetworkCoreFactory;
@@ -110,37 +112,54 @@ public class Launcher {
         public ProcessBuilder createChildProcessBuilder(List<String> javaOptions,
                 List<String> arguments);
 
+        /**
+         * Provide an optional file to be run on launch, eg. for embedding the
+         * launcher in a project. If the context provides an auto-run file and
+         * the file option is specified, an exception will be thrown on launch.
+         * An implementation that doesn't want this behaviour should return an
+         * empty optional if a file is specified.
+         *
+         * @return optional file to run on launch
+         */
+        public default Optional<File> autoRunFile() {
+            return Optional.empty();
+        }
+
     }
 
     @CommandLine.Command(mixinStandardHelpOptions = true)
     private static class Exec implements Callable<Integer> {
 
         @CommandLine.Option(names = {"-f", "--file"},
-                description = "a script file or project directory to run.")
+                description = "A script file or project directory to run.")
         private File file;
 
         @CommandLine.Option(names = {"-p", "--port"},
                 converter = PortConverter.class,
-                description = "{auto | 0 .. 65535} : launch a server on the specified port. " +
-                    "If 0 or auto, a port is automatically chosen. " +
-                    "Unless --network is specified, connections are only supported over local loopback. " +
-                    "The port is reported to standard out as \"Listening at : [port]\".")
+                description = "{auto | 0 .. 65535} : Launch a server on the specified port. "
+                + "If 0 or auto, a port is automatically chosen. "
+                + "Unless --network is specified, connections are only supported over local loopback. "
+                + "The port is reported to standard out as \"Listening at : [port]\".")
         private Integer port;
 
         @CommandLine.Option(names = {"-n", "--network"},
-                description = "{all | CIDR mask} : launch a server that supports remote" +
-                    "connections, from all addresses or matching mask. " +
-                    "Implies --port auto if not otherwise specified.")
+                description = "{all | CIDR mask} : Launch a server that supports remote"
+                + "connections, from all addresses or matching mask. "
+                + "Implies --port auto if not otherwise specified.")
         private String network;
 
         @CommandLine.Option(names = {"-i", "--interactive"},
-                description = {"allow for controlling the hub via PCL commands over the command line."})
+                description = {"Allow for controlling the hub via PCL commands over the command line."})
         private boolean interactive;
 
         @CommandLine.Option(names = "--child",
-                description = "Configure the process to run as a child process. " +
-                    "Implies --port auto unless specified.")
+                description = "Configure the process to run as a child process. "
+                + "Implies --port auto unless specified.")
         private boolean child;
+
+        @CommandLine.Option(names = "--show-environment",
+                description = {"Output useful debugging information about process environment."})
+        private boolean showEnv;
 
         @CommandLine.Parameters(description = "Extra command line arguments.")
         private List<String> extraArgs;
@@ -153,6 +172,10 @@ public class Launcher {
 
         @Override
         public Integer call() throws Exception {
+
+            if (showEnv) {
+                outputEnvironmentInfo();
+            }
 
             if (child) {
                 if (port == null) {
@@ -174,20 +197,48 @@ public class Launcher {
                 cidr = null;
             }
 
-            final String script;
+            var autoRun = context.autoRunFile();
             if (file != null) {
-                file = file.getAbsoluteFile();
-                if (file.isDirectory()) {
-                    file = new File(file, "project.pxp");
+                if (child) {
+                    error("Cannot specify --file and --child");
+                    return 1;
                 }
-                script = "set _PWD " + file.getParentFile().toURI() + "\n"
-                        + Files.readString(file.toPath());
+                if (autoRun.isPresent()) {
+                    error("Cannot specify --file when auto-run file exists");
+                    return 1;
+                }
+            }
+            
+            final String script;
+            var scriptFile = autoRun.orElse(file);
+            if (scriptFile != null) {
+                scriptFile = scriptFile.getAbsoluteFile();
+                if (scriptFile.isDirectory()) {
+                    scriptFile = new File(scriptFile, "project.pxp");
+                }
+                if (!scriptFile.exists()) {
+                    error("No file found at " + scriptFile);
+                    return 1;
+                }
+                try {
+                    script = "set _PWD " + scriptFile.getParentFile().toURI() + "\n"
+                            + Files.readString(scriptFile.toPath());
+                } catch (Exception ex) {
+                    error("Unable to read script at " + scriptFile);
+                    return 1;
+                }
             } else {
                 script = null;
             }
 
-            if (!requireServer && !interactive && file == null) {
-                return 1;
+            if (!requireServer && !interactive && script == null) {
+                if (showEnv) {
+                    return 0;
+                } else {
+                    error("WARNING : Nothing to do, exiting.");
+                    error("Use --help to see options");
+                    return 1;
+                }
             }
 
             final var main = new MainThreadImpl();
@@ -229,13 +280,53 @@ public class Launcher {
                             .filter(a -> a instanceof InetSocketAddress)
                             .map(a -> (InetSocketAddress) a)
                             .orElseThrow().getPort();
-                    System.out.println(LISTENING_STATUS + port);
+                    out(LISTENING_STATUS + port);
                 }
                 main.run(hub);
 
             } while (requireServer);
 
             return 0;
+        }
+        
+        private void outputEnvironmentInfo() {
+            try {
+                var handle = ProcessHandle.current();
+                handle.info().command().ifPresent(s
+                        -> out("Command :\n" + s + "\n"));
+                handle.info().arguments().ifPresent(args
+                        -> out("Arguments :\n" + (Arrays.toString(args)) + "\n"));
+                handle.info().commandLine().ifPresent(s
+                        -> out("Full command line :\n" + s + "\n"));
+                var modulePath = System.getProperty("jdk.module.path");
+                out("Java module path :");
+                out((modulePath == null || modulePath.isBlank()
+                        ? "[EMPTY]" : modulePath));
+                out("");
+                var classPath = System.getProperty("java.class.path");
+                out("Java class path :");
+                out((classPath == null || classPath.isBlank()
+                        ? "[EMPTY]" : classPath));
+                out("");
+                out("Environment variables :");
+                out("" + System.getenv());
+                out("");
+            } catch (Exception e) {
+                System.getLogger(Launcher.class.getName())
+                        .log(System.Logger.Level.DEBUG,
+                                "Exception thrown outputting environment info.", e);
+            }
+        }
+        
+        private void out(String msg) {
+            System.out.println(msg);
+        }
+        
+        private void error(String msg) {
+            var ansiMsg = CommandLine.Help.Ansi.AUTO.string(
+                    "@|bold,red " + msg + "|@"
+            );
+            System.err.println(ansiMsg);
         }
 
     }
