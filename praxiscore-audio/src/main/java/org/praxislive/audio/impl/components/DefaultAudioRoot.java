@@ -42,6 +42,7 @@ import org.jaudiolibs.pipes.client.PipesAudioClient;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.DefaultExecutionContext;
+import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Clock;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Info;
@@ -49,6 +50,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -66,27 +68,26 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     private static final int MAX_BLOCKSIZE = 512;
     private static final int DEFAULT_BLOCKSIZE = 64;
 
-    private Map<String, LibraryInfo> libraries;
-    private AudioContext.InputClient inputClient;
-    private AudioContext.OutputClient outputClient;
-    private PipesAudioClient bus;
-    private AudioDelegate delegate;
-    private AudioServer server;
-
     // Permanent controls 
     private final CheckedIntProperty sampleRate;
     private final CheckedIntProperty blockSize;
     private final LibraryProperty audioLib;
 
     // Dynamic controls
-    private CheckedIntProperty extBufferSize;
-    private DeviceProperty deviceName;
-    private DeviceProperty inputDeviceName;
+    private final CheckedIntProperty extBufferSize;
+    private final DeviceProperty deviceName;
+    private final DeviceProperty inputDeviceName;
 
     private final ComponentInfo baseInfo;
-    private ComponentInfo info;
-
     private final AudioContext audioCtxt;
+
+    private ComponentInfo info;
+    private Map<String, LibraryInfo> libraries;
+    private AudioContext.InputClient inputClient;
+    private AudioContext.OutputClient outputClient;
+    private PipesAudioClient bus;
+    private AudioDelegate delegate;
+    private AudioServer server;
     private Lookup lookup;
     private long period = -1;
 
@@ -99,39 +100,39 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         registerControl("block-size", blockSize);
         audioLib = new LibraryProperty();
         registerControl("library", audioLib);
+        deviceName = new DeviceProperty();
+        inputDeviceName = new DeviceProperty();
+        extBufferSize = new CheckedIntProperty(1, DEFAULT_SAMPLERATE, AudioSettings.getBuffersize());
 
         baseInfo = Info.component(cmp -> cmp
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
-                .control("sample-rate", c -> c
-                    .property()
+                .control("sample-rate", c -> c.property()
                     .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
-                    .input(a -> a
-                        .number().min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
+                    .input(a -> a.number()
+                        .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
                         .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
-                .control("block-size", c -> c
-                    .property()
+                .control("block-size", c -> c.property()
                     .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
-                    .input(a -> a
-                        .number().min(1).max(MAX_BLOCKSIZE)
+                    .input(a -> a.number()
+                        .min(1).max(MAX_BLOCKSIZE)
                         .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
-                .control("library", c -> c
-                    .property()
+                .control("library", c -> c.property()
                     .defaultValue(PString.EMPTY)
-                    .input(a -> a
-                        .string()
+                    .input(a -> a.string()
                         .emptyIsDefault()
                         .allowed(
                             Stream.concat(Stream.of(""),
-                                    libraries.keySet().stream().sorted())
-                                    .toArray(String[]::new)
-                        )
+                                libraries.keySet().stream().sorted())
+                                .toArray(String[]::new))
                 ))
+                .property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
         );
-
+        info = baseInfo;
+        
         audioCtxt = new AudioCtxt();
 
     }
@@ -165,45 +166,55 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     private void updateLibrary(String lib) {
         unregisterControl("device");
-        deviceName = null;
         unregisterControl("input-device");
-        inputDeviceName = null;
         unregisterControl("ext-buffer-size");
-        extBufferSize = null;
+        info = baseInfo;
 
         if (lib.isEmpty()) {
             return;
         }
 
-        LibraryInfo info = libraries.get(lib);
-        if (info == null) {
+        LibraryInfo libInfo = libraries.get(lib);
+        if (libInfo == null) {
             return;
         }
 
-//        if (!"JACK".equals(lib)) {
-//            deviceName = new DeviceProperty();
-//            StringProperty devCtl = StringProperty.builder()
-//                    .binding(deviceName)
-//                    .defaultValue("")
-//                    .emptyIsDefault()
-//                    .suggestedValues(deviceNames(info.devices))
-//                    .build();
-//            registerControl("device", devCtl);
-//            inputDeviceName = new DeviceProperty();
-//            StringProperty inCtl = StringProperty.builder()
-//                    .binding(inputDeviceName)
-//                    .defaultValue("")
-//                    .emptyIsDefault()
-//                    .suggestedValues(deviceNames(info.inputDevices))
-//                    .build();
-//            registerControl("input-device", inCtl);
-//            extBufferSize = new CheckedIntProperty(AudioSettings.getBuffersize());
-//            IntProperty bsCtl = IntProperty.builder()
-//                    .binding(extBufferSize)
-//                    .suggestedValues(64, 128, 256, 512, 1024, 2048, 4096)
-//                    .build();
-//            registerControl("ext-buffer-size", bsCtl);
-//        }
+        if (!"JACK".equals(lib)) {
+            registerControl("device", deviceName);
+            registerControl("input-device", inputDeviceName);
+            registerControl("ext-buffer-size", extBufferSize);
+            info = Info.component(cmp -> cmp
+                    .merge(baseInfo)
+                    .control("device", c -> c.property()
+                        .defaultValue(PString.EMPTY)
+                        .input(a -> a.string()
+                            .suggested(deviceNames(libInfo.devices))
+                            .emptyIsDefault()
+                        )
+                    )
+                    .control("input-device", c -> c.property()
+                        .defaultValue(PString.EMPTY)
+                        .input(a -> a.string()
+                            .suggested(deviceNames(libInfo.devices))
+                            .emptyIsDefault()
+                        )
+                    )
+                    .control("ext-buffer-size", c -> c.property()
+                        .input(a -> a.number()
+                            .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                            .property(ArgumentInfo.KEY_SUGGESTED_VALUES,
+                                PArray.of(
+                                    PNumber.of(64),
+                                    PNumber.of(128),
+                                    PNumber.of(256),
+                                    PNumber.of(512),
+                                    PNumber.of(1024),
+                                    PNumber.of(2048),
+                                    PNumber.of(4096)))
+                        )
+                    )
+            );
+        }
     }
 
     @Override
@@ -249,31 +260,31 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         int buffersize = getBuffersize();
 
         boolean usingDefault = false;
-        LibraryInfo info = libraries.get(audioLib.value.value());
-        if (info == null) {
-            info = libraries.get(AudioSettings.getLibrary());
-            if (info == null) {
+        LibraryInfo libInfo = libraries.get(audioLib.value.value());
+        if (libInfo == null) {
+            libInfo = libraries.get(AudioSettings.getLibrary());
+            if (libInfo == null) {
                 throw new IllegalStateException("Audio library not found");
             }
             usingDefault = true;
         }
         LOG.log(Level.FINE, "Found audio library {0}\n{1}", new Object[]{
-            info.provider.getLibraryName(), info.provider.getLibraryDescription()
+            libInfo.provider.getLibraryName(), libInfo.provider.getLibraryDescription()
         });
 
-        Device device = findDevice(info, usingDefault, false);
+        Device device = findDevice(libInfo, usingDefault, false);
         if (device != null) {
             LOG.log(Level.FINE, "Found device : {0}", device.getName());
         }
         Device inputDevice = null;
         if (device != null && device.getMaxInputChannels() == 0 && bus.getSourceCount() > 0) {
-            inputDevice = findDevice(info, usingDefault, true);
+            inputDevice = findDevice(libInfo, usingDefault, true);
             if (inputDevice != null) {
                 LOG.log(Level.FINE, "Found input device : {0}", inputDevice.getName());
             }
         }
 
-        ClientID clientID = new ClientID("PraxisLIVE-" + getAddress().rootID());
+        ClientID clientID = new ClientID("PraxisCORE-" + getAddress().rootID());
 
         AudioConfiguration ctxt = new AudioConfiguration(srate,
                 bus.getSourceCount(),
@@ -281,7 +292,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 buffersize,
                 createCheckedExts(device, inputDevice, clientID)
         );
-        return info.provider.createServer(ctxt, bus);
+        return libInfo.provider.createServer(ctxt, bus);
     }
 
     private int getBuffersize() {
@@ -348,11 +359,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
     }
 
-    private String[] deviceNames(Device[] devices) {
-        String[] names = new String[devices.length + 1];
+    private String[] deviceNames(List<Device> devices) {
+        String[] names = new String[devices.size() + 1];
         names[0] = "";
-        for (int i = 0; i < devices.length; i++) {
-            names[i + 1] = devices[i].getName();
+        for (int i = 0; i < devices.size(); i++) {
+            names[i + 1] = devices.get(i).getName();
         }
         return names;
     }
@@ -412,7 +423,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     @Override
     public ComponentInfo getInfo() {
-        return baseInfo;
+        return info;
     }
 
     private class AudioDelegate extends Delegate
@@ -640,7 +651,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
 
     }
-
+    
     private static class LibraryInfo {
 
         private final AudioServerProvider provider;
