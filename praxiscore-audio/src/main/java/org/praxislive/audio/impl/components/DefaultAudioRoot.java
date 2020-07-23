@@ -72,11 +72,13 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     private final CheckedIntProperty sampleRate;
     private final CheckedIntProperty blockSize;
     private final LibraryProperty audioLib;
+    private final CheckedStringProperty clientName;
 
     // Dynamic controls
     private final CheckedIntProperty extBufferSize;
     private final DeviceProperty deviceName;
     private final DeviceProperty inputDeviceName;
+    private final TimingModeProperty timingMode;
 
     private final ComponentInfo baseInfo;
     private final AudioContext audioCtxt;
@@ -94,15 +96,21 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     public DefaultAudioRoot() {
         extractLibraryInfo();
 
+        // permanent
         sampleRate = new CheckedIntProperty(MIN_SAMPLERATE, MAX_SAMPLERATE, DEFAULT_SAMPLERATE);
         registerControl("sample-rate", sampleRate);
         blockSize = new CheckedIntProperty(1, MAX_BLOCKSIZE, DEFAULT_BLOCKSIZE);
         registerControl("block-size", blockSize);
+        clientName = new CheckedStringProperty(PString.EMPTY);
+        registerControl("client-name", clientName);
         audioLib = new LibraryProperty();
         registerControl("library", audioLib);
+        
+        // dynamic
         deviceName = new DeviceProperty();
         inputDeviceName = new DeviceProperty();
         extBufferSize = new CheckedIntProperty(1, DEFAULT_SAMPLERATE, AudioSettings.getBuffersize());
+        timingMode = new TimingModeProperty();
 
         baseInfo = Info.component(cmp -> cmp
                 .merge(ComponentProtocol.API_INFO)
@@ -120,6 +128,10 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                         .min(1).max(MAX_BLOCKSIZE)
                         .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
+                .control("client-name", c -> c.property()
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a.string())
+                )
                 .control("library", c -> c.property()
                     .defaultValue(PString.EMPTY)
                     .input(a -> a.string()
@@ -168,6 +180,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         unregisterControl("device");
         unregisterControl("input-device");
         unregisterControl("ext-buffer-size");
+        unregisterControl("timing-mode");
         info = baseInfo;
 
         if (lib.isEmpty()) {
@@ -183,6 +196,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             registerControl("device", deviceName);
             registerControl("input-device", inputDeviceName);
             registerControl("ext-buffer-size", extBufferSize);
+            registerControl("timing-mode", timingMode);
             info = Info.component(cmp -> cmp
                     .merge(baseInfo)
                     .control("device", c -> c.property()
@@ -212,6 +226,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                                     PNumber.of(2048),
                                     PNumber.of(4096)))
                         )
+                    )
+                    .control("timing-mode", c -> c.property()
+                        .defaultValue(PString.of("Blocking"))
+                        .input(a -> a.string()
+                            .allowed("Blocking", "Estimated", "FramePosition"))
                     )
             );
         }
@@ -283,14 +302,24 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 LOG.log(Level.FINE, "Found input device : {0}", inputDevice.getName());
             }
         }
-
-        ClientID clientID = new ClientID("PraxisCORE-" + getAddress().rootID());
+        
+        ClientID clientID;
+        var id = clientName.value.toString();
+        if (id.isBlank()) {
+            clientID = new ClientID("PraxisCORE-" + getAddress().rootID());
+        } else {
+            clientID = new ClientID(id);
+        }
+        
+        var timing = findTimingMode(this.timingMode.value.toString());
 
         AudioConfiguration ctxt = new AudioConfiguration(srate,
                 bus.getSourceCount(),
                 bus.getSinkCount(),
                 buffersize,
-                createCheckedExts(device, inputDevice, clientID)
+                timing == null ?
+                createCheckedExts(device, inputDevice, clientID) :
+                createCheckedExts(device, inputDevice, clientID, timing) 
         );
         return libInfo.provider.createServer(ctxt, bus);
     }
@@ -366,6 +395,15 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             names[i + 1] = devices.get(i).getName();
         }
         return names;
+    }
+    
+    private Object findTimingMode(String mode) {
+        try {
+            Class<?> modeClass = Class.forName("org.jaudiolibs.audioservers.javasound.JSTimingMode");
+            return Enum.valueOf(modeClass.asSubclass(Enum.class), mode);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private Object[] createCheckedExts(Object... exts) {
@@ -579,11 +617,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     }
 
-    private class CheckedStringBinding extends AbstractProperty {
+    private class CheckedStringProperty extends AbstractProperty {
 
         private Value value;
 
-        private CheckedStringBinding(Value initial) {
+        private CheckedStringProperty(Value initial) {
             this.value = initial;
         }
 
@@ -650,6 +688,33 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             return value;
         }
 
+    }
+    
+    private class TimingModeProperty extends AbstractProperty {
+        
+        private PString value = PString.of("Blocking");
+
+        @Override
+        protected void set(long time, Value arg) throws Exception {
+            if (getState() == State.ACTIVE_RUNNING) {
+                throw new IllegalStateException("Can't set value while active");
+            }
+            switch (arg.toString()) {
+                case "Blocking" :
+                case "Estimated" :
+                case "FramePosition" :
+                    value = PString.of(arg);
+                    break;
+                default :
+                    throw new IllegalArgumentException("Unknown timing mode value " + arg);
+            }
+        }
+
+        @Override
+        protected Value get() {
+            return value;
+        }
+        
     }
     
     private static class LibraryInfo {
