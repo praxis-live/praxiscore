@@ -66,6 +66,8 @@ public class AudioComponents implements ComponentFactoryProvider {
             add("audio:fx:overdrive", AudioFXOverdrive.class, AudioFXOverdrive.TEMPLATE_PATH);
             add("audio:fx:reverb", AudioFXReverb.class, AudioFXReverb.TEMPLATE_PATH);
             
+            add("audio:analysis:level", AudioLevel.class, AudioLevel.TEMPLATE_PATH);
+            
         }
         
         
