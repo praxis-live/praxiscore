@@ -86,20 +86,8 @@ then
   REPO="$BASEDIR"/@REPO@
 fi
 
-CLASSPATH=@CLASSPATH@
-
-ENDORSED_DIR=@ENDORSED_DIR@
-if [ -n "$ENDORSED_DIR" ] ; then
-  CLASSPATH=$BASEDIR/$ENDORSED_DIR/*:$CLASSPATH
-fi
-
-if [ -n "$CLASSPATH_PREFIX" ] ; then
-  CLASSPATH=$CLASSPATH_PREFIX:$CLASSPATH
-fi
-
 # For Cygwin, switch paths to Windows format before running java
 if $cygwin; then
-  [ -n "$CLASSPATH" ] && CLASSPATH=`cygpath --path --windows "$CLASSPATH"`
   [ -n "$JAVA_HOME" ] && JAVA_HOME=`cygpath --path --windows "$JAVA_HOME"`
   [ -n "$HOME" ] && HOME=`cygpath --path --windows "$HOME"`
   [ -n "$BASEDIR" ] && BASEDIR=`cygpath --path --windows "$BASEDIR"`

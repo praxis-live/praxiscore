@@ -21,6 +21,7 @@
           <repositoryName>mods</repositoryName>
           <useWildcardClassPath>true</useWildcardClassPath>
           <unixScriptTemplate>${project.basedir}/src/bin/unixBinTemplate</unixScriptTemplate>
+          <windowsScriptTemplate>${project.basedir}/src/bin/windowsBinTemplate</windowsScriptTemplate>
           <programs>
             <program>
               <mainClass>org.praxislive.bin.Main</mainClass>
