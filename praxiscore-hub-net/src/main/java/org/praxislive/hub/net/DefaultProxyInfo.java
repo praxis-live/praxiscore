@@ -93,9 +93,9 @@ public class DefaultProxyInfo implements ProxyInfo {
      */
     public static DefaultProxyInfo fromMap(PMap conf) {
         var builder = builder();
-        var host = conf.getString(KEY_HOST, null);
+        var host = conf.getString(KEY_HOST, "localhost");
         var port = conf.getInt(KEY_PORT, 0);
-        if (host != null) {
+        if (!"localhost".equalsIgnoreCase(host)) {
             builder.address(host, port);
         } else {
             builder.address(port);
