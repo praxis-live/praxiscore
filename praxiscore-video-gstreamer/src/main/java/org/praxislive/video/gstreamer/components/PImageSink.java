@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,7 +41,6 @@ import org.praxislive.video.render.SurfaceOp;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
  */
 class PImageSink {
 
@@ -49,9 +48,9 @@ class PImageSink {
 
     static {
         if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
-            DEFAULT_CAPS = "video/x-raw, format=BGRx";
+            DEFAULT_CAPS = "video/x-raw, format=BGRx, pixel-aspect-ratio=1/1";
         } else {
-            DEFAULT_CAPS = "video/x-raw, format=xRGB";
+            DEFAULT_CAPS = "video/x-raw, format=xRGB, pixel-aspect-ratio=1/1";
         }
     }
 
