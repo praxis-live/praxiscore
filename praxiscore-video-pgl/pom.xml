@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.praxislive</groupId>
     <artifactId>praxiscore</artifactId>
-    <version>5.0.0-SNAPSHOT</version>
+    <version>5.0.0-beta-2</version>
   </parent>
   <artifactId>praxiscore-video-pgl</artifactId>
   <packaging>jar</packaging>
@@ -42,12 +42,12 @@
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-core</artifactId>
-      <version>0.353.0-SNAPSHOT</version>
+      <version>0.353.0-beta-2</version>
     </dependency>
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-lwjgl</artifactId>
-      <version>0.353.0-SNAPSHOT</version>
+      <version>0.353.0-beta-2</version>
     </dependency>
 
     <dependency>
