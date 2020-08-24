@@ -39,7 +39,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class VideoInputPort extends DefaultVideoInputPort {
     

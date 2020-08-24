@@ -26,7 +26,7 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public abstract class Config {
 

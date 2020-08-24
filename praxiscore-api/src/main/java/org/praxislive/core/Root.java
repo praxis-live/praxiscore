@@ -36,7 +36,7 @@ import java.util.concurrent.ThreadFactory;
  * Some Root implementations will have a one-to-one relationship to a thread of
  * execution.
  * 
- * @author Neil C Smith
+ * 
  */
 public interface Root extends Lookup.Provider { 
     

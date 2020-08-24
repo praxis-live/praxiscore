@@ -30,7 +30,7 @@ import org.praxislive.core.services.ComponentFactoryProvider;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class AudioComponents implements ComponentFactoryProvider {
 

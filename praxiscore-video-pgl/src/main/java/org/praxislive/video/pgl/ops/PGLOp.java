@@ -28,7 +28,7 @@ import org.praxislive.video.render.SurfaceOp;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class PGLOp {
     

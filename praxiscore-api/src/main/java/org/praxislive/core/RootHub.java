@@ -38,7 +38,7 @@ import org.praxislive.core.services.Service;
  * across RootHubs are not useful). Packet timecodes will be automatically
  * translated.
  *
- * @author Neil C Smith
+ * 
  */
 public interface RootHub extends Lookup.Provider {
 

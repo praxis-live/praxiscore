@@ -24,7 +24,7 @@ package org.praxislive.video.utils;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public final class ResizeMode {
     

@@ -28,7 +28,7 @@ import org.praxislive.core.services.ComponentFactoryService;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class CodeComponentFactoryService extends ComponentFactoryService {
     

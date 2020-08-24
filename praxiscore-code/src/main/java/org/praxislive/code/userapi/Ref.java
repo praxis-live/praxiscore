@@ -38,7 +38,7 @@ import java.util.function.Supplier;
  * <strong>Most methods will throw an Exception if init() has not been called
  * with a Supplier function.</strong>
  * 
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  * @param <T>
  */
 public abstract class Ref<T> {

@@ -34,7 +34,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 abstract class ValueBinding extends PropertyControl.Binding {
 

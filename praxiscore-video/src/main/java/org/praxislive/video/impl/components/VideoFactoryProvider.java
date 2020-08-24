@@ -28,7 +28,7 @@ import org.praxislive.core.services.ComponentFactoryProvider;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class VideoFactoryProvider implements ComponentFactoryProvider {
 

@@ -34,7 +34,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class Constants {
 

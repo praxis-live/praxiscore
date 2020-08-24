@@ -27,7 +27,7 @@ import org.praxislive.video.render.PixelData;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class SubPixels implements PixelData {
 

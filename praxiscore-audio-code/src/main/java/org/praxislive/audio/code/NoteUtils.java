@@ -24,7 +24,7 @@ package org.praxislive.audio.code;
 
 /**
  *
- * @author Neil C Smith (http://www.neilcsmith.net)
+ * 
  */
 class NoteUtils {
 

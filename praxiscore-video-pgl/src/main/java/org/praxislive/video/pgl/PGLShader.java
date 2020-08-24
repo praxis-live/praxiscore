@@ -29,7 +29,7 @@ import processing.opengl.Texture;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PGLShader extends PShader {
 

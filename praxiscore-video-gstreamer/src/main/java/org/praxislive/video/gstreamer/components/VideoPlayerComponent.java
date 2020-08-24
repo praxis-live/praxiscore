@@ -42,7 +42,7 @@ import org.praxislive.video.gstreamer.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoPlayerComponent.TEMPLATE_PATH)
 public class VideoPlayerComponent extends VideoCodeDelegate {

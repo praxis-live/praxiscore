@@ -23,7 +23,7 @@ package org.praxislive.video.render;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class Surface {
 

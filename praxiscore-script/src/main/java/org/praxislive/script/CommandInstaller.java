@@ -26,7 +26,7 @@ import java.util.Map;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface CommandInstaller {
 

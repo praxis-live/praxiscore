@@ -24,7 +24,7 @@ package org.praxislive.video;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class ClientRegistrationException extends Exception {
 

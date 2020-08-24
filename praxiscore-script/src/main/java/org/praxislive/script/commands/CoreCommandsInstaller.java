@@ -28,7 +28,7 @@ import org.praxislive.script.CommandInstaller;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class CoreCommandsInstaller implements CommandInstaller {
 

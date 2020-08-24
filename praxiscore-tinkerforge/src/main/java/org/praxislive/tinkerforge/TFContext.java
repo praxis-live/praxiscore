@@ -37,7 +37,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class TFContext {
 

@@ -28,7 +28,7 @@ import java.util.NoSuchElementException;
  * Class to split a CharSequence into Tokens.
  *
  *
- * @author Neil C Smith
+ * 
  */
 public class Tokenizer implements Iterable<Token> {
 

@@ -24,7 +24,7 @@ package org.praxislive.core.services;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class ComponentInstantiationException extends Exception {
 

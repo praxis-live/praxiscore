@@ -28,7 +28,7 @@ import org.praxislive.script.Variable;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class VariableImpl implements Variable {
 

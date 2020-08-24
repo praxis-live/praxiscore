@@ -25,7 +25,7 @@ import static org.praxislive.video.render.utils.RGBMath.*;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class InvertValueRGBFilter implements RGBSinglePixelFilter {
 

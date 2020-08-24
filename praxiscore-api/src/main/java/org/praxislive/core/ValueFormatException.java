@@ -26,7 +26,7 @@ package org.praxislive.core;
  * Exception thrown if a String is not a valid representation of the required
  * Value subclass.
  *
- * @author Neil C Smith
+ * 
  */
 public class ValueFormatException extends Exception {
 

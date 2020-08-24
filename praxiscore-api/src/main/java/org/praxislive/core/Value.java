@@ -41,7 +41,7 @@ import org.praxislive.core.types.PString;
  * 
  * All Value sub-types are guaranteed to be immutable.
  *
- * @author Neil C Smith (http://www.neilcsmith.net)
+ * 
  */
 public abstract class Value {
 

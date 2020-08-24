@@ -41,7 +41,7 @@ import org.praxislive.audio.DefaultAudioOutputPort;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class AudioOutPort extends DefaultAudioOutputPort {
 

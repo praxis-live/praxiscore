@@ -27,7 +27,7 @@ import org.praxislive.core.Lookup;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public final class PlayerConfiguration {
     

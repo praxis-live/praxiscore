@@ -40,7 +40,7 @@ import org.praxislive.video.render.utils.FontUtils;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class FontLoader extends ResourceProperty.Loader<PFont> {
 

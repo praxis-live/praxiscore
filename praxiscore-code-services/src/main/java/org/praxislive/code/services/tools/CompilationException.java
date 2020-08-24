@@ -23,7 +23,7 @@ package org.praxislive.code.services.tools;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class CompilationException extends Exception {
 

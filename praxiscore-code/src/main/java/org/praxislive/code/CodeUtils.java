@@ -27,7 +27,7 @@ import java.util.Scanner;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class CodeUtils {
  

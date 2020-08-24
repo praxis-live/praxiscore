@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PArrayTest {
     

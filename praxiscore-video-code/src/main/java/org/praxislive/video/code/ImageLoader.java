@@ -38,7 +38,7 @@ import org.praxislive.video.render.utils.BufferedImageSurface;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class ImageLoader extends ResourceProperty.Loader<PImage> {
     

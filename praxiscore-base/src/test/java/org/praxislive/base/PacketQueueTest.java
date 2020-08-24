@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 
 /**
  *
- * @author Neil C Smith - https://www.neilcsmith.net
+ * 
  */
 public class PacketQueueTest {
 

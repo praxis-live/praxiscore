@@ -39,7 +39,7 @@ import org.praxislive.video.code.userapi.PImage;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class VideoCodeConnector<T extends VideoCodeDelegate> extends CodeConnector<T> {
 

@@ -37,7 +37,7 @@ import org.praxislive.video.render.utils.ImageUtils;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class ShapeRender implements SurfaceOp {
 

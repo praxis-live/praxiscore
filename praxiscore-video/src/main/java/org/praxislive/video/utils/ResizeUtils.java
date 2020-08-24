@@ -27,7 +27,7 @@ import java.awt.Rectangle;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class ResizeUtils {
     

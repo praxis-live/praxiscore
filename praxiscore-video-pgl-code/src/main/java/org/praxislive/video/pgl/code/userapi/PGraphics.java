@@ -30,7 +30,7 @@ import processing.opengl.PShapeOpenGL;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 abstract class PGraphics extends PImage {
     

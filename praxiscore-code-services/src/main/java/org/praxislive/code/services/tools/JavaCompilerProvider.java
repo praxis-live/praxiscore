@@ -25,7 +25,7 @@ import javax.tools.JavaCompiler;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface JavaCompilerProvider {
     

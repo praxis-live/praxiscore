@@ -29,7 +29,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * @author Neil C Smith - https://www.neilcsmith.net
+ * 
  */
 class DataSink<T> extends Data.Sink<T> {
 

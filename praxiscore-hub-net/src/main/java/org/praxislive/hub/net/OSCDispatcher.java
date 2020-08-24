@@ -44,7 +44,7 @@ import org.praxislive.internal.osc.OSCPacket;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 abstract class OSCDispatcher {
 

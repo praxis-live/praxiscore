@@ -52,7 +52,7 @@ import org.praxislive.video.gstreamer.VideoPlayer;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 class GStreamerVideoPlayer implements VideoPlayer {
     

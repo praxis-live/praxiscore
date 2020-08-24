@@ -24,7 +24,7 @@ package org.praxislive.video.pipes;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface FrameRateSource {
 

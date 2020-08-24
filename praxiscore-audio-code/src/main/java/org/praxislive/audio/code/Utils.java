@@ -26,7 +26,7 @@ import org.jaudiolibs.pipes.Pipe;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class Utils {
 

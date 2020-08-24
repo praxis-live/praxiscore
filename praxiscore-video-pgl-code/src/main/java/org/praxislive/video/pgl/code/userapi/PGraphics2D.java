@@ -25,7 +25,7 @@ import org.praxislive.video.pgl.PGLGraphics;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public abstract class PGraphics2D extends PGraphics {
 

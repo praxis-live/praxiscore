@@ -25,7 +25,7 @@ package org.praxislive.core;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface PortListener {
 

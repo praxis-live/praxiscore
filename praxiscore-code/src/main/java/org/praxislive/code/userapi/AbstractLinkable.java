@@ -29,7 +29,7 @@ import java.util.function.IntConsumer;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 abstract class AbstractLinkable<IN, OUT> implements Consumer<IN>, Linkable<OUT> {
 

@@ -32,7 +32,7 @@ import org.praxislive.video.gstreamer.VideoPlayer;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public class GStreamerCodePlugin implements CodeConnector.Plugin {
 

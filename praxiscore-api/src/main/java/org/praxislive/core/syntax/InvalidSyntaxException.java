@@ -24,7 +24,7 @@ package org.praxislive.core.syntax;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class InvalidSyntaxException extends Exception {
 

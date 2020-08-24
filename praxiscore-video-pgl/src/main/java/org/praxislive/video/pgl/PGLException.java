@@ -23,7 +23,7 @@ package org.praxislive.video.pgl;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PGLException extends Exception {
 

@@ -42,7 +42,7 @@ import org.praxislive.video.render.ops.DifferenceOp;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoAnalysisDifference.TEMPLATE_PATH)
 public class VideoAnalysisDifference extends VideoCodeDelegate {

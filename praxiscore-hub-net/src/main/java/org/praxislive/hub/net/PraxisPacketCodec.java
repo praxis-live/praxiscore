@@ -29,7 +29,7 @@ import org.praxislive.internal.osc.OSCPacketCodec;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class PraxisPacketCodec extends OSCPacketCodec {
 

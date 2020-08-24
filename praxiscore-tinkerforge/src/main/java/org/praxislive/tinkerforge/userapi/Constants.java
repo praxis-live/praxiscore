@@ -31,7 +31,7 @@ package org.praxislive.tinkerforge.userapi;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class Constants {
     

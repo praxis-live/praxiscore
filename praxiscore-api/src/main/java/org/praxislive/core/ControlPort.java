@@ -25,7 +25,7 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class ControlPort implements Port {
 

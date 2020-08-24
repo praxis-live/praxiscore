@@ -8,7 +8,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class ShaderUtils {
 

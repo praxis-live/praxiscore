@@ -25,7 +25,7 @@ package org.praxislive.gui.components;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class VSlider extends Slider {
 

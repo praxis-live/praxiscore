@@ -42,7 +42,7 @@ import org.praxislive.video.render.ops.Blur;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoFXBlur.TEMPLATE_PATH)
 public class VideoFXBlur extends VideoCodeDelegate {

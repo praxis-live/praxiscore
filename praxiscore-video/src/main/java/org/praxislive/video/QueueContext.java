@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface QueueContext {
     

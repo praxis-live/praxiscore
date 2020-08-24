@@ -44,7 +44,7 @@ import org.praxislive.gui.impl.ToggleButtonModelAdaptor;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class ToggleButton extends SingleBindingGuiComponent {
 

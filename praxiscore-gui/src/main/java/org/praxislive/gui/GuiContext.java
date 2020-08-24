@@ -25,7 +25,7 @@ import javax.swing.JComponent;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public abstract class GuiContext {
 

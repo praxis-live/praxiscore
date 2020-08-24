@@ -29,7 +29,7 @@ import org.praxislive.core.Protocol;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public class CodeProtocolsProvider implements Protocol.TypeProvider {
 

@@ -26,7 +26,7 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TinkerForge {

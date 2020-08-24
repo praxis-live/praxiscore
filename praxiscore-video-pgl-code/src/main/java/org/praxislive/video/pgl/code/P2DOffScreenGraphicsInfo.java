@@ -33,7 +33,7 @@ import processing.core.PStyle;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class P2DOffScreenGraphicsInfo {
 

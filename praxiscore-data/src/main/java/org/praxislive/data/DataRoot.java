@@ -34,7 +34,7 @@ import org.praxislive.core.protocols.StartableProtocol;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class DataRoot extends AbstractRootContainer {
     

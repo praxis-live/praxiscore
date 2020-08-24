@@ -24,7 +24,6 @@ package org.praxislive.video;
 
 /**
  *
- * @author nsigma
  */
 public interface PlayerFactory {
     

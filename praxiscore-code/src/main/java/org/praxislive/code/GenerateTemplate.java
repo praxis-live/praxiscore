@@ -55,7 +55,7 @@ import java.lang.annotation.Target;
  * } 
  * </pre>
  * 
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)

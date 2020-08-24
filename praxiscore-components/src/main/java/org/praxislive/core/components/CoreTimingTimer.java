@@ -36,7 +36,7 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(CoreTimingTimer.TEMPLATE_PATH)
 public class CoreTimingTimer extends CoreCodeDelegate {

@@ -38,7 +38,7 @@ import static org.praxislive.audio.code.userapi.AudioConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(AudioClock.TEMPLATE_PATH)
 public class AudioClock extends AudioCodeDelegate {

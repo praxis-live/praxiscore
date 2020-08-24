@@ -51,7 +51,7 @@ import org.praxislive.video.render.ops.TransformBlit;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public abstract class PGraphics extends PImage {
 

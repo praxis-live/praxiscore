@@ -26,7 +26,7 @@ package org.praxislive.gui;
 /**
  * Keys for storage of client properties in JComponents
  *
- * @author Neil C Smith
+ * 
  */
 public class Keys {
 

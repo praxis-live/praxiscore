@@ -33,7 +33,7 @@ import org.praxislive.video.render.ops.RectFill;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PGLRectFillOp extends AbstractDrawOp {
     

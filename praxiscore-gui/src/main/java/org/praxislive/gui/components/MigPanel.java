@@ -27,7 +27,7 @@ import javax.swing.JPanel;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class MigPanel extends JPanel {
 

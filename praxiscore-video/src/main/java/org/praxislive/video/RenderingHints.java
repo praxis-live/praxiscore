@@ -23,7 +23,6 @@ package org.praxislive.video;
 
 /**
  *
- * @author Neil C Smith - https://www.neilcsmith.net
  */
 public class RenderingHints {
     

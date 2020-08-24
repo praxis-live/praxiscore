@@ -24,7 +24,7 @@ package org.praxislive.core.services;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface ComponentFactoryProvider {
 

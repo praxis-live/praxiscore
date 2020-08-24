@@ -28,7 +28,7 @@ import org.praxislive.video.pipes.FrameRateSource;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface Player extends Runnable, FrameRateSource, Bus {
 

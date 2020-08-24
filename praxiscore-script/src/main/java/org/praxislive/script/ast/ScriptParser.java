@@ -35,7 +35,7 @@ import org.praxislive.core.types.PString;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class ScriptParser {
 

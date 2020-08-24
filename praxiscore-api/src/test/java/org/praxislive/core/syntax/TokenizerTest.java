@@ -15,7 +15,7 @@ import org.junit.Test;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class TokenizerTest {
 

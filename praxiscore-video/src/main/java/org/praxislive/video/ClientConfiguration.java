@@ -25,7 +25,6 @@ import org.praxislive.core.Lookup;
 
 /**
  *
- * @author nsigma
  */
 public final class ClientConfiguration {
 

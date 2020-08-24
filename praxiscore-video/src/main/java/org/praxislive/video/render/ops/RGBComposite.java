@@ -18,7 +18,7 @@ import static org.praxislive.video.render.utils.RGBMath.*;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 abstract class RGBComposite {
 

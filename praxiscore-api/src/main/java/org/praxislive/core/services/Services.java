@@ -27,7 +27,7 @@ import org.praxislive.core.ComponentAddress;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface Services {
 

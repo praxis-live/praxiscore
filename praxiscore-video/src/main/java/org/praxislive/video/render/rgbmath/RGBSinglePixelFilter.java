@@ -24,7 +24,7 @@ package org.praxislive.video.render.rgbmath;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface RGBSinglePixelFilter {
     

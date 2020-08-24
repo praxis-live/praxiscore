@@ -23,7 +23,7 @@ package org.praxislive.code;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public abstract class CodeDelegate {
     

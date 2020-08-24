@@ -27,7 +27,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class SingleOut extends VideoPipe {
 

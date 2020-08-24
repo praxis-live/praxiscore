@@ -28,7 +28,7 @@ import org.praxislive.code.CodeFactory;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class CoreCodeConnector extends CodeConnector<CoreCodeDelegate> {
 

@@ -38,7 +38,7 @@ import static org.praxislive.audio.code.userapi.AudioConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(AudioCustom.TEMPLATE_PATH)
 public class AudioCustom extends AudioCodeDelegate {

@@ -38,7 +38,7 @@ import processing.data.XML;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class ShapeLoader extends ResourceProperty.Loader<PShape> {
 

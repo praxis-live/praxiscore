@@ -35,7 +35,7 @@ import processing.core.PImage;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public final class PGLSurface extends Surface {
 

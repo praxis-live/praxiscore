@@ -44,7 +44,7 @@ import org.praxislive.code.GenerateTemplate;
 /**
  * Annotation processor for {@link GenerateTemplate}. See annotation for usage.
  * 
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @SupportedAnnotationTypes("org.praxislive.code.GenerateTemplate")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)

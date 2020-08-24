@@ -28,7 +28,7 @@ import org.praxislive.core.RootHub;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class CodeServicesExtensionProvider implements RootHub.ExtensionProvider {
 

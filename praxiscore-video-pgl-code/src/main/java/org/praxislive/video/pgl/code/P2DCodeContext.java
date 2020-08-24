@@ -43,7 +43,7 @@ import processing.core.PStyle;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
 

@@ -41,7 +41,7 @@ import org.praxislive.video.pgl.code.userapi.PShape;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class P2DCodeConnector extends CodeConnector<P2DCodeDelegate> {
 

@@ -26,7 +26,7 @@ import processing.lwjgl.PSurfaceLWJGL;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class PGLGraphicsPSurface extends PSurfaceLWJGL {
 

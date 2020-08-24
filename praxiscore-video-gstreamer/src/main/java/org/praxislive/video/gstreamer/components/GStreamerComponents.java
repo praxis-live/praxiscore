@@ -30,7 +30,7 @@ import org.praxislive.video.code.VideoCodeFactory;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class GStreamerComponents implements ComponentFactoryProvider {
 

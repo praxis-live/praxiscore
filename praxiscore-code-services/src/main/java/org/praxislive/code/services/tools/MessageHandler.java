@@ -24,7 +24,7 @@ package org.praxislive.code.services.tools;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public interface MessageHandler {
     

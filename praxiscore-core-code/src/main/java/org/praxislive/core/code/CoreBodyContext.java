@@ -27,7 +27,7 @@ import org.praxislive.code.ClassBodyContext;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class CoreBodyContext extends ClassBodyContext<CoreCodeDelegate> {
     

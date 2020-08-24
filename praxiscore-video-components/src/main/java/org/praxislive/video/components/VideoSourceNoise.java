@@ -42,7 +42,7 @@ import org.praxislive.video.render.ops.Noise;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoSourceNoise.TEMPLATE_PATH)
 public class VideoSourceNoise extends VideoCodeDelegate {

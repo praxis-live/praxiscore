@@ -24,7 +24,7 @@ package org.praxislive.script;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface Namespace {
 

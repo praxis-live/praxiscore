@@ -28,7 +28,7 @@ import org.praxislive.video.render.utils.PixelArrayCache;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class TempData implements PixelData {
     

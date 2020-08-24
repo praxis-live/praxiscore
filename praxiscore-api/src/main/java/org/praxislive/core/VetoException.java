@@ -24,7 +24,7 @@ package org.praxislive.core;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class VetoException extends Exception {
 

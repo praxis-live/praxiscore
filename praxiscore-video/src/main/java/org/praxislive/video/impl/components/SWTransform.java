@@ -27,7 +27,7 @@ import org.praxislive.video.render.SurfaceOp;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 abstract class SWTransform implements SurfaceOp {
 

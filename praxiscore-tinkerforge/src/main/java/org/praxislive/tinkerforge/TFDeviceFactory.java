@@ -27,7 +27,7 @@ import com.tinkerforge.IPConnection;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 class TFDeviceFactory {
 

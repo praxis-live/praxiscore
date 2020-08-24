@@ -32,7 +32,7 @@ import org.freedesktop.gstreamer.Gst;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 class GStreamerLibrary {
 

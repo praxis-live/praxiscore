@@ -30,7 +30,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class LogControl implements Control {
     

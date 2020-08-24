@@ -29,7 +29,7 @@ import org.praxislive.core.PacketRouter;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public abstract class AbstractBasicProperty implements Control {
 

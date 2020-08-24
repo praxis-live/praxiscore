@@ -33,7 +33,7 @@ import org.praxislive.video.render.ops.TextRender;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class PGLTextRenderOp extends PGLOp {
 

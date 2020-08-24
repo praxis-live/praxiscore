@@ -2,7 +2,7 @@ package org.praxislive.video.pgl.code.userapi;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class ShaderConstants {
 

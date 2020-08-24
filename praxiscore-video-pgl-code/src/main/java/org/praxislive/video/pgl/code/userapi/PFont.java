@@ -26,7 +26,7 @@ import org.praxislive.video.pgl.PGLContext;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public abstract class PFont {
     

@@ -30,7 +30,7 @@ import org.praxislive.video.render.utils.RGBMath;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class Noise implements SurfaceOp {
 

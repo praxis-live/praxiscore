@@ -31,7 +31,7 @@ import org.praxislive.video.render.utils.RGBMath;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class RectFill implements SurfaceOp {
 

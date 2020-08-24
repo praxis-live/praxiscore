@@ -33,7 +33,7 @@ import java.awt.Font;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public abstract class PFont {
     

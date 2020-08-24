@@ -60,7 +60,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 class SWPlayer implements Player {
 

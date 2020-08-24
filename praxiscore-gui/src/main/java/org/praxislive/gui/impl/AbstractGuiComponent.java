@@ -38,7 +38,7 @@ import org.praxislive.gui.GuiContext;
 /**
  * Abstract superclass for default GuiComponent model.
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class AbstractGuiComponent extends AbstractComponent {
 

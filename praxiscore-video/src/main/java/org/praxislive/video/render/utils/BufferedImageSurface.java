@@ -40,7 +40,7 @@ import org.praxislive.video.render.ops.Reverse;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class BufferedImageSurface extends Surface {
 

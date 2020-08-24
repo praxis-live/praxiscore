@@ -30,7 +30,7 @@ import processing.opengl.PGraphicsOpenGL;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class PGLLWJGL extends PLWJGL {
 

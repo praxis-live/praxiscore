@@ -30,7 +30,7 @@ package org.praxislive.core;
  * 
  * Implementations of Clock should normally be obtained from RootHub.
  * 
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public interface Clock {
     

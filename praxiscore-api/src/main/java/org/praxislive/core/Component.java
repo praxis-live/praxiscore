@@ -29,7 +29,7 @@ package org.praxislive.core;
  * Components expect to be used within a hierarchy, inside a Root
  * component, and potentially inside other Container components.
  *
- * @author Neil C Smith
+ * 
  */
 public interface Component {
 

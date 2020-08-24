@@ -28,7 +28,7 @@ import org.praxislive.script.ExecutionException;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class RootNode extends CompositeNode {
 

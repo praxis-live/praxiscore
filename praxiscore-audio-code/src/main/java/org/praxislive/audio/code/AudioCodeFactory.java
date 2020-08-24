@@ -28,7 +28,7 @@ import org.praxislive.core.ComponentType;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class AudioCodeFactory extends CodeFactory<AudioCodeDelegate> {
     

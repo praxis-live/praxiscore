@@ -35,7 +35,7 @@ import processing.core.PImage;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PGLBlitOp extends AbstractBlitOp {
 

@@ -36,7 +36,7 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(CoreRoutingJoin.TEMPLATE_PATH)
 public class CoreRoutingJoin extends CoreCodeDelegate {

@@ -25,7 +25,7 @@ import org.praxislive.core.Protocol;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public interface Service extends Protocol {
     

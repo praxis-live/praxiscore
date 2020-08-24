@@ -27,7 +27,7 @@ import org.praxislive.script.ExecutionException;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class SubcommandNode extends CompositeNode {
 

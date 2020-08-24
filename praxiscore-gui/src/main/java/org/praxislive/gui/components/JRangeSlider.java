@@ -32,7 +32,7 @@ import javax.swing.event.ChangeListener;
  * @author Lance Good
  * @author jeffrey heer
  * @author Colin Combe
- * @author Neil C Smith <http://neilcsmith.net>
+ * @author Neil C Smith
  */
 class JRangeSlider extends JComponent
         implements MouseListener, MouseMotionListener, KeyListener {

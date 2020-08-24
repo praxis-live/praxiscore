@@ -41,7 +41,7 @@ import javax.swing.event.MouseInputAdapter;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 class JXYController extends JComponent {
 

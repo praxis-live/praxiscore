@@ -36,7 +36,7 @@ import org.praxislive.video.pipes.impl.Placeholder;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class PGLVideoInputPort extends DefaultVideoInputPort {
     

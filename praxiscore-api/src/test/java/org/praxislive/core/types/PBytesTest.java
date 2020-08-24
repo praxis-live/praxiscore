@@ -24,7 +24,7 @@ import org.praxislive.core.DataObject;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class PBytesTest {
 

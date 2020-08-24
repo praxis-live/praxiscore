@@ -26,7 +26,7 @@ import org.praxislive.code.ClassBodyContext;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class P3DClassBodyContext extends ClassBodyContext<P3DCodeDelegate> {
 

@@ -16,7 +16,7 @@ package org.praxislive.video.render.utils;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class RGBMath {
 

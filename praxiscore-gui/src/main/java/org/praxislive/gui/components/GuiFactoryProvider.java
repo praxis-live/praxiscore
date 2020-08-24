@@ -27,7 +27,7 @@ import org.praxislive.core.services.ComponentFactoryProvider;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class GuiFactoryProvider implements ComponentFactoryProvider {
 

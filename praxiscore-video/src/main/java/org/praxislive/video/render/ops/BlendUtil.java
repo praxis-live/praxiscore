@@ -26,7 +26,7 @@ import org.praxislive.video.render.utils.RGBMath;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class BlendUtil {
     

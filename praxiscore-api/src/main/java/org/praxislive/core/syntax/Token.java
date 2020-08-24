@@ -24,7 +24,7 @@ package org.praxislive.core.syntax;
 
 /**
  * This class represents the basic tokens of the Praxis script format.
- * @author Neil C Smith
+ * 
  */
 public class Token {
     

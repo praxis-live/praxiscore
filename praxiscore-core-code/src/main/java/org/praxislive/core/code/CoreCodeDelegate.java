@@ -25,7 +25,7 @@ import org.praxislive.code.DefaultCodeDelegate;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class CoreCodeDelegate extends DefaultCodeDelegate {
 

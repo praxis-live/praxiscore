@@ -28,7 +28,7 @@ import org.praxislive.video.render.ops.BlendMode;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 abstract class AbstractDrawOp extends AbstractBlendOp {
 

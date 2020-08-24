@@ -36,7 +36,7 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(CoreRoutingInhibitor.TEMPLATE_PATH)
 public class CoreRoutingInhibitor extends CoreCodeDelegate {

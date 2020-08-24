@@ -29,7 +29,7 @@ import org.praxislive.script.Namespace;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public abstract class CompositeNode extends Node {
     

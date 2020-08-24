@@ -25,7 +25,7 @@ package org.praxislive.core;
  * Interface for an object that can route Calls to their required destination.
  * Usually this object will be provided by Root components.
  *
- * @author Neil C Smith
+ * 
  */
 public interface PacketRouter {
 

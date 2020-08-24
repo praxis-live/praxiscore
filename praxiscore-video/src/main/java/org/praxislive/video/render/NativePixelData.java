@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface NativePixelData extends PixelData {
     

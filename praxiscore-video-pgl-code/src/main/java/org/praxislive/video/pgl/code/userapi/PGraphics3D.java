@@ -26,7 +26,7 @@ import processing.core.PConstants;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public abstract class PGraphics3D extends PGraphics {
 

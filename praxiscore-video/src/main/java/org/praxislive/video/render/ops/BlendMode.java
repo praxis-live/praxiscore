@@ -2,7 +2,7 @@ package org.praxislive.video.render.ops;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public enum BlendMode {
     

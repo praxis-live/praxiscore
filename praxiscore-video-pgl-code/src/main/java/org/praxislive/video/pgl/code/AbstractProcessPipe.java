@@ -31,7 +31,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 abstract class AbstractProcessPipe extends VideoPipe {
 

@@ -34,7 +34,7 @@ import org.praxislive.core.types.PBoolean;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class TFCodeContext extends CodeContext<TFCodeDelegate> {
 

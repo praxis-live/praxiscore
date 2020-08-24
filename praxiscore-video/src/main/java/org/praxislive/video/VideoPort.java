@@ -31,7 +31,7 @@ import org.praxislive.video.pipes.VideoPipe;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class VideoPort implements Port {
 

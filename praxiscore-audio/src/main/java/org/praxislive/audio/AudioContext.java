@@ -25,7 +25,7 @@ import org.jaudiolibs.pipes.Pipe;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class AudioContext {
 

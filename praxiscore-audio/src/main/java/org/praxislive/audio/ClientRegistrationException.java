@@ -25,7 +25,7 @@ package org.praxislive.audio;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class ClientRegistrationException extends Exception {
 

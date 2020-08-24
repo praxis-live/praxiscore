@@ -23,7 +23,7 @@ package org.praxislive.code;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public abstract class ReferenceDescriptor {
     

@@ -24,7 +24,7 @@ package org.praxislive.video.render;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public interface PixelData {
     

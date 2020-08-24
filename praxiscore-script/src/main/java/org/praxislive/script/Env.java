@@ -28,7 +28,7 @@ import org.praxislive.core.PacketRouter;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface Env {
 

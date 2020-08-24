@@ -28,7 +28,7 @@ import org.praxislive.core.types.PNumber;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 // @TODO - replace this
 class PMath {

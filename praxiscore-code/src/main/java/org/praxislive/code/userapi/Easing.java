@@ -24,7 +24,7 @@ package org.praxislive.code.userapi;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface Easing {
     

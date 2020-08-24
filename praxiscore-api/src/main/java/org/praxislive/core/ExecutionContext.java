@@ -26,7 +26,7 @@ import java.util.OptionalLong;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public interface ExecutionContext {
 

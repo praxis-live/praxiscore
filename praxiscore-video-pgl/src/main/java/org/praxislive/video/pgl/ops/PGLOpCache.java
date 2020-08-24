@@ -34,7 +34,7 @@ import org.praxislive.video.render.ops.TransformBlit;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class PGLOpCache {
       

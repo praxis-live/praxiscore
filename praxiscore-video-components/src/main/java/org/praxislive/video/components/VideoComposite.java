@@ -38,7 +38,7 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoComposite.TEMPLATE_PATH)
 public class VideoComposite extends VideoCodeDelegate {

@@ -26,7 +26,7 @@ import java.awt.Rectangle;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 @Deprecated
 public final class Bounds {

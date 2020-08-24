@@ -35,7 +35,7 @@ import java.awt.geom.Path2D;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 class PShape {
 

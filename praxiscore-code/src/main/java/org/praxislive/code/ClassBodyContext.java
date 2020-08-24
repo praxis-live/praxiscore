@@ -23,7 +23,7 @@ package org.praxislive.code;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class ClassBodyContext<T> {
     

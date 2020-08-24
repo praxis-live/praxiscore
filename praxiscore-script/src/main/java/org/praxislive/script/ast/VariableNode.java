@@ -31,7 +31,7 @@ import org.praxislive.script.Variable;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class VariableNode extends Node {
 

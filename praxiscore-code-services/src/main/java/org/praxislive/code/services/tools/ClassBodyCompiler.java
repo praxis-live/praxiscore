@@ -34,7 +34,7 @@ import org.praxislive.code.ClassBodyContext;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public class ClassBodyCompiler {
 

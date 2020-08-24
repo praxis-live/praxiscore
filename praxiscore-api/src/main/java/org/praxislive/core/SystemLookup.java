@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 class SystemLookup implements Lookup {
     

@@ -29,7 +29,7 @@ import org.praxislive.code.CodeFactory;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 class TFCodeConnector extends CodeConnector<TFCodeDelegate>{
     

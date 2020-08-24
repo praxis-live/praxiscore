@@ -43,7 +43,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * @author Neil C Smith
+ * 
  */
 public abstract class DataPort<T> implements Port {
 

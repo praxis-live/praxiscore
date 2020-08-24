@@ -40,7 +40,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * @author Neil C Smith <http://neilcsmith.net>
+ * 
  */
 public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D> {
 

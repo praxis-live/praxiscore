@@ -67,7 +67,7 @@ import org.praxislive.video.render.utils.PixelArrayCache;
 
 /**
  *
- * @author Neil C Smith (http://neilcsmith.net)
+ * 
  */
 public class Blur implements SurfaceOp {
 

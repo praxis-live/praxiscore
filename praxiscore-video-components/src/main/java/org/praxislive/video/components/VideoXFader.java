@@ -38,7 +38,7 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 @GenerateTemplate(VideoXFader.TEMPLATE_PATH)
 public class VideoXFader extends VideoCodeDelegate {

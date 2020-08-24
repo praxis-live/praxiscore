@@ -29,7 +29,7 @@ import org.praxislive.video.code.userapi.PImage;
 
 /**
  *
- * @author Neil C Smith - http://www.neilcsmith.net
+ * 
  */
 public interface VideoCapture {
     
