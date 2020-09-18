@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.praxislive</groupId>
     <artifactId>praxiscore</artifactId>
-    <version>5.0.0-beta-2</version>
+    <version>5.0.0</version>
   </parent>
   <artifactId>praxiscore-video-pgl-natives</artifactId>
   <packaging>jar</packaging>
@@ -144,5 +144,9 @@
     </plugins>
   </build>
   
+  <properties>
+    <maven.javadoc.skip>true</maven.javadoc.skip>
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
 
 </project>

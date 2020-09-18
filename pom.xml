@@ -4,12 +4,20 @@
     
   <groupId>org.praxislive</groupId>
   <artifactId>praxiscore</artifactId>
-  <version>5.0.0-beta-2</version>
+  <version>5.0.0</version>
   <packaging>pom</packaging>
     
   <name>PraxisCORE</name>
-  <description>Modular JVM runtime for cyberphysical programming, supporting real-time coding of real-time systems. A distributed forest-of-actors architecture, runtime code changes and comprehensive introspection, bring aspects of Erlang, Smalltalk and Extempore into the Java world.</description>
+  <description>Forest-of-actors runtime supporting real-time systems and real-time recoding - bringing aspects of Erlang, Smalltalk and Extempore to Java.</description>
   <url>https://www.praxislive.org</url>
+  
+  <licenses>
+    <license>
+      <name>LGPL-3.0-only</name>
+      <url>http://www.gnu.org/licenses/lgpl.html</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
     
   <modules>
     <module>praxiscore-api</module>
@@ -65,7 +73,7 @@
       <roles>
         <role>Lead developer</role>
       </roles>
-      <url>https://www.neilcsmith.net</url>
+      <email>neil@codelerity.com</email>
     </developer>
   </developers>
   
@@ -110,23 +118,38 @@
           </configuration>
         </plugin>
         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.1.1</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <additionalOptions>
-                <additionalOption>-Xdoclint:none</additionalOption>
-              </additionalOptions>
-            </configuration>
-          </plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>2.8.2</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>3.2.0</version>
+          <executions>
+            <execution>
+              <id>attach-javadocs</id>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>aggregate-javadoc</id>
+              <goals>
+                <goal>aggregate</goal>
+              </goals>
+              <configuration>
+                <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
+              </configuration>
+              <inherited>false</inherited>
+            </execution>
+          </executions>
+          <configuration>
+            <additionalOptions>
+              <additionalOption>-Xdoclint:none</additionalOption>
+            </additionalOptions>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
     
@@ -158,10 +181,6 @@
           </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
             <version>1.6</version>
             <executions>
@@ -174,6 +193,22 @@
               </execution>
             </executions>
           </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-aggregate-javadoc</id>
+                <goals>
+                  <goal>aggregate-jar</goal>
+                </goals>
+                <configuration>
+                  <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
+                </configuration>
+                <inherited>false</inherited>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>
@@ -181,7 +216,6 @@
   
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
 
 </project>

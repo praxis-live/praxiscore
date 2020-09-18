@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.praxislive</groupId>
     <artifactId>praxiscore</artifactId>
-    <version>5.0.0-beta-2</version>
+    <version>5.0.0</version>
   </parent>
   <artifactId>praxiscore-audio</artifactId>
   <packaging>jar</packaging>
@@ -29,12 +29,12 @@
     <dependency>
       <groupId>org.jaudiolibs</groupId>
       <artifactId>audioservers-api</artifactId>
-      <version>1.2.0</version>
+      <version>2.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.jaudiolibs</groupId>
       <artifactId>pipes-core</artifactId>
-      <version>2.0.0-beta-1</version>
+      <version>2.0.0</version>
     </dependency>
   </dependencies>
   
