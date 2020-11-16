@@ -34,7 +34,6 @@ import java.util.concurrent.TimeoutException;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
 import org.praxislive.core.services.Service;
-import org.praxislive.core.types.PResource;
 import org.praxislive.hub.Hub;
 
 /**
@@ -52,7 +51,6 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
     private final CompletableFuture<Info> futureInfo;
 
     private Root root;
-    private PResource.Resolver resourceResolver;
 
     private NetworkCoreFactory(Builder builder) {
         enableServer = builder.enableServer;
@@ -91,9 +89,9 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
     }
 
     @Override
-    public Lookup extendLookup(Lookup lookup) {
-        if (resourceResolver != null) {
-            return Lookup.of(lookup, resourceResolver);
+    public synchronized Lookup extendLookup(Lookup lookup) {
+        if (root instanceof ServerCoreRoot) {
+            return Lookup.of(lookup, ((ServerCoreRoot) root).getResourceResolver());
         } else {
             return lookup;
         }
