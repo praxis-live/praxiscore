@@ -15,5 +15,6 @@ module org.praxislive.code.services {
             org.praxislive.code.services.CompilerCommandInstaller;
     
     uses org.praxislive.core.services.ComponentFactoryProvider;
-//    uses org.praxislive.code.services.tools.JavaCompilerProvider;
+    uses org.praxislive.code.LibraryResolver.Provider;
+    
 }

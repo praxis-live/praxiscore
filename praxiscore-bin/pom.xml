@@ -66,6 +66,11 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-code-ivy</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>praxiscore-code-services</artifactId>
       <version>${project.version}</version>
     </dependency>
