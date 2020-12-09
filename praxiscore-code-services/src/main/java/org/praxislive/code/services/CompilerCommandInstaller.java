@@ -37,10 +37,8 @@ import org.praxislive.core.types.PResource;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
-import org.praxislive.script.StackFrame;
 import org.praxislive.script.impl.AbstractSingleCallFrame;
 
 /**
@@ -48,41 +46,21 @@ import org.praxislive.script.impl.AbstractSingleCallFrame;
  */
 public class CompilerCommandInstaller implements CommandInstaller {
 
-    private static final AddLibsCmd ADD_LIB = new AddLibsCmd(false);
-    private static final AddLibsCmd ADD_LIBS = new AddLibsCmd(true);
-    private static final LibrariesCmd LIBRARIES = new LibrariesCmd();
-    private static final JavaReleaseCmd RELEASE = new JavaReleaseCmd();
-    private static final CompilerCmd COMPILER = new CompilerCmd();
-
     @Override
     public void install(Map<String, Command> commands) {
-        commands.put("add-lib", ADD_LIB);
-        commands.put("add-libs", ADD_LIBS);
-        commands.put("libraries", LIBRARIES);
-        commands.put("java-compiler-release", RELEASE);
-        commands.put("compiler", COMPILER);
+        commands.put("add-lib", (namespace, args) -> new AddLibs(namespace, args, false));
+        commands.put("add-libs", (namespace, args) -> new AddLibs(namespace, args, true));
+        commands.put("libraries", Libraries::new);
+        commands.put("libraries-path", LibrariesPath::new);
+        commands.put("java-compiler-release", JavaRelease::new);
+        commands.put("compiler", Compiler::new);
     }
 
-    private static class AddLibsCmd implements Command {
+    private static class AddLibs extends AbstractSingleCallFrame {
 
         private final boolean array;
 
-        AddLibsCmd(boolean array) {
-            this.array = array;
-        }
-
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
-            return new AddLibsStackFrame(namespace, args, array);
-        }
-
-    }
-
-    private static class AddLibsStackFrame extends AbstractSingleCallFrame {
-
-        private final boolean array;
-
-        AddLibsStackFrame(Namespace namespace, List<Value> args, boolean array) {
+        AddLibs(Namespace namespace, List<Value> args, boolean array) {
             super(namespace, args);
             this.array = array;
         }
@@ -100,33 +78,30 @@ public class CompilerCommandInstaller implements CommandInstaller {
 
     }
 
-    private static class LibrariesCmd implements Command {
 
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
-            return new LibrariesStackFrame(namespace, args);
-        }
+    private static class Libraries extends AbstractSingleCallFrame {
 
-    }
-
-    private static class LibrariesStackFrame extends AbstractSingleCallFrame {
-
-        private LibrariesStackFrame(Namespace namespace, List<Value> args) {
+        private Libraries(Namespace namespace, List<Value> args) {
             super(namespace, args);
         }
 
         @Override
         protected Call createCall(Env env, List<Value> args) throws Exception {
-            PArray libs = PArray.from(args.get(0))
-                    .orElseThrow(IllegalArgumentException::new)
-                    .stream()
-                    .flatMap(lib -> expand(env, lib).stream())
-                    .collect(PArray.collector());
             ComponentAddress service = env.getLookup().find(Services.class)
                     .flatMap(sm -> sm.locate(CodeCompilerService.class))
                     .orElseThrow(ServiceUnavailableException::new);
-            ControlAddress addLibsControl = ControlAddress.of(service, "add-libs");
-            return Call.create(addLibsControl, env.getAddress(), env.getTime(), libs);
+            if (args.isEmpty()) {
+                ControlAddress librariesProperty = ControlAddress.of(service, "libraries");
+                return Call.create(librariesProperty, env.getAddress(), env.getTime());
+            } else {
+                PArray libs = PArray.from(args.get(0))
+                        .orElseThrow(IllegalArgumentException::new)
+                        .stream()
+                        .flatMap(lib -> expand(env, lib).stream())
+                        .collect(PArray.collector());
+                ControlAddress addLibsControl = ControlAddress.of(service, "add-libs");
+                return Call.create(addLibsControl, env.getAddress(), env.getTime(), libs);
+            }
         }
 
         private List<PResource> expand(Env context, Value lib) {
@@ -148,19 +123,27 @@ public class CompilerCommandInstaller implements CommandInstaller {
         }
 
     }
+    
+    private static class LibrariesPath extends AbstractSingleCallFrame {
 
-    private static class CompilerCmd implements Command {
-
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
-            return new CompilerStackFrame(namespace, args);
+        private LibrariesPath(Namespace namespace, List<Value> args) {
+            super(namespace, args);
         }
 
+        @Override
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            ComponentAddress service = env.getLookup().find(Services.class)
+                    .flatMap(sm -> sm.locate(CodeCompilerService.class))
+                    .orElseThrow(ServiceUnavailableException::new);
+            return Call.create(ControlAddress.of(service, "libraries-path"),
+                    env.getAddress(), env.getTime());
+        }
+        
     }
 
-    private static class CompilerStackFrame extends AbstractSingleCallFrame {
+    private static class Compiler extends AbstractSingleCallFrame {
 
-        private CompilerStackFrame(Namespace namespace, List<Value> args) {
+        private Compiler(Namespace namespace, List<Value> args) {
             super(namespace, args);
         }
 
@@ -176,18 +159,9 @@ public class CompilerCommandInstaller implements CommandInstaller {
 
     }
 
-    private static class JavaReleaseCmd implements Command {
+    private static class JavaRelease extends AbstractSingleCallFrame {
 
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
-            return new JavaReleaseStackFrame(namespace, args);
-        }
-
-    }
-
-    private static class JavaReleaseStackFrame extends AbstractSingleCallFrame {
-
-        JavaReleaseStackFrame(Namespace namespace, List<Value> args) {
+        JavaRelease(Namespace namespace, List<Value> args) {
             super(namespace, args);
         }
 

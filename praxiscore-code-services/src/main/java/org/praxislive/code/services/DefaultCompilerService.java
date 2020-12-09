@@ -23,7 +23,7 @@ package org.praxislive.code.services;
 
 import java.io.File;
 import java.net.URI;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +74,7 @@ public class DefaultCompilerService extends AbstractRoot
         INFO = Info.component(cmp -> cmp
                 .merge(ComponentProtocol.API_INFO)
                 .merge(CodeCompilerService.API_INFO)
+                .control("libraries", c -> c.readOnlyProperty().output(PArray.class))
                 .control("libraries-path", c -> c.readOnlyProperty().output(PArray.class))
         );
     }
@@ -81,9 +82,11 @@ public class DefaultCompilerService extends AbstractRoot
     private final Map<String, Control> controls;
     private final JavaCompiler compiler;
     private final Set<File> libJARs;
+    private final Map<PResource, LibraryResolver.Entry> libEntries;
     private final List<LibraryResolver> libResolvers;
-    private final List<LibraryResolver.Entry> libEntries;
+    
     private SourceVersion release;
+    private PArray libs;
     private PArray libPath;
 
     public DefaultCompilerService() {
@@ -92,6 +95,11 @@ public class DefaultCompilerService extends AbstractRoot
                 CodeCompilerService.COMPILE, new CompileControl(),
                 "add-libs", new AddLibsControl(),
                 "release", new JavaReleaseControl(),
+                "libraries", (call, router) -> {
+                    if (call.isRequest()) {
+                        router.route(call.reply(libs));
+                    }
+                },
                 "libraries-path", (call, router) -> {
                     if (call.isRequest()) {
                         router.route(call.reply(libPath));
@@ -109,12 +117,13 @@ public class DefaultCompilerService extends AbstractRoot
         }
         release = SourceVersion.RELEASE_11;
         libJARs = new LinkedHashSet<>();
+        libEntries = new LinkedHashMap<>();
         libResolvers = ServiceLoader.load(LibraryResolver.Provider.class)
                 .stream()
                 .map(ServiceLoader.Provider::get)
                 .map(LibraryResolver.Provider::createResolver)
                 .collect(Collectors.toList());
-        libEntries = new ArrayList<>();
+        libs = PArray.EMPTY;
         libPath = PArray.EMPTY;
     }
 
@@ -206,8 +215,9 @@ public class DefaultCompilerService extends AbstractRoot
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
-                PArray libs = PArray.from(call.args().get(0)).orElseThrow();
-                libPath = process(libs);
+                PArray addLibs = PArray.from(call.args().get(0))
+                        .orElseThrow(IllegalArgumentException::new);
+                process(addLibs);
                 if (!log.isEmpty()) {
                     getLookup().find(Services.class)
                             .flatMap(s -> s.locate(LogService.class))
@@ -217,23 +227,26 @@ public class DefaultCompilerService extends AbstractRoot
                             );
                     log.clear();
                 }
-                router.route(call.reply(libPath));
-            } else {
-                throw new UnsupportedOperationException();
+                router.route(call.reply(libs));
             }
         }
 
-        private PArray process(PArray libs) throws Exception {
-            for (var value : libs) {
+        private void process(PArray addLibs) throws Exception {
+            for (var value : addLibs) {
                 var resource = PResource.from(value)
                         .orElseThrow(IllegalArgumentException::new);
+                if (libEntries.containsKey(resource)) {
+                    continue;
+                }
                 var entry = resolve(resource);
-                libEntries.add(entry);
+                libEntries.put(resource, entry);
                 for (var path : entry.paths()) {
                     libJARs.add(path.toFile());
                 }
             }
-            return libJARs.stream()
+            libs = libEntries.keySet().stream()
+                    .collect(PArray.collector());
+            libPath = libJARs.stream()
                     .map(f -> PResource.of(f.toURI()))
                     .collect(PArray.collector());
         }
@@ -243,7 +256,6 @@ public class DefaultCompilerService extends AbstractRoot
                 var response = resolver.resolve(resource, this);
                 if (response.isPresent()) {
                     var entry = response.get();
-                    libEntries.add(entry);
                     return entry;
                 }
             }
@@ -261,7 +273,7 @@ public class DefaultCompilerService extends AbstractRoot
 
         @Override
         public List<LibraryResolver.Entry> resolved() {
-            return List.copyOf(libEntries);
+            return List.copyOf(libEntries.values());
         }
 
         @Override
