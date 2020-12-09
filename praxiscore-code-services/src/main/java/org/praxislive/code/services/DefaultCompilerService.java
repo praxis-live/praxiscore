@@ -40,11 +40,14 @@ import org.praxislive.code.ClassBodyContext;
 import org.praxislive.code.LibraryResolver;
 import org.praxislive.code.services.tools.MessageHandler;
 import org.praxislive.core.Call;
+import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBytes;
@@ -65,23 +68,42 @@ public class DefaultCompilerService extends AbstractRoot
 
     static final String EXT_CLASSPATH = "ext-classpath";
 
+    private static final ComponentInfo INFO;
+
+    static {
+        INFO = Info.component(cmp -> cmp
+                .merge(ComponentProtocol.API_INFO)
+                .merge(CodeCompilerService.API_INFO)
+                .control("libraries-path", c -> c.readOnlyProperty().output(PArray.class))
+        );
+    }
+
     private final Map<String, Control> controls;
     private final JavaCompiler compiler;
     private final Set<File> libJARs;
     private final List<LibraryResolver> libResolvers;
     private final List<LibraryResolver.Entry> libEntries;
     private SourceVersion release;
+    private PArray libPath;
 
     public DefaultCompilerService() {
 
         controls = Map.of(
                 CodeCompilerService.COMPILE, new CompileControl(),
                 "add-libs", new AddLibsControl(),
-                "release", new JavaReleaseControl());
+                "release", new JavaReleaseControl(),
+                "libraries-path", (call, router) -> {
+                    if (call.isRequest()) {
+                        router.route(call.reply(libPath));
+                    }
+                },
+                ComponentProtocol.INFO, (call, router) -> {
+                    if (call.isRequest()) {
+                        router.route(call.reply(INFO));
+                    }
+                }
+        );
         compiler = ToolProvider.getSystemJavaCompiler();
-//                Lookup.SYSTEM.find(JavaCompilerProvider.class)
-//                .map(JavaCompilerProvider::getJavaCompiler)
-//                .orElse(ToolProvider.getSystemJavaCompiler());
         if (compiler == null) {
             throw new RuntimeException("No compiler found");
         }
@@ -93,6 +115,7 @@ public class DefaultCompilerService extends AbstractRoot
                 .map(LibraryResolver.Provider::createResolver)
                 .collect(Collectors.toList());
         libEntries = new ArrayList<>();
+        libPath = PArray.EMPTY;
     }
 
     @Override
@@ -184,17 +207,17 @@ public class DefaultCompilerService extends AbstractRoot
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
                 PArray libs = PArray.from(call.args().get(0)).orElseThrow();
-                PArray ret = process(libs);
+                libPath = process(libs);
                 if (!log.isEmpty()) {
                     getLookup().find(Services.class)
                             .flatMap(s -> s.locate(LogService.class))
                             .ifPresent(ad -> router.route(Call.createQuiet(
-                                    ControlAddress.of(ad, LogService.LOG),
-                                    call.to(), call.time(), log.toList()))
-                    );
+                            ControlAddress.of(ad, LogService.LOG),
+                            call.to(), call.time(), log.toList()))
+                            );
                     log.clear();
                 }
-                router.route(call.reply(ret));
+                router.route(call.reply(libPath));
             } else {
                 throw new UnsupportedOperationException();
             }

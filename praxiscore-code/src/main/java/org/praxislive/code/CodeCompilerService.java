@@ -23,7 +23,9 @@ package org.praxislive.code;
 
 import java.util.List;
 import java.util.stream.Stream;
+import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
 
@@ -32,25 +34,30 @@ import org.praxislive.core.types.PMap;
  */
 public class CodeCompilerService implements Service {
 
-    public final static String COMPILE = "compile";
-    public final static ControlInfo COMPILE_INFO = 
+    public static final String COMPILE = "compile";
+    public static final ControlInfo COMPILE_INFO = 
             ControlInfo.createFunctionInfo(
                     List.of(PMap.info()),
                     List.of(PMap.info()),
                     PMap.EMPTY);
 
+    public static final ComponentInfo API_INFO = Info.component(cmp -> cmp
+            .protocol(CodeCompilerService.class)
+            .control(COMPILE, COMPILE_INFO)
+    );
+    
     // parameter keys
-    public final static String KEY_CLASS_BODY_CONTEXT =
+    public static final String KEY_CLASS_BODY_CONTEXT =
             "class-body-context";
-    public final static String KEY_CODE =
+    public static final String KEY_CODE =
             "code";
-    public final static String KEY_LOG_LEVEL = 
+    public static final String KEY_LOG_LEVEL = 
             "log-level";
     
     // response keys
-    public final static String KEY_CLASSES =
+    public static final String KEY_CLASSES =
             "classes";
-    public final static String KEY_LOG =
+    public static final String KEY_LOG =
             "log";
     
     @Override
