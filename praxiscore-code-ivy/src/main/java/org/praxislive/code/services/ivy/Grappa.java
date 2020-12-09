@@ -43,6 +43,8 @@ import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.sort.SortOptions;
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher;
 import org.apache.ivy.plugins.matcher.PatternMatcher;
+import org.apache.ivy.util.DefaultMessageLogger;
+import org.apache.ivy.util.Message;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 
@@ -50,6 +52,10 @@ import org.praxislive.core.types.PArray;
  *
  */
 class Grappa {
+    
+    static {
+        Message.setDefaultLogger(new DefaultMessageLogger(-1));
+    }
     
     private final Ivy ivy;
     

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.ivy.core.report.ArtifactDownloadReport;
 import org.praxislive.code.LibraryResolver;
 import org.praxislive.core.services.LogLevel;
@@ -83,7 +84,16 @@ public class IvyResolver implements LibraryResolver {
         }
         
         var report = grappa.resolve(artefact);
-        report.getProblemMessages().forEach(m -> context.log().log(LogLevel.WARNING, m));
+
+        var problemMsg = report.getAllProblemMessages().stream().collect(Collectors.joining("\n"));
+        
+        if (report.hasError()) {
+            throw new IllegalStateException("Error resolving " + res +
+                    (problemMsg.isBlank() ? "" : "\n" + problemMsg));
+        } else if (!problemMsg.isBlank()) {
+            context.log().log(LogLevel.WARNING, problemMsg);
+        }
+        
         var nodes = grappa.sort(report.getDependencies());
         var installing = new ArrayList<MavenArtefactInfo>();
         var paths = new ArrayList<Path>();
