@@ -34,8 +34,11 @@ import java.net.SocketAddress;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
+import org.praxislive.core.Lookup;
+import org.praxislive.core.Root;
 import org.praxislive.hub.net.NetworkCoreFactory;
 import picocli.CommandLine;
 
@@ -208,7 +211,7 @@ public class Launcher {
                     return 1;
                 }
             }
-            
+
             final String script;
             var scriptFile = autoRun.orElse(file);
             if (scriptFile != null) {
@@ -268,7 +271,7 @@ public class Launcher {
                     hubBuilder.addExtension(new ScriptRunner(List.of(script)));
                 }
                 if (interactive) {
-                    hubBuilder.addExtension(new FallbackTerminalIO());
+                    hubBuilder.addExtension(createTerminalIO());
                 }
 
                 var hub = hubBuilder.build();
@@ -288,7 +291,22 @@ public class Launcher {
 
             return 0;
         }
-        
+
+        private Root createTerminalIO() {
+            try {
+                return ServiceLoader.load(TerminalIOProvider.class)
+                        .findFirst()
+                        .map(p -> p.createTerminalIO(Lookup.EMPTY))
+                        .orElseGet(FallbackTerminalIO::new);
+            } catch (Exception ex) {
+                System.getLogger(Launcher.class.getName())
+                        .log(System.Logger.Level.ERROR,
+                                "Error creating terminal IO, defaulting to fallback",
+                                ex);
+                return new FallbackTerminalIO();
+            }
+        }
+
         private void outputEnvironmentInfo() {
             try {
                 var handle = ProcessHandle.current();
@@ -317,11 +335,11 @@ public class Launcher {
                                 "Exception thrown outputting environment info.", e);
             }
         }
-        
+
         private void out(String msg) {
             System.out.println(msg);
         }
-        
+
         private void error(String msg) {
             var ansiMsg = CommandLine.Help.Ansi.AUTO.string(
                     "@|bold,red " + msg + "|@"

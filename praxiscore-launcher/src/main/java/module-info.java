@@ -18,5 +18,7 @@ module org.praxislive.launcher {
     
     provides org.praxislive.core.Settings.Provider with
             org.praxislive.launcher.SettingsProvider;
+    
+    uses org.praxislive.launcher.TerminalIOProvider;
 
 }

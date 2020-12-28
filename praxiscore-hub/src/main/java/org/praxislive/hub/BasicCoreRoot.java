@@ -46,6 +46,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.services.RootFactoryService;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
+import org.praxislive.core.services.SystemManagerService;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
@@ -120,15 +121,19 @@ public class BasicCoreRoot extends AbstractRoot {
 
     protected void registerServices() {
         hubAccess.registerService(RootManagerService.class, getAddress());
+        hubAccess.registerService(SystemManagerService.class, getAddress());
     }
 
     protected void buildControlMap(Map<String, Control> ctrls) {
         ctrls.computeIfAbsent(RootManagerService.ADD_ROOT, k -> new AddRootControl());
         ctrls.computeIfAbsent(RootManagerService.REMOVE_ROOT, k -> new RemoveRootControl());
         ctrls.computeIfAbsent(RootManagerService.ROOTS, k -> new RootsControl());
-//        ctrls.computeIfAbsent(ComponentProtocol.INFO, k -> (call, router) -> 
-//            router.route(Call.createReturnCall(call, RootManagerService.API_INFO))
-//        );
+        ctrls.computeIfAbsent(SystemManagerService.SYSTEM_EXIT, k -> (call, router) -> {
+            if (call.isRequest()) {
+                forceTermination();
+                router.route(call.reply());
+            }
+        });
     }
 
     protected void installExtensions() {
