@@ -74,46 +74,52 @@ public class IvyResolver implements LibraryResolver {
 
         var existing = findExisting(artefact);
         if (existing != null) {
-            if (!Objects.equals(existing.version(), artefact.version())) {
+            if (!artefact.version().isBlank()
+                    && !Objects.equals(existing.version(), artefact.version())) {
                 context.log().log(LogLevel.WARNING,
                         resource + " already installed at version " + existing.version());
-                return Optional.of(new Entry(toPURL(existing), List.of()));
-            } else {
-                return Optional.of(new Entry(resource, List.of()));
             }
+            return Optional.of(new Entry(toPURL(existing), List.of()));
         }
-        
+
         var report = grappa.resolve(artefact);
 
         var problemMsg = report.getAllProblemMessages().stream().collect(Collectors.joining("\n"));
-        
+
         if (report.hasError()) {
-            throw new IllegalStateException("Error resolving " + res +
-                    (problemMsg.isBlank() ? "" : "\n" + problemMsg));
+            throw new IllegalStateException("Error resolving " + res
+                    + (problemMsg.isBlank() ? "" : "\n" + problemMsg));
         } else if (!problemMsg.isBlank()) {
             context.log().log(LogLevel.WARNING, problemMsg);
         }
-        
+
         var nodes = grappa.sort(report.getDependencies());
         var installing = new ArrayList<MavenArtefactInfo>();
-        var paths = new ArrayList<Path>();
+        var resolved = resource;
+        var provides = new ArrayList<PResource>();
+        var files = new ArrayList<Path>();
         for (var node : nodes) {
             for (var download : report.getArtifactsReports(node.getResolvedId())) {
                 var info = toInfo(download);
                 var ex = findExisting(info);
                 if (ex == null) {
+                    var purl = toPURL(info);
+                    if (artefact.isMatchingArtefact(info)) {
+                        resolved = purl;
+                    }
+                    provides.add(purl);
+                    installing.add(info);
                     var file = download.getLocalFile();
                     if (file == null) {
                         context.log().log(LogLevel.ERROR, "No file found for " + info);
                     } else {
-                        installing.add(info);
-                        paths.add(file.toPath());
+                        files.add(file.toPath());
                     }
                 } else {
                     if (!Objects.equals(info.version(), ex.version())) {
                         context.log().log(LogLevel.WARNING,
-                                "Found already installed dependency " + ex +
-                                        " instead of version " + info.version());
+                                "Found already installed dependency " + ex
+                                + " instead of version " + info.version());
                     } else {
                         context.log().log(LogLevel.INFO,
                                 "Found already installed dependency " + ex);
@@ -121,9 +127,9 @@ public class IvyResolver implements LibraryResolver {
                 }
             }
         }
-        
+
         installed.addAll(installing);
-        return Optional.of(new Entry(resource, paths));
+        return Optional.of(new Entry(resolved, files, provides));
     }
 
     private MavenArtefactInfo parsePURL(String purl) {
@@ -155,7 +161,7 @@ public class IvyResolver implements LibraryResolver {
         return PResource.of(URI.create("pkg:maven/" + info.group() + "/" + info.artefact()
                 + "@" + info.version()));
     }
-    
+
     private MavenArtefactInfo toInfo(ArtifactDownloadReport report) {
         var mrid = report.getArtifact().getId().getModuleRevisionId();
         var group = mrid.getOrganisation();
@@ -168,11 +174,7 @@ public class IvyResolver implements LibraryResolver {
 
     private MavenArtefactInfo findExisting(MavenArtefactInfo artefact) {
         return installed.stream()
-                .filter(info
-                        -> Objects.equals(info.group(), artefact.group())
-                && Objects.equals(info.artefact(), artefact.artefact())
-                && Objects.equals(info.classifier(), artefact.classifier())
-                )
+                .filter(artefact::isMatchingArtefact)
                 .findFirst().orElse(null);
     }
 

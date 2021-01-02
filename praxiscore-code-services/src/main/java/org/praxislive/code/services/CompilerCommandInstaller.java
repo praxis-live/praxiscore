@@ -51,6 +51,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
         commands.put("add-lib", (namespace, args) -> new AddLibs(namespace, args, false));
         commands.put("add-libs", (namespace, args) -> new AddLibs(namespace, args, true));
         commands.put("libraries", Libraries::new);
+        commands.put("libraries-all", LibrariesAll::new);
         commands.put("libraries-path", LibrariesPath::new);
         commands.put("java-compiler-release", JavaRelease::new);
         commands.put("compiler", Compiler::new);
@@ -122,6 +123,23 @@ public class CompilerCommandInstaller implements CommandInstaller {
             }
         }
 
+    }
+    
+    private static class LibrariesAll extends AbstractSingleCallFrame {
+
+        private LibrariesAll(Namespace namespace, List<Value> args) {
+            super(namespace, args);
+        }
+
+        @Override
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            ComponentAddress service = env.getLookup().find(Services.class)
+                    .flatMap(sm -> sm.locate(CodeCompilerService.class))
+                    .orElseThrow(ServiceUnavailableException::new);
+            return Call.create(ControlAddress.of(service, "libraries-all"),
+                    env.getAddress(), env.getTime());
+        }
+        
     }
     
     private static class LibrariesPath extends AbstractSingleCallFrame {

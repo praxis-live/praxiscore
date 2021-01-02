@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.types.PResource;
@@ -32,20 +33,26 @@ import org.praxislive.core.types.PResource;
 /**
  * Service for resolving library resources to one or more local paths for
  * compilation. Look up available {@link Provider} via service loader to create
- * instances. Instances are not intended to be reusable.
+ * instances. Instances are not intended to be reusable and so may maintain
+ * their own cache of previously resolved entries.
  */
 public interface LibraryResolver {
 
     /**
-     * Resolve the provided resource to an {@link Entry} with paths to add for
-     * compilation. The resolved entry will be from the first resolver to return
-     * a result. The entry should only contain additional paths required to
-     * resolve the requested resource on top of the already resolved resources
-     * in the provided context. The resolver may return an alternative resource
-     * in the entry if an earlier resolution provides the required library, eg.
-     * at a different version. The resolver should throw an exception if the
-     * resource is a type it should be able to resolve but for some reason
-     * cannot.
+     * Resolve the provided resource to an {@link Entry} with local files to add
+     * for compilation. The resolved entry will be from the first resolver to
+     * return a result. The entry should only contain additional files required
+     * to resolve the requested resource on top of the already resolved
+     * resources in the provided context.
+     * <p>
+     * The resolver may return an alternative primary resource in the entry if
+     * an earlier resolution provides the required library, eg. at a different
+     * version. The entry may also report additional resources that have been
+     * provided by the additional files, such as additional transitive
+     * dependencies or alternative identifiers.
+     * <p>
+     * The resolver should throw an exception if the resource is a type it
+     * should be able to resolve but for some reason cannot.
      *
      * @param resource library resource
      * @param context context, including already resolved paths
@@ -62,17 +69,33 @@ public interface LibraryResolver {
     }
 
     /**
-     * Context providing access to existing resolved libraries and the lookup
-     * for resource resolution, etc.
+     * Context providing access to existing resolved libraries and files, the
+     * Lookup for resource resolution, and a LogBuilder for reporting
+     * information and errors.
      */
     public static interface Context extends Lookup.Provider {
 
         /**
-         * List of already resolved libraries.
+         * Stream of already resolved libraries.
          *
          * @return resolved libraries
          */
-        public List<Entry> resolved();
+        public Stream<PResource> resolved();
+
+        /**
+         * Stream of already resolved libraries, including transitive
+         * dependencies and/or alternative identifiers.
+         *
+         * @return resolved and transitive libraries
+         */
+        public Stream<PResource> provided();
+
+        /**
+         * Stream of local files from already resolved libraries.
+         *
+         * @return resolved files
+         */
+        public Stream<Path> files();
 
         /**
          * A log builder for logging library resolution.
@@ -98,33 +121,88 @@ public interface LibraryResolver {
     }
 
     /**
-     * Data type giving a resource and the additional, resolved local paths that
-     * were added for that resource. The paths list might be empty if another,
-     * earlier entry provided all required paths.
+     * Data type giving a resource and the additional, resolved local files that
+     * were added for that resource. The files list might be empty if another,
+     * earlier entry provided all required files.
+     * <p>
+     * A list can be used to report all resources that have been provided by the
+     * additional files, such as additional transitive dependencies or
+     * alternative identifiers. The primary resource must also be included in
+     * this list.
      */
     public final static class Entry {
 
         private final PResource resource;
-        private final List<Path> paths;
+        private final List<PResource> provides;
+        private final List<Path> files;
 
-        public Entry(PResource resource, List<Path> paths) {
-            this.resource = Objects.requireNonNull(resource);
-            this.paths = List.copyOf(paths);
+        /**
+         * Create an Entry for the provided resource and any additional required
+         * files.
+         *
+         * @param resource resolved library identifier
+         * @param files additional local files (may be empty)
+         */
+        public Entry(PResource resource, List<Path> files) {
+            this(resource, files, List.of(resource));
         }
 
+        /**
+         * Create an Entry for the provided resources and any additional
+         * required files. Also provide a list of all additional resources added
+         * by this entry, including
+         *
+         * @param resource resolved library identifier
+         * @param files additional local files (may be empty)
+         * @param provides all resources provided by this entry
+         * @throws IllegalArgumentException if provides does not contain
+         * resource
+         */
+        public Entry(PResource resource, List<Path> files, List<PResource> provides) {
+            this.resource = Objects.requireNonNull(resource);
+            this.files = List.copyOf(files);
+            this.provides = List.copyOf(provides);
+            if (!this.provides.contains(resource)) {
+                throw new IllegalArgumentException("Resource not in provides");
+            }
+        }
+
+        /**
+         * Get the primary resource.
+         *
+         * @return primary resource
+         */
         public PResource resource() {
             return resource;
         }
 
-        public List<Path> paths() {
-            return paths;
+        /**
+         * Get the list of all provided resources. Will include the primary
+         * resource and possibly any transitive dependencies or alternative
+         * identifiers.
+         *
+         * @return all provided resources
+         */
+        public List<PResource> provides() {
+            return provides;
+        }
+
+        /**
+         * All additional files required to resolve the primary resource and its
+         * dependencies, within the existing context. May be empty.
+         *
+         * @return additional required files
+         */
+        public List<Path> files() {
+            return files;
         }
 
         @Override
         public int hashCode() {
-            int hash = 5;
-            hash = 17 * hash + Objects.hashCode(this.resource);
-            hash = 17 * hash + Objects.hashCode(this.paths);
+            int hash = 7;
+            hash = 23 * hash + Objects.hashCode(this.resource);
+            hash = 23 * hash + Objects.hashCode(this.provides);
+            hash = 23 * hash + Objects.hashCode(this.files);
             return hash;
         }
 
@@ -143,7 +221,10 @@ public interface LibraryResolver {
             if (!Objects.equals(this.resource, other.resource)) {
                 return false;
             }
-            if (!Objects.equals(this.paths, other.paths)) {
+            if (!Objects.equals(this.provides, other.provides)) {
+                return false;
+            }
+            if (!Objects.equals(this.files, other.files)) {
                 return false;
             }
             return true;
@@ -151,7 +232,8 @@ public interface LibraryResolver {
 
         @Override
         public String toString() {
-            return "Entry{" + "resource=" + resource + ", paths=" + paths + '}';
+            return "Entry{" + "resource=" + resource + ", provides=" + provides
+                    + ", files=" + files + '}';
         }
 
     }

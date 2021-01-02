@@ -59,6 +59,12 @@ class MavenArtefactInfo {
     public String classifier() {
         return classifier;
     }
+    
+    public boolean isMatchingArtefact(MavenArtefactInfo info) {
+        return Objects.equals(group, info.group())
+                && Objects.equals(artefact, info.artefact())
+                && Objects.equals(classifier, info.classifier());
+    }
 
     @Override
     public int hashCode() {

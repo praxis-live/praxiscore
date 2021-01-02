@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2020 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -62,7 +63,13 @@ public class ClassBodyCompiler {
         return this;
     }
 
+    @Deprecated
     public ClassBodyCompiler extendClasspath(Set<File> libs) {
+        extClasspath.addAll(libs);
+        return this;
+    }
+    
+    public ClassBodyCompiler extendClasspath(List<File> libs) {
         extClasspath.addAll(libs);
         return this;
     }
