@@ -52,6 +52,58 @@
     <dependency>
       <groupId>org.lwjgl</groupId>
       <artifactId>lwjgl</artifactId>
+      <classifier>natives-linux-arm32</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-assimp</artifactId>
+      <classifier>natives-linux-arm32</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-glfw</artifactId>
+      <classifier>natives-linux-arm32</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-opengl</artifactId>
+      <classifier>natives-linux-arm32</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-stb</artifactId>
+      <classifier>natives-linux-arm32</classifier>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl</artifactId>
+      <classifier>natives-linux-arm64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-assimp</artifactId>
+      <classifier>natives-linux-arm64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-glfw</artifactId>
+      <classifier>natives-linux-arm64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-opengl</artifactId>
+      <classifier>natives-linux-arm64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl-stb</artifactId>
+      <classifier>natives-linux-arm64</classifier>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.lwjgl</groupId>
+      <artifactId>lwjgl</artifactId>
       <classifier>natives-macos</classifier>
     </dependency>
     <dependency>

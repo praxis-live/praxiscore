@@ -21,6 +21,7 @@
  */
 package org.praxislive.video.pgl;
 
+import org.lwjgl.system.Platform;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.MainThread;
 import org.praxislive.video.ClientConfiguration;
@@ -37,10 +38,6 @@ import org.praxislive.video.WindowHints;
 public class PGLPlayerFactory implements PlayerFactory {
 
     private final PGLProfile profile;
-
-    private PGLPlayerFactory() {
-        this(null);
-    }
 
     private PGLPlayerFactory(PGLProfile profile) {
         this.profile = profile;
@@ -63,7 +60,13 @@ public class PGLPlayerFactory implements PlayerFactory {
         // @TODO fix default profile lookup support
         PGLProfile glProfile = profile;
         if (profile == null) {
-            glProfile = PGLProfile.GL3;
+            if (Platform.get() == Platform.LINUX &&
+                    (Platform.getArchitecture() == Platform.Architecture.ARM32 ||
+                    Platform.getArchitecture() == Platform.Architecture.ARM64)) {
+                glProfile = PGLProfile.GLES2;
+            } else {
+                glProfile = PGLProfile.GL3;
+            }
         }
         Lookup clientLookup = clients[0].getLookup();
 
