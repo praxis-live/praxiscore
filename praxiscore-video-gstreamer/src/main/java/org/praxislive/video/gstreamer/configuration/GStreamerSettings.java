@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -39,7 +39,7 @@ public class GStreamerSettings {
         if (Platform.isWindows()) {
             DEFAULT_CAPTURE_PREFIX = "ksvideosrc device-index=";
             if (Platform.is64Bit()) {
-                DEFAULT_LIBRARY_PATH = "C:\\gstreamer\\1.0\\x86_64\\bin\\";
+                DEFAULT_LIBRARY_PATH = getDefaultWindowsLibraryPath();
             } else {
                 DEFAULT_LIBRARY_PATH = "C:\\gstreamer\\1.0\\x86\\bin\\";
             }
@@ -91,6 +91,29 @@ public class GStreamerSettings {
 
     public static void setLibraryPath(String libPath) {
         Settings.put(KEY_LIBRARY_PATH, libPath);
+    }
+    
+    private static String getDefaultWindowsLibraryPath() {
+        try {
+            String path = System.getenv("GSTREAMER_1_0_ROOT_MSVC_X86_64");
+            if (path == null) {
+                path = System.getenv("GSTREAMER_1_0_ROOT_MINGW_X86_64");
+            }
+            if (path == null) {
+                path = System.getenv("GSTREAMER_1_0_ROOT_X86_64");
+            }
+            if (path != null) {
+                if (path.endsWith("\\")) {
+                    return path + "bin\\";
+                } else {
+                    return path + "\\bin\\";
+                }
+            }
+        } catch (Exception ex) {
+            System.getLogger(GStreamerSettings.class.getName())
+                    .log(System.Logger.Level.ERROR, ex);
+        }
+        return "C:\\gstreamer\\1.0\\x86_64\\bin\\";
     }
 
 }
