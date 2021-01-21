@@ -649,7 +649,8 @@ public abstract class NanoHTTPD {
             this.inputStream = new BufferedInputStream(inputStream, HTTPSession.BUFSIZE);
             this.outputStream = outputStream;
             this.remoteIp = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "127.0.0.1" : inetAddress.getHostAddress().toString();
-            this.remoteHostname = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "localhost" : inetAddress.getHostName().toString();
+//            this.remoteHostname = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "localhost" : inetAddress.getHostName().toString();
+            this.remoteHostname = this.remoteIp;
             this.headers = new HashMap<String, String>();
         }
 
@@ -1625,7 +1626,7 @@ public abstract class NanoHTTPD {
                 outputStream.flush();
                 safeClose(this.data);
             } catch (IOException ioe) {
-                NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                NanoHTTPD.LOG.log(Level.FINE, "Could not send response to the client", ioe);
             }
         }
 

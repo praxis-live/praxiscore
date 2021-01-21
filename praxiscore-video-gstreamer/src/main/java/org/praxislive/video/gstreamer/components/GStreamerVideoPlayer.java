@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.freedesktop.gstreamer.Bus;
+import org.freedesktop.gstreamer.ClockTime;
 import org.freedesktop.gstreamer.ElementFactory;
 import org.freedesktop.gstreamer.Format;
 import org.freedesktop.gstreamer.Gst;
@@ -289,21 +290,26 @@ class GStreamerVideoPlayer implements VideoPlayer {
             if (rate == 0.0) {
                 rate = 0.0000001;
             }
-            long duration = playbin.queryDuration(TimeUnit.NANOSECONDS);
             if (eos) {
                 if (rate > 0) {
                     position = 0;
                 } else {
-                    position = duration;
+                    position = playbin.queryDuration(TimeUnit.NANOSECONDS);
                 }
             } else if (position < 0) {
                 position = playbin.queryPosition(TimeUnit.NANOSECONDS);
             }
 
             if (rate > 0) {
-                playbin.seek(rate, Format.TIME, EnumSet.of(SeekFlags.FLUSH, SeekFlags.ACCURATE), SeekType.SET, position, SeekType.SET, duration);
+                playbin.seek(rate, Format.TIME,
+                        EnumSet.of(SeekFlags.FLUSH, SeekFlags.ACCURATE),
+                        SeekType.SET, position,
+                        SeekType.NONE, ClockTime.NONE);
             } else {
-                playbin.seek(rate, Format.TIME, EnumSet.of(SeekFlags.FLUSH, SeekFlags.ACCURATE), SeekType.SET, 0, SeekType.SET, position);
+                playbin.seek(rate, Format.TIME,
+                        EnumSet.of(SeekFlags.FLUSH, SeekFlags.ACCURATE),
+                        SeekType.SET, 0,
+                        SeekType.SET, position);
             }
         }
         playbin.getState(10, TimeUnit.MILLISECONDS);
