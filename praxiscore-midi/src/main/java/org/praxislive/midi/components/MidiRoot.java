@@ -194,7 +194,7 @@ public class MidiRoot extends AbstractRootContainer {
     
     private class DeviceProperty extends AbstractProperty {
         
-        PString device;
+        PString device = PString.EMPTY;
         
         @Override
         protected void set(long time, Value arg) throws Exception {
