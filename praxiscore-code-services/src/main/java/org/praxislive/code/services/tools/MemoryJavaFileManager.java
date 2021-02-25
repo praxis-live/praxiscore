@@ -1,8 +1,9 @@
 
 /*
+ * Copyright 2021 Neil C Smith
+ *
  * Forked from Janino - An embedded Java[TM] compiler
  *
- * Copyright 2018 Neil C Smith
  * Copyright (c) 2001-2010, Arno Unkrig
  * All rights reserved.
  *
@@ -30,6 +31,9 @@ import java.io.*;
 import java.net.URI;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import javax.tools.*;
 import javax.tools.JavaFileObject.Kind;
@@ -41,11 +45,11 @@ import javax.tools.JavaFileObject.Kind;
  *
  * @param <M>
  */
-class ByteArrayJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
+class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
 
     private final Map<Location, Map<Kind, Map<String /*className*/, JavaFileObject>>> javaFiles = (new HashMap<>());
 
-    public ByteArrayJavaFileManager(JavaFileManager delegate) {
+    public MemoryJavaFileManager(JavaFileManager delegate) {
         super(delegate);
     }
 
@@ -87,60 +91,39 @@ class ByteArrayJavaFileManager extends ForwardingJavaFileManager<JavaFileManager
             FileObject sibling
     ) throws IOException {
 
-        /**
-         * {@link StringWriter}-based implementation of {@link JavaFileObject}.
-         * <p>
-         * Notice that {@link #getCharContent(boolean)} is much more efficient
-         * than {@link
-         * ByteArrayJavaFileObject#getCharContent(boolean)}. However, memory
-         * consumption is roughly double, and {@link #openInputStream()} and
-         * {@link #openOutputStream()} are not available.
-         */
-        class StringWriterJavaFileObject extends SimpleJavaFileObject {
-
-            final StringWriter buffer = new StringWriter();
-
-            public StringWriterJavaFileObject(Kind kind) {
-                super(
-                        URI.create("stringbuffer:///" + className.replace('.', '/') + kind.extension),
-                        kind
-                );
-            }
-
-            @Override
-            public Writer openWriter() throws IOException {
-                return this.buffer;
-            }
-
-            @Override
-            public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-                return new StringReader(this.buffer.toString());
-            }
-
-            @Override
-            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
-                return this.buffer.getBuffer();
-            }
-        }
-
         JavaFileObject fileObject = (kind == Kind.SOURCE
-                ? new StringWriterJavaFileObject(kind)
+                ? new StringWriterJavaFileObject(className, kind)
                 : new ByteArrayJavaFileObject(className, kind));
-
+        getFileMap(location, kind).put(className, fileObject);
+        return fileObject;
+    }
+    
+    public JavaFileObject addSource(String className, String source) {
+        JavaFileObject file = new StringJavaFileObject(className, Kind.SOURCE, source);
+        getFileMap(StandardLocation.SOURCE_PATH, Kind.SOURCE).put(className, file);
+        return file;
+    }
+    
+    public JavaFileObject addExistingClass(String className, Supplier<InputStream> byteSource) {
+        JavaFileObject file = new InputStreamFileObject(className, Kind.CLASS, byteSource);
+        getFileMap(StandardLocation.CLASS_PATH, Kind.CLASS).put(className, file);
+        return file;
+    }
+    
+    private Map<String, JavaFileObject> getFileMap(Location location, Kind kind) {
         Map<Kind, Map<String, JavaFileObject>> locationJavaFiles = this.javaFiles.get(location);
         if (locationJavaFiles == null) {
-            locationJavaFiles = new HashMap<Kind, Map<String, JavaFileObject>>();
+            locationJavaFiles = new HashMap<>();
             this.javaFiles.put(location, locationJavaFiles);
         }
         Map<String, JavaFileObject> kindJavaFiles = locationJavaFiles.get(kind);
         if (kindJavaFiles == null) {
-            kindJavaFiles = new HashMap<String, JavaFileObject>();
+            kindJavaFiles = new TreeMap<>();
             locationJavaFiles.put(kind, kindJavaFiles);
         }
-
-        kindJavaFiles.put(className, fileObject);
-        return fileObject;
+        return kindJavaFiles;
     }
+    
 
     @Override
     public Iterable<JavaFileObject> list(
@@ -150,8 +133,10 @@ class ByteArrayJavaFileManager extends ForwardingJavaFileManager<JavaFileManager
             boolean recurse
     ) throws IOException {
         Map<Kind, Map<String, JavaFileObject>> locationFiles = this.javaFiles.get(location);
+        Iterable<JavaFileObject> stdList = super.list(location, packageName, kinds, recurse);
+
         if (locationFiles == null) {
-            return super.list(location, packageName, kinds, recurse);
+            return stdList;
         }
 
         String prefix = packageName.length() == 0 ? "" : packageName + ".";
@@ -173,13 +158,15 @@ class ByteArrayJavaFileManager extends ForwardingJavaFileManager<JavaFileManager
                 result.add(e.getValue());
             }
         }
-        return result;
+        return () -> Stream.concat(
+                result.stream(),
+                StreamSupport.stream(stdList.spliterator(), false)).iterator();
     }
 
     /**
      * Byte array-based implementation of {@link JavaFileObject}.
      */
-    public static class ByteArrayJavaFileObject extends SimpleJavaFileObject {
+    static class ByteArrayJavaFileObject extends SimpleJavaFileObject {
 
         private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
@@ -209,8 +196,84 @@ class ByteArrayJavaFileManager extends ForwardingJavaFileManager<JavaFileManager
         }
     }
 
+    /**
+     * {@link StringWriter}-based implementation of {@link JavaFileObject}.
+     * <p>
+     * Notice that {@link #getCharContent(boolean)} is much more efficient than {@link
+     * ByteArrayJavaFileObject#getCharContent(boolean)}. However, memory
+     * consumption is roughly double, and {@link #openInputStream()} and
+     * {@link #openOutputStream()} are not available.
+     */
+    static class StringWriterJavaFileObject extends SimpleJavaFileObject {
+
+        final StringWriter buffer = new StringWriter();
+
+        public StringWriterJavaFileObject(String className, Kind kind) {
+            super(URI.create("stringbuffer:///" + className.replace('.', '/') + kind.extension),
+                    kind
+            );
+        }
+
+        @Override
+        public Writer openWriter() throws IOException {
+            return this.buffer;
+        }
+
+        @Override
+        public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
+            return new StringReader(this.buffer.toString());
+        }
+
+        @Override
+        public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+            return this.buffer.getBuffer();
+        }
+    }
+
+    static class StringJavaFileObject extends SimpleJavaFileObject {
+
+        final String source;
+
+        public StringJavaFileObject(String className, Kind kind, String source) {
+            super(URI.create("string:///" + className.replace('.', '/') + kind.extension),
+                    kind);
+            this.source = Objects.requireNonNull(source);
+        }
+
+        @Override
+        public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
+            return new StringReader(source);
+        }
+
+        @Override
+        public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+            return source;
+        }
+
+    }
+    
+    static class InputStreamFileObject extends SimpleJavaFileObject {
+
+        final Supplier<InputStream> streamSource;
+
+        public InputStreamFileObject(String className, Kind kind,
+                Supplier<InputStream> streamSource) {
+            super(URI.create("string:///" + className.replace('.', '/') + kind.extension),
+                    kind);
+            this.streamSource = Objects.requireNonNull(streamSource);
+        }
+
+        @Override
+        public InputStream openInputStream() throws IOException {
+            return streamSource.get();
+        }
+
+        
+
+    }
+
     Map<String, byte[]> extractClassData() {
-        Map<String, byte[]> bytecode = new HashMap<>();
+        Map<String, byte[]> bytecode = new TreeMap<>();
         Map<Kind, Map<String, JavaFileObject>> locationFiles
                 = this.javaFiles.get(StandardLocation.CLASS_OUTPUT);
 //        if (locationFiles == null) {
