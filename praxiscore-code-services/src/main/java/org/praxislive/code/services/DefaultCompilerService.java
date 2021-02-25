@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -39,6 +39,7 @@ import org.praxislive.code.CodeCompilerService;
 import org.praxislive.code.services.tools.ClassBodyCompiler;
 import org.praxislive.code.ClassBodyContext;
 import org.praxislive.code.LibraryResolver;
+import org.praxislive.code.services.tools.CompilerTask;
 import org.praxislive.code.services.tools.MessageHandler;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentInfo;
@@ -87,7 +88,9 @@ public class DefaultCompilerService extends AbstractRoot
     private final Set<PResource> libProvided;
     private final Set<Path> libFiles;
     private final List<LibraryResolver> libResolvers;
-    
+    private final String defClasspath;
+    private final String defModulepath;
+
     private SourceVersion release;
     private PArray libs;
     private PArray libsAll;
@@ -136,6 +139,8 @@ public class DefaultCompilerService extends AbstractRoot
         libs = PArray.EMPTY;
         libsAll = PArray.EMPTY;
         libPath = PArray.EMPTY;
+        this.defClasspath = System.getProperty("java.class.path", "");
+        this.defModulepath = System.getProperty("jdk.module.path", "");
     }
 
     @Override
@@ -158,14 +163,50 @@ public class DefaultCompilerService extends AbstractRoot
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
                 PMap map = PMap.from(call.args().get(0)).orElseThrow();
-                PMap ret = process(map);
+                PMap ret;
+                if (map.keys().contains(CodeCompilerService.KEY_SOURCES)) {
+                    ret = process(map);
+                } else {
+                    ret = processLegacy(map);
+                }
                 router.route(call.reply(ret));
             } else {
                 throw new UnsupportedOperationException();
             }
         }
 
-        private PMap process(PMap map) throws Exception {
+        private PMap process(PMap map) throws Exception {           
+            PMap sources = PMap.from(map.get(CodeCompilerService.KEY_SOURCES))
+                            .orElseThrow(IllegalArgumentException::new);
+            
+            Map<String, String> extractedSources = 
+                    sources.keys().stream()
+                    .collect(Collectors.toUnmodifiableMap(k -> k,
+                            k -> sources.get(k).toString()));
+            
+            LogBuilder log = new LogBuilder(getLogLevel(map));
+
+            List<String> options = List.of("-Xlint:all", "-proc:none",
+                    "--release", String.valueOf(release.ordinal()),
+                    "--add-modules", "ALL-MODULE-PATH",
+                    "--module-path", defModulepath,
+                    "-classpath", buildClasspath());
+
+            Map<String, byte[]> classFiles
+                    = CompilerTask.create(extractedSources)
+                            .options(options)
+                            .messageHandler(new LogMessageHandler(log))
+                            .compile();
+            
+            PMap classes = convertClasses(classFiles);
+            PMap response = PMap.of(CodeCompilerService.KEY_CLASSES, classes,
+                    CodeCompilerService.KEY_LOG, PArray.of(log.toList()),
+                    EXT_CLASSPATH, libPath);
+            return response;
+        }
+
+        @SuppressWarnings("deprecation")
+        private PMap processLegacy(PMap map) throws Exception {
             String code = map.getString(CodeCompilerService.KEY_CODE, "");
             ClassBodyContext<?> cbc = getClassBodyContext(map);
             LogBuilder log = new LogBuilder(LogLevel.WARNING);
@@ -185,6 +226,7 @@ public class DefaultCompilerService extends AbstractRoot
             return response;
         }
 
+        @SuppressWarnings("deprecation")
         private ClassBodyContext<?> getClassBodyContext(PMap map) throws Exception {
             String cbcClass = map.getString(CodeCompilerService.KEY_CLASS_BODY_CONTEXT, null);
             return (ClassBodyContext<?>) Class.forName(cbcClass, true, Thread.currentThread().getContextClassLoader())
@@ -197,7 +239,21 @@ public class DefaultCompilerService extends AbstractRoot
             if (level != null) {
                 return LogLevel.valueOf(level);
             } else {
-                return LogLevel.ERROR;
+                return LogLevel.WARNING;
+            }
+        }
+
+        private String buildClasspath() {
+            if (libFiles.isEmpty()) {
+                return defClasspath;
+            } else {
+                String cp = libFiles.stream()
+                        .map(p -> p.toAbsolutePath().toString())
+                        .collect(Collectors.joining(File.pathSeparator));
+                if (!defClasspath.isBlank()) {
+                    cp += (File.pathSeparator + defClasspath);
+                }
+                return cp;
             }
         }
 

@@ -33,8 +33,16 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/*
- * To set up a {@link ClassBodyWrapper} object, proceed as described for {@link
+/**
+ * Wrap a provided class body with the specified class name, extended type,
+ * implemented interfaces, and default imports.
+ * <p>
+ * Will parse out import statements in the body and add to default import
+ * statements.
+ * <p>
+ * Derived from Janino's ClassBodyEvaluator and has similar limitations.
+ */
+/* To set up a {@link ClassBodyWrapper} object, proceed as described for {@link
  * IClassBodyEvaluator}. Alternatively, a number of "convenience constructors"
  * exist that execute the described steps instantly.
  * <p>
@@ -49,8 +57,7 @@ import java.util.stream.Collectors;
 public class ClassBodyWrapper {
 
     private static final String NEW_LINE = "\n";
-    
-    
+
     private List<String> defaultImports;
     private String className;
     private Class<?> extendedType;
@@ -87,7 +94,7 @@ public class ClassBodyWrapper {
 
         Map<Boolean, List<String>> partitionedSource = source.lines()
                 .collect(Collectors.partitioningBy(IMPORT_STATEMENT_PATTERN.asPredicate()));
-        
+
         List<String> sourceImports = partitionedSource.get(true);
         List<String> sourceBody = partitionedSource.get(false);
 
@@ -102,36 +109,36 @@ public class ClassBodyWrapper {
             packageName = this.className.substring(0, idx);
             simpleClassName = this.className.substring(idx + 1);
         }
-        
+
         if (!packageName.isEmpty()) {
             sb.append("package ").append(packageName).append(";").append(NEW_LINE);
         }
-        
-        defaultImports.forEach(i -> 
-                sb.append("import ").append(i).append(";").append(NEW_LINE)
+
+        defaultImports.forEach(i
+                -> sb.append("import ").append(i).append(";").append(NEW_LINE)
         );
-        
+
         sourceImports.forEach(i -> sb.append(i).append(NEW_LINE));
-        
+
         sb.append("public class ").append(simpleClassName);
-        
+
         if (extendedType != null) {
             sb.append(" extends ").append(extendedType.getCanonicalName());
         }
-        
+
         if (!implementedTypes.isEmpty()) {
             sb.append(" implements ");
             sb.append(implementedTypes.stream()
                     .map(Class::getName)
                     .collect(Collectors.joining(", ")));
         }
-        
+
         sb.append(" {").append(NEW_LINE);
-        
+
         sourceBody.forEach(line -> sb.append(line).append(NEW_LINE));
-        
+
         sb.append("}").append(NEW_LINE);
-        
+
         return sb.toString();
 
     }

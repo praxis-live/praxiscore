@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,6 +44,7 @@ import org.praxislive.code.CodeContextFactoryService;
 import org.praxislive.code.CodeDelegate;
 import org.praxislive.code.CodeFactory;
 import org.praxislive.code.ClassBodyContext;
+import org.praxislive.code.services.tools.ClassBodyWrapper;
 import org.praxislive.core.Value;
 import org.praxislive.core.Call;
 import org.praxislive.core.services.ComponentFactory;
@@ -110,14 +111,15 @@ public class DefaultCodeFactoryService extends AbstractRoot
                 CodeCompilerService.COMPILE);
     }
 
-    private PMap createCompilerTask(ClassBodyContext<?> cbc, LogLevel logLevel, String source) {
-        return PMap.of(
-                CodeCompilerService.KEY_CLASS_BODY_CONTEXT,
-                cbc.getClass().getName(),
-                CodeCompilerService.KEY_LOG_LEVEL,
-                logLevel.asPString(),
-                CodeCompilerService.KEY_CODE,
-                source);
+    private PMap createCompilerTask(ClassBodyContext<?> cbc, LogLevel logLevel, String code) {
+        String source = ClassBodyWrapper.create()
+                .className("$")
+                .extendsType(cbc.getExtendedClass())
+                .implementsTypes(List.of(cbc.getImplementedInterfaces()))
+                .defaultImports(List.of(cbc.getDefaultImports()))
+                .wrap(code);
+        return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of("$", source),
+                    CodeCompilerService.KEY_LOG_LEVEL, logLevel);
     }
 
     private Class<? extends CodeDelegate> extractCodeDelegateClass(Value response) throws Exception {
@@ -266,7 +268,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             return PReference.from(getActiveCall().args().get(0))
                     .flatMap(r -> r.as(CodeContextFactoryService.Task.class))
                     .orElseThrow();
-            
+
         }
 
         private CodeContextFactoryService.Result<CodeDelegate> createContext(
