@@ -1,8 +1,8 @@
 package org.praxislive.code.services.tools;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
-import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
@@ -65,6 +65,43 @@ public class CompilerTaskTest {
 
         int val = (int) cls.getMethod("value").invoke(null);
         assertEquals(42, val);
+    }
+
+    @Test
+    public void testCompileLayers() throws Exception {
+        assumeFalse(ToolProvider.getSystemJavaCompiler() == null, "No compiler available");
+
+        CompilerTask task = CompilerTask.create(Map.of(SHARED_TEST_CLASS, SHARED_TEST_SOURCE));
+        task.options(List.of("--release", "11"));
+
+        Map<String, byte[]> parentClasses = task.compile();
+        byte[] existing = parentClasses.get(SHARED_TEST_CLASS);
+        assertNotNull(existing, "Shared class not compiled");
+
+        String code = "package foo;\n"
+                + "import SHARED.Test;\n"
+                + "public class Bar {\n"
+                + "  public static int value() {\n"
+                + "    return Test.value();\n"
+                + "  }\n"
+                + "}\n";
+        
+        CompilerTask task2 = CompilerTask.create(Map.of("foo.Bar", code));
+        task2.options(List.of("--release", "11"));
+        task2.existingClasses(Map.of(SHARED_TEST_CLASS, () -> new ByteArrayInputStream(existing)));
+        
+        Map<String, byte[]> classes = task2.compile();
+        
+        assertTrue(classes.containsKey("foo.Bar"), "Class foo.Bar not found");
+        assertEquals(1, classes.size(), "Classes contains more classes than expected");
+        
+        ByteMapCL parentClassloader = new ByteMapCL(parentClasses, this.getClass().getClassLoader());
+        ByteMapCL classloader = new ByteMapCL(classes, parentClassloader);
+        
+        Class<?> cls = Class.forName("foo.Bar", true, classloader);
+        int val = (int) cls.getMethod("value").invoke(null);
+        assertEquals(42, val);
+
     }
 
     private static class ByteMapCL extends ClassLoader {

@@ -28,9 +28,11 @@
 package org.praxislive.code.services.tools;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
@@ -53,6 +55,7 @@ public class CompilerTask {
     };
 
     private final Map<String, String> sources;
+    private Map<String, Supplier<InputStream>> existingClasses;
     private MessageHandler messageHandler;
     private List<String> options;
 
@@ -60,8 +63,15 @@ public class CompilerTask {
 
     private CompilerTask(Map<String, String> sources) {
         this.sources = Map.copyOf(sources);
+        existingClasses = Map.of();
         messageHandler = DEFAULT_MESSAGE_HANDLER;
         options = List.of("-Xlint:all");
+    }
+
+    public CompilerTask existingClasses(Map<String, Supplier<InputStream>> existing) {
+        assertNotCompiled();
+        this.existingClasses = Map.copyOf(existing);
+        return this;
     }
 
     public CompilerTask options(List<String> options) {
@@ -96,6 +106,9 @@ public class CompilerTask {
         // Wrap it so that the output files (in our case class files) are stored in memory rather
         // than in files.
         final MemoryJavaFileManager fileManager = new MemoryJavaFileManager(fm);
+        existingClasses.entrySet().forEach(c
+                -> fileManager.addExistingClass(c.getKey(), c.getValue()));
+
         List<JavaFileObject> compilationUnits = sources.entrySet().stream()
                 .map(e -> fileManager.addSource(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());

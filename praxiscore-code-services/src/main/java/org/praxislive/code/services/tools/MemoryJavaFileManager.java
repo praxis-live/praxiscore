@@ -123,8 +123,22 @@ class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
         }
         return kindJavaFiles;
     }
-    
 
+    @Override
+    public String inferBinaryName(Location location, JavaFileObject file) {
+        if (file instanceof MemoryJavaFileObject) {
+            return ((MemoryJavaFileObject) file).binaryName;
+        } else {
+            return super.inferBinaryName(location, file);
+        }
+
+    }
+
+    @Override
+    public boolean hasLocation(Location location) {
+        return javaFiles.containsKey(location) || super.hasLocation(location);
+    }
+    
     @Override
     public Iterable<JavaFileObject> list(
             Location location,
@@ -163,18 +177,30 @@ class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
                 StreamSupport.stream(stdList.spliterator(), false)).iterator();
     }
 
+    static abstract class MemoryJavaFileObject extends SimpleJavaFileObject {
+
+        private final String binaryName;
+        
+        MemoryJavaFileObject(String protocol, String binaryName, Kind kind) {
+            super(
+                    URI.create(protocol + ":///" + binaryName.replace('.', '/') + kind.extension),
+                    kind
+            );
+            this.binaryName = binaryName;
+        }
+        
+    }
+    
+    
     /**
      * Byte array-based implementation of {@link JavaFileObject}.
      */
-    static class ByteArrayJavaFileObject extends SimpleJavaFileObject {
+    static class ByteArrayJavaFileObject extends MemoryJavaFileObject {
 
         private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
-        public ByteArrayJavaFileObject(String className, Kind kind) {
-            super(
-                    URI.create("bytearray:///" + className.replace('.', '/') + kind.extension),
-                    kind
-            );
+        public ByteArrayJavaFileObject(String binaryName, Kind kind) {
+            super("bytearray", binaryName, kind);
         }
 
         @Override
@@ -204,14 +230,12 @@ class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
      * consumption is roughly double, and {@link #openInputStream()} and
      * {@link #openOutputStream()} are not available.
      */
-    static class StringWriterJavaFileObject extends SimpleJavaFileObject {
+    static class StringWriterJavaFileObject extends MemoryJavaFileObject {
 
         final StringWriter buffer = new StringWriter();
 
-        public StringWriterJavaFileObject(String className, Kind kind) {
-            super(URI.create("stringbuffer:///" + className.replace('.', '/') + kind.extension),
-                    kind
-            );
+        public StringWriterJavaFileObject(String binaryName, Kind kind) {
+            super("stringwriter", binaryName, kind);
         }
 
         @Override
@@ -230,13 +254,12 @@ class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
         }
     }
 
-    static class StringJavaFileObject extends SimpleJavaFileObject {
+    static class StringJavaFileObject extends MemoryJavaFileObject {
 
         final String source;
 
-        public StringJavaFileObject(String className, Kind kind, String source) {
-            super(URI.create("string:///" + className.replace('.', '/') + kind.extension),
-                    kind);
+        public StringJavaFileObject(String binaryName, Kind kind, String source) {
+            super("string", binaryName, kind);
             this.source = Objects.requireNonNull(source);
         }
 
@@ -252,14 +275,13 @@ class MemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
 
     }
     
-    static class InputStreamFileObject extends SimpleJavaFileObject {
+    static class InputStreamFileObject extends MemoryJavaFileObject {
 
         final Supplier<InputStream> streamSource;
 
-        public InputStreamFileObject(String className, Kind kind,
+        public InputStreamFileObject(String binaryName, Kind kind,
                 Supplier<InputStream> streamSource) {
-            super(URI.create("string:///" + className.replace('.', '/') + kind.extension),
-                    kind);
+            super("bytestream", binaryName, kind); 
             this.streamSource = Objects.requireNonNull(streamSource);
         }
 
