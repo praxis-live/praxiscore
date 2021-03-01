@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,6 +36,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
+ * @param <V>
  */
 public abstract class AbstractAsyncProperty<V> implements Control {
     
@@ -64,10 +65,6 @@ public abstract class AbstractAsyncProperty<V> implements Control {
         this.context = context;
     }
     
-
-//    public ControlPort.Input createPort() {
-//        return new InputPort();
-//    }
 
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
@@ -186,14 +183,6 @@ public abstract class AbstractAsyncProperty<V> implements Control {
             value = valueType.cast(result);
             return;
         }
-//        if (result instanceof PReference) {
-//            Object ref = ((PReference) result).getReference();
-//            if (valueType.isInstance(ref)) {
-//                value = valueType.cast(ref);
-//                return;
-//            }
-//        }
-//        value = null;
         value = PReference.from(result)
                 .flatMap(r -> r.as(valueType))
                 .orElse(null);

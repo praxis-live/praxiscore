@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,7 +60,11 @@ import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogBuilder;
 
 /**
+ * Base class for analysing a {@link CodeDelegate} and creating the resources
+ * required for its wrapping {@link CodeContext}. An instance of a CodeConnector
+ * subclass should be passed in to the CodeContext constructor.
  *
+ * @param <D> type of CodeDelegate this connector works with
  */
 public abstract class CodeConnector<D extends CodeDelegate> {
 
@@ -92,6 +96,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private int syntheticIdx = Integer.MIN_VALUE;
     private boolean hasPropertyField;
 
+    /**
+     * Create a CodeConnector for the provided delegate.
+     *
+     * @param task CodeFactory.Task factory task creating context
+     * @param delegate delegate instance
+     */
     public CodeConnector(CodeFactory.Task<D> task, D delegate) {
         this.factory = task.getFactory();
         this.log = task.getLog();
@@ -101,6 +111,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         refs = new TreeMap<>();
     }
 
+    /**
+     * Process will be called by the CodeContext. Subclasses may override to
+     * extend, but should ensure to call the superclass method.
+     */
     protected void process() {
         plugins = ALL_PLUGINS.stream().filter(p -> p.isSupportedConnector(this))
                 .collect(Collectors.toList());
@@ -112,30 +126,74 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         buildExternalData();
     }
 
+    /**
+     * Access the delegate instance.
+     *
+     * @return delegate
+     */
     public D getDelegate() {
         return delegate;
     }
 
+    /**
+     * Get the {@link LogBuilder} for logging messages during processing.
+     *
+     * @return log builder
+     */
     public LogBuilder getLog() {
         return log;
     }
 
+    /**
+     * Called by the CodeContext to access all processed control descriptors.
+     * Subclasses may override to extend, but should ensure to call the
+     * superclass method.
+     *
+     * @return map of control descriptors by ID
+     */
     protected Map<String, ControlDescriptor> extractControls() {
         return extControls;
     }
 
+    /**
+     * Called by the CodeContext to access all processed port descriptors.
+     * Subclasses may override to extend, but should ensure to call the
+     * superclass method.
+     *
+     * @return map of port descriptors by ID
+     */
     protected Map<String, PortDescriptor> extractPorts() {
         return extPorts;
     }
 
+    /**
+     * Called by the CodeContext to access all processed reference descriptors.
+     * Subclasses may override to extend, but should ensure to call the
+     * superclass method.
+     *
+     * @return map of reference descriptors by ID
+     */
     protected Map<String, ReferenceDescriptor> extractRefs() {
         return extRefs;
     }
 
+    /**
+     * Called by the CodeContext to access the generated {@link ComponentInfo}
+     * for the delegate.
+     *
+     * @return component info
+     */
     protected ComponentInfo extractInfo() {
         return info;
     }
 
+    /**
+     * Called by the CodeContext to control whether the context should be
+     * attached to the execution clock. This method returns true if the delegate
+     * has any fields of type {@link Property}. May be overridden.
+     *
+     * @return whether context should connect to clock
+     */
     protected boolean requiresClock() {
         return hasPropertyField;
     }
@@ -175,12 +233,20 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    /**
+     * Called during processing to generate the component info from the control
+     * and port maps. May be overridden to configure / extend.
+     *
+     * @param controls map of control IDs and descriptors
+     * @param ports map of port IDs and descriptors
+     * @return component info
+     */
     protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor> controls,
             Map<String, PortDescriptor> ports) {
         var cmp = Info.component();
         cmp.merge(ComponentProtocol.API_INFO);
         for (var e : controls.entrySet()) {
-             if (!excludeFromInfo(e.getKey(), e.getValue())) {
+            if (!excludeFromInfo(e.getKey(), e.getValue())) {
                 cmp.control(e.getKey(), e.getValue().getInfo());
             }
         }
@@ -202,38 +268,80 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return id.startsWith("_");
     }
 
+    /**
+     * Add a control descriptor.
+     *
+     * @param ctl control descriptor
+     */
     public void addControl(ControlDescriptor ctl) {
         controls.computeIfAbsent(ctl.getCategory(), c -> new TreeMap<>()).put(ctl.getIndex(), ctl);
     }
 
+    /**
+     * Add a port descriptor.
+     *
+     * @param port port descriptor
+     */
     public void addPort(PortDescriptor port) {
         ports.computeIfAbsent(port.getCategory(), c -> new TreeMap<>()).put(port.getIndex(), port);
     }
 
+    /**
+     * Add a reference descriptor.
+     *
+     * @param ref reference descriptor
+     */
     public void addReference(ReferenceDescriptor ref) {
         refs.put(ref.getID(), ref);
     }
 
+    /**
+     * Called during processing to create default controls. May be overridden to
+     * configure or extend. By default this method adds the info and code
+     * properties, and a hidden control used by logging support.
+     */
     protected void addDefaultControls() {
         addControl(createInfoControl(Integer.MIN_VALUE));
         addControl(createCodeControl(Integer.MIN_VALUE + 1));
         addControl(new LogControl.Descriptor(Integer.MIN_VALUE + 2));
     }
 
+    /**
+     * Called to create the info property control.
+     *
+     * @param index position of control
+     * @return info control descriptor
+     */
     protected ControlDescriptor createInfoControl(int index) {
         return new InfoProperty.Descriptor(index);
     }
 
+    /**
+     * Called to create the code property control.
+     *
+     * @param index position of control
+     * @return code control descriptor
+     */
     protected ControlDescriptor createCodeControl(int index) {
         return new CodeProperty.Descriptor<>(factory, index);
     }
-    
+
+    /**
+     * Called during processing to create default ports. May be overridden to
+     * extend. By default this method does nothing.
+     */
     protected void addDefaultPorts() {
         // no op hook
     }
 
+    /**
+     * Called during processing to analyse all discovered fields in the delegate
+     * class. May be overridden, but usually better to override the more
+     * specific analysis methods.
+     *
+     * @param fields discovered fields
+     */
     protected void analyseFields(Field[] fields) {
-//        LOG.fine("Analysing fields");
         for (Field f : fields) {
             if (Modifier.isStatic(f.getModifiers())) {
                 continue;
@@ -245,6 +353,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    /**
+     * Called during processing to analyse all discovered methods in the
+     * delegate class. May be overridden, but usually better to override the
+     * more specific analysis methods.
+     *
+     * @param methods discovered methods
+     */
     protected void analyseMethods(Method[] methods) {
         for (Method m : methods) {
             if (Modifier.isStatic(m.getModifiers())) {
@@ -254,6 +369,15 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    /**
+     * Called during processing to analyse each discovered field. May be
+     * overridden to extend. The default behaviour will first pass to available
+     * plugins (see {@link Plugin}), then check for property, trigger, in,
+     * aux-in, out, aux-out and inject annotations in that order. First valid
+     * match wins.
+     *
+     * @param field discovered field
+     */
     protected void analyseField(Field field) {
 
         for (Plugin p : plugins) {
@@ -300,6 +424,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    /**
+     * Called during processing to analyse each discovered method. May be
+     * overridden to extend. The default behaviour will first pass to available
+     * plugins (see {@link Plugin}), then check for trigger, in and aux-in
+     * annotations in that order. First valid match wins.
+     *
+     * @param method discovered method
+     */
     protected void analyseMethod(Method method) {
 
         for (Plugin p : plugins) {
@@ -329,13 +461,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             addControl(InputPortControl.Descriptor.createInput(odsc.getID(), odsc.getIndex(), odsc));
             return true;
         }
-        
+
         DataPort.InputDescriptor din = DataPort.InputDescriptor.create(this, ann, field);
         if (din != null) {
             addPort(din);
             return true;
         }
-        
+
         return false;
     }
 
@@ -346,15 +478,15 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             addControl(InputPortControl.Descriptor.createAuxInput(odsc.getID(), odsc.getIndex(), odsc));
             return true;
         }
-        
+
         DataPort.InputDescriptor din = DataPort.InputDescriptor.create(this, ann, field);
         if (din != null) {
             addPort(din);
             return true;
         }
-        
+
         return false;
-        
+
     }
 
     private boolean analyseOutputField(Out ann, Field field) {
@@ -362,14 +494,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         if (odsc != null) {
             addPort(odsc);
             return true;
-        } 
-        
+        }
+
         DataPort.OutputDescriptor dout = DataPort.OutputDescriptor.create(this, ann, field);
         if (dout != null) {
             addPort(dout);
             return true;
         }
-        
+
         return false;
     }
 
@@ -379,15 +511,15 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             addPort(odsc);
             return true;
         }
-        
+
         DataPort.OutputDescriptor dout = DataPort.OutputDescriptor.create(this, ann, field);
         if (dout != null) {
             addPort(dout);
             return true;
         }
-        
+
         return false;
-        
+
     }
 
     private boolean analyseTriggerField(T ann, Field field) {
@@ -403,12 +535,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             return false;
         }
     }
-    
+
     private boolean analyseResourcePropertyField(P ann, Field field) {
-        if (field.getAnnotation(Type.Resource.class) != null &&
-                String.class.equals(field.getType())) {
-            ResourceProperty.Descriptor<String> rpd =
-                    ResourceProperty.Descriptor.create(this, ann, field, ResourceProperty.getStringLoader());
+        if (field.getAnnotation(Type.Resource.class) != null
+                && String.class.equals(field.getType())) {
+            ResourceProperty.Descriptor<String> rpd
+                    = ResourceProperty.Descriptor.create(this, ann, field, ResourceProperty.getStringLoader());
             if (rpd != null) {
                 addControl(rpd);
                 if (shouldAddPort(field)) {
@@ -456,7 +588,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 return false;
             }
         }
-        
+
         if (Data.Sink.class.equals(field.getType())) {
             DataSink.Descriptor dsdsc = DataSink.Descriptor.create(this, field);
             if (dsdsc != null) {
@@ -515,6 +647,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    /**
+     * Find a suitable ID (control or port) for the provided field. Will first
+     * look for {@link ID} annotation, and if not found convert the field name
+     * from camelCase to dash-case.
+     *
+     * @param field field to find ID for
+     * @return ID
+     */
     public String findID(Field field) {
         ID ann = field.getAnnotation(ID.class);
         if (ann != null) {
@@ -526,6 +666,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return javaNameToID(field.getName());
     }
 
+    /**
+     * Find a suitable ID (control or port) for the provided method. Will first
+     * look for {@link ID} annotation, and if not found convert the method name
+     * from camelCase to dash-case.
+     *
+     * @param method method to find ID for
+     * @return ID
+     */
     public String findID(Method method) {
         ID ann = method.getAnnotation(ID.class);
         if (ann != null) {
@@ -537,11 +685,25 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return javaNameToID(method.getName());
     }
 
+    /**
+     * Convert a Java name in camelCase to an ID in dash-case.
+     *
+     * @param javaName Java name to convert
+     * @return ID for Java name
+     */
     protected String javaNameToID(String javaName) {
         String ret = idRegex.matcher(javaName).replaceAll("-");
         return ret.toLowerCase();
     }
 
+    /**
+     * Check whether a port should be added for provided element (field or
+     * method). By default returns true unless the element is marked
+     * {@link ReadOnly}, or with {@link Config.Port} and value false.
+     *
+     * @param element annotated element to analyse
+     * @return whether to add a port
+     */
     public boolean shouldAddPort(AnnotatedElement element) {
         if (element.isAnnotationPresent(ReadOnly.class)) {
             return false;
@@ -553,6 +715,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return true;
     }
 
+    /**
+     * Return next index to use for synthetic descriptors. Increments and
+     * returns an int on each call, not based on registered descriptors.
+     *
+     * @return next index
+     */
     public int getSyntheticIndex() {
         return syntheticIdx++;
     }

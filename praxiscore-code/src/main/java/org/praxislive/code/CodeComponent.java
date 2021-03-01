@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,7 +37,13 @@ import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
 
 /**
+ * A CodeComponent is a Component instance that is rewritable at runtime. The
+ * CodeComponent itself remains constant, but passes most responsibility to a
+ * {@link CodeContext} wrapping a {@link CodeDelegate} (user code). This
+ * component handles switching from one context to the next. A CodeComponent
+ * cannot be created directly - see {@link CodeFactory}.
  *
+ * @param <D> wrapped delegate type
  */
 public final class CodeComponent<D extends CodeDelegate> implements Component {
 
@@ -130,7 +136,7 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
     ComponentAddress getAddress() {
         return address;
     }
-    
+
     ExecutionContext getExecutionContext() {
         if (execCtxt == null) {
             execCtxt = getLookup().find(ExecutionContext.class)
@@ -146,33 +152,33 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
         }
         return router;
     }
-    
+
     ControlAddress getLogToAddress() {
         if (logInfo == null) {
             initLogInfo();
         }
         return logInfo.toAddress;
     }
-    
+
     ControlAddress getLogFromAddress() {
-         if (logInfo == null) {
+        if (logInfo == null) {
             initLogInfo();
         }
         return logInfo.fromAddress;
     }
-    
+
     private void initLogInfo() {
         ControlAddress toAddress = getLookup().find(Services.class)
                 .flatMap(srvs -> srvs.locate(LogService.class))
                 .map(srv -> ControlAddress.of(srv, LogService.LOG))
                 .orElse(null);
-        
+
         LogLevel level = getLookup().find(LogLevel.class).orElse(LogLevel.ERROR);
-        
+
         if (toAddress == null) {
             level = LogLevel.ERROR;
         }
-        
+
         ControlAddress fromAddress = ControlAddress.of(address, "_log");
         logInfo = new LogInfo(level, toAddress, fromAddress);
     }

@@ -28,9 +28,11 @@ import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
 
 /**
- *
- * 
+ * An abstract property control base class.
+ * <p>
+ * Deprecated in favour of org.praxislive.base.AbstractProperty.
  */
+@Deprecated
 public abstract class AbstractBasicProperty implements Control {
 
     private boolean latestSet;

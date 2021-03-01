@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,11 @@
 package org.praxislive.code;
 
 /**
- *
- * 
+ * CodeDelegate is the base class for all user rewritable code. Most uses will
+ * extend from {@link DefaultCodeDelegate}.
  */
 public abstract class CodeDelegate {
-    
+
     private CodeContext<? extends CodeDelegate> context;
 
     CodeContext<? extends CodeDelegate> getContext() {
@@ -36,7 +36,5 @@ public abstract class CodeDelegate {
     void setContext(CodeContext<? extends CodeDelegate> context) {
         this.context = context;
     }
-    
-    
 
 }
