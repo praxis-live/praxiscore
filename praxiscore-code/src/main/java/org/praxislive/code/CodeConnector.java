@@ -94,6 +94,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private Map<String, ReferenceDescriptor> extRefs;
     private ComponentInfo info;
     private int syntheticIdx = Integer.MIN_VALUE;
+    private int internalIdx = Integer.MIN_VALUE;
     private boolean hasPropertyField;
 
     /**
@@ -301,9 +302,9 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * properties, and a hidden control used by logging support.
      */
     protected void addDefaultControls() {
-        addControl(createInfoControl(Integer.MIN_VALUE));
-        addControl(createCodeControl(Integer.MIN_VALUE + 1));
-        addControl(new LogControl.Descriptor(Integer.MIN_VALUE + 2));
+        addControl(createInfoControl(getInternalIndex()));
+        addControl(createCodeControl(getInternalIndex()));
+        addControl(new LogControl.Descriptor(getInternalIndex()));
     }
 
     /**
@@ -725,6 +726,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return syntheticIdx++;
     }
 
+    protected int getInternalIndex() {
+        return internalIdx++;
+    }
+    
     ArgumentInfo infoFromType(Type typeAnnotation) {
         Class<? extends Value> valueCls = typeAnnotation.value();
         PMap properties = createPropertyMap(typeAnnotation.properties());

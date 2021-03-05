@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,6 +37,10 @@ class PMapClassLoader extends ClassLoader {
         this.classes = classes;
     }
 
+    PMap getClassesMap() {
+        return classes;
+    }
+    
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         Value dataArg = classes.get(name);

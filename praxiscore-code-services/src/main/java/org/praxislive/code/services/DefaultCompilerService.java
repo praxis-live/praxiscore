@@ -22,13 +22,17 @@
 package org.praxislive.code.services;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractRoot;
@@ -49,6 +53,7 @@ import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PArray;
@@ -175,15 +180,15 @@ public class DefaultCompilerService extends AbstractRoot
             }
         }
 
-        private PMap process(PMap map) throws Exception {           
+        private PMap process(PMap map) throws Exception {
             PMap sources = PMap.from(map.get(CodeCompilerService.KEY_SOURCES))
-                            .orElseThrow(IllegalArgumentException::new);
-            
-            Map<String, String> extractedSources = 
-                    sources.keys().stream()
-                    .collect(Collectors.toUnmodifiableMap(k -> k,
-                            k -> sources.get(k).toString()));
-            
+                    .orElseThrow(IllegalArgumentException::new);
+
+            Map<String, String> extractedSources
+                    = sources.keys().stream()
+                            .collect(Collectors.toUnmodifiableMap(k -> k,
+                                    k -> sources.get(k).toString()));
+
             LogBuilder log = new LogBuilder(getLogLevel(map));
 
             List<String> options = List.of("-Xlint:all", "-proc:none",
@@ -191,13 +196,20 @@ public class DefaultCompilerService extends AbstractRoot
                     "--add-modules", "ALL-MODULE-PATH",
                     "--module-path", defModulepath,
                     "-classpath", buildClasspath());
-
+            
+            Map<String, Supplier<InputStream>> shared =
+                    Optional.ofNullable(map.get(CodeCompilerService.KEY_SHARED_CLASSES))
+                    .flatMap(PMap::from)
+                    .map(m -> processExistingClasses(m))
+                    .orElse(Map.of());
+            
             Map<String, byte[]> classFiles
                     = CompilerTask.create(extractedSources)
+                            .existingClasses(shared)
                             .options(options)
                             .messageHandler(new LogMessageHandler(log))
                             .compile();
-            
+
             PMap classes = convertClasses(classFiles);
             PMap response = PMap.of(CodeCompilerService.KEY_CLASSES, classes,
                     CodeCompilerService.KEY_LOG, PArray.of(log.toList()),
@@ -263,6 +275,15 @@ public class DefaultCompilerService extends AbstractRoot
                 bld.put(type.getKey(), PBytes.valueOf(type.getValue()));
             });
             return bld.build();
+        }
+
+        private Map<String, Supplier<InputStream>> processExistingClasses(PMap classes) {
+            return classes.keys().stream()
+                    .map(cls -> Map.entry(cls, (Supplier<InputStream>) ()
+                    -> PBytes.from(classes.get(cls))
+                            .map(PBytes::asInputStream)
+                            .orElseGet(PBytes.EMPTY::asInputStream)))
+                    .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
         }
 
     }

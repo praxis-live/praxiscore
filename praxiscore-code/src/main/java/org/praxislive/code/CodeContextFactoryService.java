@@ -22,6 +22,7 @@
 package org.praxislive.code;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.services.Service;
@@ -70,6 +71,7 @@ public class CodeContextFactoryService implements Service {
         private final String code;
         private final LogLevel logLevel;
         private final Class<D> previous;
+        private final ClassLoader sharedClassLoader;
 
         /**
          * Create task.
@@ -83,10 +85,28 @@ public class CodeContextFactoryService implements Service {
                 String code,
                 LogLevel logLevel,
                 Class<D> previous) {
-            this.factory = factory;
-            this.code = code;
-            this.logLevel = logLevel;
+            this(factory, code, logLevel, previous, null);
+        }
+        
+        /**
+         * Create task.
+         *
+         * @param factory code factory that handles actual context creation
+         * @param code source code
+         * @param logLevel log level
+         * @param previous previous delegate class, or null
+         * @param sharedCodeClassloader shared code classloader, or null
+         */
+        public Task(CodeFactory<D> factory,
+                String code,
+                LogLevel logLevel,
+                Class<D> previous,
+                ClassLoader sharedCodeClassloader) {
+            this.factory = Objects.requireNonNull(factory);
+            this.code = Objects.requireNonNull(code);
+            this.logLevel = Objects.requireNonNull(logLevel);
             this.previous = previous;
+            this.sharedClassLoader = sharedCodeClassloader;
         }
 
         /**
@@ -124,6 +144,16 @@ public class CodeContextFactoryService implements Service {
         public Class<D> getPrevious() {
             return previous;
         }
+
+        /**
+         * Get the shared code classloader to use as parent (optional).
+         * 
+         * @return shared classloader, or null
+         */
+        public ClassLoader getSharedClassLoader() {
+            return sharedClassLoader;
+        }
+        
 
     }
 

@@ -55,6 +55,8 @@ public class CodeCompilerService implements Service {
     
     public static final String KEY_SOURCES = "sources";
     
+    public static final String KEY_SHARED_CLASSES = "shared-classes";
+    
     public static final String KEY_LOG_LEVEL = "log-level";
     
     // response keys

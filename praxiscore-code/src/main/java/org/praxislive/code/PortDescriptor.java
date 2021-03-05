@@ -110,11 +110,14 @@ public abstract class PortDescriptor {
      * same ID is provided - it may be null or of a different type. If the
      * previous port cannot be carried over, then this method must handle
      * disconnecting and/or reconnecting as appropriate.
+     * <p>
+     * Note : any port passed in as previous will not be disposed
      *
      * @param context context being attached to
      * @param previous previous port with the same ID, may be null or different
      * type
      */
+    // @TODO this method should take a PortDescriptor in future versions
     public abstract void attach(CodeContext<?> context, Port previous);
 
     /**
@@ -127,7 +130,7 @@ public abstract class PortDescriptor {
 
     /**
      * Get port info.
-     * 
+     *
      * @return info
      */
     public abstract PortInfo getInfo();
@@ -141,9 +144,19 @@ public abstract class PortDescriptor {
     public void reset(boolean full) {
     }
 
+    /**
+     * Deprecated hook - no op!
+     *
+     * @deprecated
+     */
+    @Deprecated
     public void stopping() {
     }
 
-//    public void dispose() {
-//    }
+    /**
+     * Hook called on code context disposal for any port descriptors not carried
+     * over.
+     */
+    public void dispose() {
+    }
 }

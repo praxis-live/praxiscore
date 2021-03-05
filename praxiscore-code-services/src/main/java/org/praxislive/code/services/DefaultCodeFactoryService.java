@@ -44,8 +44,8 @@ import org.praxislive.code.CodeContextFactoryService;
 import org.praxislive.code.CodeDelegate;
 import org.praxislive.code.CodeFactory;
 import org.praxislive.code.ClassBodyContext;
+import org.praxislive.code.SharedCodeService;
 import org.praxislive.code.services.tools.ClassBodyWrapper;
-import org.praxislive.core.Value;
 import org.praxislive.core.Call;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.ComponentType;
@@ -72,6 +72,9 @@ public class DefaultCodeFactoryService extends AbstractRoot
     private final static ConcurrentMap<ClassCacheKey, Class<? extends CodeDelegate>> CODE_CACHE
             = new ConcurrentHashMap<>();
 
+    private final static String SHARED_PREFIX = "SHARED.";
+    private final static String WRAPPED_CLASS_NAME = "$";
+
     private final Map<String, Control> controls;
     private final ComponentRegistry registry;
     private final Set<PResource> libs;
@@ -81,7 +84,8 @@ public class DefaultCodeFactoryService extends AbstractRoot
     public DefaultCodeFactoryService() {
         controls = Map.of(
                 CodeComponentFactoryService.NEW_INSTANCE, new NewInstanceControl(),
-                CodeContextFactoryService.NEW_CONTEXT, new NewContextControl()
+                CodeContextFactoryService.NEW_CONTEXT, new NewContextControl(),
+                SharedCodeService.NEW_SHARED, new NewSharedControl()
         );
         registry = ComponentRegistry.getInstance();
         libs = new LinkedHashSet<>();
@@ -89,7 +93,9 @@ public class DefaultCodeFactoryService extends AbstractRoot
 
     @Override
     public List<Class<? extends Service>> services() {
-        return List.of(CodeComponentFactoryService.class, CodeContextFactoryService.class);
+        return List.of(CodeComponentFactoryService.class,
+                CodeContextFactoryService.class,
+                SharedCodeService.class);
     }
 
     @Override
@@ -111,23 +117,22 @@ public class DefaultCodeFactoryService extends AbstractRoot
                 CodeCompilerService.COMPILE);
     }
 
-    private PMap createCompilerTask(ClassBodyContext<?> cbc, LogLevel logLevel, String code) {
-        String source = ClassBodyWrapper.create()
-                .className("$")
+    private String wrapClassBody(ClassBodyContext<?> cbc, String code) {
+        return ClassBodyWrapper.create()
+                .className(WRAPPED_CLASS_NAME)
                 .extendsType(cbc.getExtendedClass())
                 .implementsTypes(List.of(cbc.getImplementedInterfaces()))
                 .defaultImports(List.of(cbc.getDefaultImports()))
                 .wrap(code);
-        return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of("$", source),
-                    CodeCompilerService.KEY_LOG_LEVEL, logLevel);
     }
 
-    private Class<? extends CodeDelegate> extractCodeDelegateClass(Value response) throws Exception {
-        PMap data = PMap.from(response).orElseThrow();
+    private Class<? extends CodeDelegate> extractCodeDelegateClass(
+            PMap data, ClassLoader parentClassLoader) throws Exception {
         PMap classes = PMap.from(data.get(CodeCompilerService.KEY_CLASSES)).orElseThrow();
         PArray.from(data.get(DefaultCompilerService.EXT_CLASSPATH)).ifPresent(this::processExtClasspath);
-        ClassLoader classLoader = new PMapClassLoader(classes, libClassloader);
-        return (Class<? extends CodeDelegate>) classLoader.loadClass("$");
+        ClassLoader classLoader = new PMapClassLoader(classes,
+                parentClassLoader == null ? libClassloader : parentClassLoader);
+        return (Class<? extends CodeDelegate>) classLoader.loadClass(WRAPPED_CLASS_NAME);
     }
 
     private void processExtClasspath(PArray extCP) {
@@ -153,8 +158,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         });
     }
 
-    private void extractCompilerLog(Value response, LogBuilder logBuilder) throws Exception {
-        PMap data = PMap.from(response).orElseThrow();
+    private void extractCompilerLog(PMap data, LogBuilder logBuilder) throws Exception {
         PArray log = PArray.from(data.get(CodeCompilerService.KEY_LOG)).orElseThrow();
         for (int i = 0; i < log.size(); i += 2) {
             logBuilder.log(LogLevel.valueOf(log.get(i).toString()), log.get(i + 1).toString());
@@ -177,7 +181,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(cbc, LogLevel.ERROR, src));
+                        createCompilerTask(cbc, src));
             }
 
         }
@@ -185,8 +189,9 @@ public class DefaultCodeFactoryService extends AbstractRoot
         @Override
         protected Call processResponse(Call call) throws Exception {
             try {
+                PMap data = PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
                 CodeFactory<CodeDelegate> codeFactory = findCodeFactory();
-                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(data, null);
                 CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 CodeComponent<CodeDelegate> cmp = codeFactory.task().createComponent(delegate);
                 CODE_CACHE.putIfAbsent(new ClassCacheKey(codeFactory.getClassBodyContext(), codeFactory.getSourceTemplate()), cls);
@@ -213,19 +218,27 @@ public class DefaultCodeFactoryService extends AbstractRoot
             return codeFactory.task().createComponent(delegateClass.getDeclaredConstructor().newInstance());
         }
 
+        private PMap createCompilerTask(ClassBodyContext<?> cbc, String code) {
+            String source = wrapClassBody(cbc, code);
+            return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(WRAPPED_CLASS_NAME, source));
+        }
+
     }
 
     private class NewContextControl extends AbstractAsyncControl {
 
+        private boolean usingShared;
+
         @Override
         @SuppressWarnings("unchecked")
         protected Call processInvoke(Call call) throws Exception {
+            usingShared = false;
             CodeContextFactoryService.Task<CodeDelegate> task = findTask();
             CodeFactory<CodeDelegate> factory = task.getFactory();
             ClassBodyContext<CodeDelegate> cbc = factory.getClassBodyContext();
             String src = task.getCode();
             Class<? extends CodeDelegate> cls;
-            if (src.trim().isEmpty()) {
+            if (src.isBlank()) {
                 src = factory.getSourceTemplate();
                 cls = CODE_CACHE.get(new ClassCacheKey(cbc, src));
             } else {
@@ -237,23 +250,28 @@ public class DefaultCodeFactoryService extends AbstractRoot
                 CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 return call.reply(PReference.of(createContext(task, log, delegate)));
             } else {
+                usingShared = src.contains(SHARED_PREFIX);
                 return Call.create(
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(cbc, LogLevel.ERROR, src));
+                        createCompilerTask(task, cbc, src, usingShared));
             }
 
         }
 
         @Override
         protected Call processResponse(Call call) throws Exception {
+            boolean shared = usingShared;
+            usingShared = false;
             try {
+                PMap data = PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
                 CodeContextFactoryService.Task<CodeDelegate> task = findTask();
-                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(call.args().get(0));
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(data,
+                        shared ? task.getSharedClassLoader() : null);
                 CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 LogBuilder log = new LogBuilder(task.getLogLevel());
-                extractCompilerLog(call.args().get(0), log);
+                extractCompilerLog(data, log);
                 return getActiveCall().reply(PReference.of(createContext(task, log, delegate)));
             } catch (Throwable throwable) {
                 if (throwable instanceof Exception) {
@@ -264,11 +282,16 @@ public class DefaultCodeFactoryService extends AbstractRoot
             }
         }
 
+        @Override
+        protected Call processError(Call call) throws Exception {
+            usingShared = false;
+            return super.processError(call);
+        }
+
         private CodeContextFactoryService.Task<CodeDelegate> findTask() throws Exception {
             return PReference.from(getActiveCall().args().get(0))
                     .flatMap(r -> r.as(CodeContextFactoryService.Task.class))
                     .orElseThrow();
-
         }
 
         private CodeContextFactoryService.Result<CodeDelegate> createContext(
@@ -280,6 +303,101 @@ public class DefaultCodeFactoryService extends AbstractRoot
                     .attachLogging(log)
                     .createContext(delegate);
             return new CodeContextFactoryService.Result<>(context, log);
+        }
+
+        private PMap createCompilerTask(CodeContextFactoryService.Task<?> task,
+                ClassBodyContext<?> cbc, String code, boolean shared) {
+            String source = wrapClassBody(cbc, code);
+            if (shared) {
+                PMap sharedClasses;
+                ClassLoader sharedCL = task.getSharedClassLoader();
+                if (sharedCL instanceof PMapClassLoader) {
+                    sharedClasses = ((PMapClassLoader) sharedCL).getClassesMap();
+                } else {
+                    sharedClasses = PMap.EMPTY;
+                }
+                return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(WRAPPED_CLASS_NAME, source),
+                        CodeCompilerService.KEY_LOG_LEVEL, task.getLogLevel(),
+                        CodeCompilerService.KEY_SHARED_CLASSES, sharedClasses);
+            } else {
+                return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(WRAPPED_CLASS_NAME, source),
+                        CodeCompilerService.KEY_LOG_LEVEL, task.getLogLevel());
+
+            }
+        }
+
+    }
+
+    private class NewSharedControl extends AbstractAsyncControl {
+
+        @Override
+        protected Call processInvoke(Call call) throws Exception {
+            SharedCodeService.Task task = findTask();
+            PMap sources = validateSources(task.getSources());
+            return Call.create(
+                    findCompilerService(),
+                    call.to(),
+                    call.time(),
+                    PMap.of(CodeCompilerService.KEY_SOURCES, sources,
+                            CodeCompilerService.KEY_LOG_LEVEL, task.getLogLevel())
+            );
+        }
+
+        @Override
+        protected Call processResponse(Call call) throws Exception {
+            PMap data = PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
+            SharedCodeService.Task task = findTask();
+            ClassLoader sharedClasses = extractClassLoader(data);
+            LogBuilder log = new LogBuilder(task.getLogLevel());
+            extractCompilerLog(data, log);
+            Map<String, SharedCodeService.DependentResult<CodeDelegate>> depResults
+                    = task.getDependents().entrySet().stream()
+                            .map(e -> Map.entry(e.getKey(), processDependent(sharedClasses, log, e.getValue())))
+                            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+            SharedCodeService.Result result = new SharedCodeService.Result(
+                    sharedClasses, depResults, log);
+            return getActiveCall().reply(PReference.of(result));
+        }
+
+        private SharedCodeService.Task findTask() throws Exception {
+            return PReference.from(getActiveCall().args().get(0))
+                    .flatMap(r -> r.as(SharedCodeService.Task.class))
+                    .orElseThrow();
+        }
+
+        private PMap validateSources(PMap sources) {
+            if (!sources.keys().stream().allMatch(name -> name.startsWith("SHARED."))) {
+                throw new IllegalArgumentException("Sources contains class outside SHARED package");
+            }
+            return sources;
+        }
+
+        private ClassLoader extractClassLoader(PMap data) {
+            PMap classes = PMap.from(data.get(CodeCompilerService.KEY_CLASSES))
+                    .orElseThrow();
+            PArray.from(data.get(DefaultCompilerService.EXT_CLASSPATH))
+                    .ifPresent(ext -> processExtClasspath(ext));
+            return new PMapClassLoader(classes, libClassloader);
+        }
+
+        private SharedCodeService.DependentResult processDependent(
+                ClassLoader sharedClasses,
+                LogBuilder log,
+                SharedCodeService.DependentTask depTask) {
+            try {
+                PMap depClasses =
+                        ((PMapClassLoader) depTask.getExistingClass().getClassLoader()).getClassesMap();
+                ClassLoader newCL = new PMapClassLoader(depClasses, sharedClasses);
+                Class<?> depClass = newCL.loadClass(WRAPPED_CLASS_NAME);
+                var factoryTask = depTask.getFactory().task();
+                CodeContext<?> context = factoryTask
+                        .attachLogging(log)
+                        .attachPrevious(depTask.getExistingClass())
+                        .createContext((CodeDelegate) depClass.getDeclaredConstructor().newInstance());
+                return new SharedCodeService.DependentResult(context, depTask.getExistingClass());
+            } catch (Exception ex) {
+                throw new IllegalStateException(ex);
+            }
         }
 
     }

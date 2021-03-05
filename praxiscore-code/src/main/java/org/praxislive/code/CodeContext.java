@@ -140,10 +140,12 @@ public abstract class CodeContext<D extends CodeDelegate> {
             ControlDescriptor oldCD = oldControls.remove(entry.getKey());
             if (oldCD != null) {
                 entry.getValue().attach(this, oldCD.getControl());
-//                oldCD.dispose();
             } else {
                 entry.getValue().attach(this, null);
             }
+        }
+        for (ControlDescriptor oldCD : oldControls.values()) {
+            oldCD.dispose();
         }
     }
 
@@ -154,13 +156,13 @@ public abstract class CodeContext<D extends CodeDelegate> {
             PortDescriptor oldPD = oldPorts.remove(entry.getKey());
             if (oldPD != null) {
                 entry.getValue().attach(this, oldPD.getPort());
-//                oldPD.dispose();
             } else {
                 entry.getValue().attach(this, null);
             }
         }
         for (PortDescriptor oldPD : oldPorts.values()) {
             oldPD.getPort().disconnectAll();
+            oldPD.dispose();
         }
     }
 
@@ -599,7 +601,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
     /**
      * Process and send messages from an external log builder.
-     * 
+     *
      * @param log externl log builder
      */
     protected void log(LogBuilder log) {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@ package org.praxislive.data;
 
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.BindingContextControl;
+import org.praxislive.code.SharedCodeProperty;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
@@ -45,23 +46,27 @@ public class DataRoot extends AbstractRootContainer {
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
+                .control("shared-code", SharedCodeProperty.INFO)
         );
     }
 
     private BindingContextControl bindings;
+    private SharedCodeProperty sharedCode;
 
     @Override
     protected void activating() {
         bindings = new BindingContextControl(ControlAddress.of(getAddress(), "_bindings"),
                 getExecutionContext(),
                 getRouter());
+        sharedCode = new SharedCodeProperty(this, l -> {});
         registerControl("_bindings", bindings);
+        registerControl("shared-code", sharedCode);
     }
     
     @Override
     public Lookup getLookup() {
         if (bindings != null) {
-            return Lookup.of(super.getLookup(), bindings);
+            return Lookup.of(super.getLookup(), bindings, sharedCode.getSharedCodeContext());
         } else {
             return super.getLookup();
         }
