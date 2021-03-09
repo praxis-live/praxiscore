@@ -33,7 +33,7 @@ import org.praxislive.core.services.LogLevel;
 public class SharedCodeContext {
 
     private final SharedCodeProperty property;
-    private final Map<String, CodeProperty<?>> dependents;
+    private final Map<ControlAddress, CodeProperty<?>> dependents;
 
     private ClassLoader sharedClasses;
 
@@ -49,10 +49,10 @@ public class SharedCodeContext {
     boolean checkDependency(ControlAddress address, CodeProperty<?> property) {
         Class<?> cls = property.getDelegateClass();
         if (cls == null || cls.getClassLoader().getParent() != sharedClasses) {
-            dependents.remove(address.toString());
+            dependents.remove(address);
             return false;
         } else {
-            dependents.put(address.toString(), property);
+            dependents.put(address, property);
             // @TODO invalidate / retry active call in shared code property?
             return true;
         }
@@ -62,7 +62,7 @@ public class SharedCodeContext {
         dependents.values().remove(property);
     }
 
-    Map<String, SharedCodeService.DependentTask<?>> createDependentTasks() {
+    Map<ControlAddress, SharedCodeService.DependentTask<?>> createDependentTasks() {
         return dependents.entrySet().stream()
                 .map(e -> Map.entry(e.getKey(),
                         e.getValue().createSharedCodeReloadTask()))

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
@@ -60,11 +61,11 @@ public class SharedCodeService implements Service {
     public static class Task {
 
         private final PMap sources;
-        private final Map<String, DependentTask<?>> dependents;
+        private final Map<ControlAddress, DependentTask<?>> dependents;
         private final LogLevel logLevel;
 
         public Task(PMap sources,
-                Map<String, DependentTask<?>> dependents,
+                Map<ControlAddress, DependentTask<?>> dependents,
                 LogLevel logLevel) {
             this.sources = Objects.requireNonNull(sources);
             this.dependents = Map.copyOf(dependents);
@@ -75,7 +76,7 @@ public class SharedCodeService implements Service {
             return sources;
         }
 
-        public Map<String, DependentTask<?>> getDependents() {
+        public Map<ControlAddress, DependentTask<?>> getDependents() {
             return dependents;
         }
 
@@ -88,11 +89,11 @@ public class SharedCodeService implements Service {
     public static class Result {
 
         private final ClassLoader sharedClasses;
-        private final Map<String, DependentResult<CodeDelegate>> dependents;
+        private final Map<ControlAddress, DependentResult<CodeDelegate>> dependents;
         private final LogBuilder log;
 
         public Result(ClassLoader sharedClasses,
-                Map<String, DependentResult<CodeDelegate>> dependents,
+                Map<ControlAddress, DependentResult<CodeDelegate>> dependents,
                 LogBuilder log) {
             this.sharedClasses = Objects.requireNonNull(sharedClasses);
             this.dependents = Map.copyOf(dependents);
@@ -103,7 +104,7 @@ public class SharedCodeService implements Service {
             return sharedClasses;
         }
 
-        public Map<String, DependentResult<CodeDelegate>> getDependents() {
+        public Map<ControlAddress, DependentResult<CodeDelegate>> getDependents() {
             return dependents;
         }
 
