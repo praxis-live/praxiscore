@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -54,6 +54,9 @@ public final class UserContainer extends AbstractContainer {
             .control("ports", c -> c.property().input(PMap.class).defaultValue(PMap.EMPTY))
             .property(ComponentInfo.KEY_DYNAMIC, true)
     );
+    
+    private final static PortInfo FALLBACK_PORT_INFO =
+            PortInfo.create(ControlPort.class, PortInfo.Direction.BIDI, PMap.EMPTY);
 
     private final Map<String, PortProxy> proxies;
     
@@ -97,9 +100,19 @@ public final class UserContainer extends AbstractContainer {
             } else {
                 var builder = Info.component()
                         .merge(BASE_INFO);
-                proxies.entrySet().forEach(e ->
-                        builder.port(e.getKey(), e.getValue().getInfo()));
-                info = builder.build();
+                boolean fallback = false;
+                for (PortProxy proxy : proxies.values()) {
+                    var portInfo = proxy.getInfo();
+                    if (portInfo == FALLBACK_PORT_INFO && getChild(proxy.childID) != null) {
+                        fallback = true;
+                    }
+                    builder.port(proxy.id, portInfo);
+                }
+                if (fallback) {
+                    return builder.build();
+                } else {
+                    info = builder.build();
+                }
             }
         }
         return info;
@@ -180,7 +193,7 @@ public final class UserContainer extends AbstractContainer {
                     }
                 }
             }
-            return PortInfo.create(ControlPort.class, PortInfo.Direction.BIDI, PMap.EMPTY);
+            return FALLBACK_PORT_INFO;
         }
         
         private Port unproxy() {
