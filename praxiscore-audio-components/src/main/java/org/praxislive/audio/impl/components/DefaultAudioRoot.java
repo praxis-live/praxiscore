@@ -40,14 +40,20 @@ import org.jaudiolibs.pipes.client.PipesAudioClient;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.DefaultExecutionContext;
+import org.praxislive.code.SharedCodeProperty;
 import org.praxislive.core.ArgumentInfo;
+import org.praxislive.core.Call;
 import org.praxislive.core.Clock;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogService;
+import org.praxislive.core.services.Services;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
@@ -80,6 +86,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     private final ComponentInfo baseInfo;
     private final AudioContext audioCtxt;
+    private final SharedCodeProperty sharedCode;
 
     private ComponentInfo info;
     private Map<String, LibraryInfo> libraries;
@@ -92,8 +99,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     private long period = -1;
 
     public DefaultAudioRoot() {
+        sharedCode = new SharedCodeProperty(this, this::handleLog);
+        registerControl("shared-code", sharedCode);
+        
         extractLibraryInfo();
-
+        
         // permanent
         sampleRate = new CheckedIntProperty(MIN_SAMPLERATE, MAX_SAMPLERATE, DEFAULT_SAMPLERATE);
         registerControl("sample-rate", sampleRate);
@@ -114,27 +124,28 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
+                .control("shared-code", SharedCodeProperty.INFO)
                 .control("sample-rate", c -> c.property()
-                .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
-                .input(a -> a.number()
-                .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
-                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
+                    .input(a -> a.number()
+                        .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
+                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("block-size", c -> c.property()
-                .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
-                .input(a -> a.number()
-                .min(1).max(MAX_BLOCKSIZE)
-                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
+                    .input(a -> a.number()
+                        .min(1).max(MAX_BLOCKSIZE)
+                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("client-name", c -> c.property()
-                .defaultValue(PString.EMPTY)
-                .input(a -> a.string())
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a.string())
                 )
                 .control("library", c -> c.property()
-                .defaultValue(PString.EMPTY)
-                .input(a -> a.string()
-                .emptyIsDefault()
-                .allowed(
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a.string()
+                    .emptyIsDefault()
+                    .allowed(
                         Stream.concat(Stream.of(""),
                                 libraries.keySet().stream().sorted())
                                 .toArray(String[]::new))
@@ -240,7 +251,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     @Override
     public Lookup getLookup() {
         if (lookup == null) {
-            lookup = Lookup.of(super.getLookup(), audioCtxt);
+            lookup = Lookup.of(super.getLookup(), audioCtxt, sharedCode.getSharedCodeContext());
         }
         return lookup;
     }
@@ -469,6 +480,23 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         return info;
     }
 
+    private void handleLog(LogBuilder log) {
+        if (log.isEmpty()) {
+            return;
+        }
+        getLookup().find(Services.class)
+                .flatMap(srv -> srv.locate(LogService.class))
+                .ifPresent(logger -> {
+                    var to = ControlAddress.of(logger, LogService.LOG);
+                    var from = ControlAddress.of(getAddress(), "_log");
+                    var call =  Call.createQuiet(to,
+                            from,
+                            getExecutionContext().getTime(),
+                            log.toList());
+                    getRouter().route(call);
+                });
+    }
+    
     private class AudioDelegate extends Delegate
             implements PipesAudioClient.Listener {
 

@@ -22,7 +22,6 @@
 package org.praxislive.code;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import org.praxislive.core.Call;
@@ -129,6 +128,14 @@ public class SharedCodeProperty implements Control {
         }
         router.route(activeCall.error(call.args()));
         activeCall = null;
+        var args = call.args();
+        if (!args.isEmpty()) {
+            var err = PError.from(args.get(0))
+                    .orElseGet(() -> PError.of(args.get(0).toString()));
+            var log = new LogBuilder(LogLevel.ERROR);
+            log.log(LogLevel.ERROR, err);
+            logHandler.accept(log);
+        }
     }
 
     private ControlAddress getServiceAddress(Lookup lookup)

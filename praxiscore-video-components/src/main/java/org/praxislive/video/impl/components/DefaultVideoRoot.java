@@ -26,13 +26,19 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
+import org.praxislive.code.SharedCodeProperty;
+import org.praxislive.core.Call;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogService;
+import org.praxislive.core.services.Services;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -69,6 +75,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
 
     private final ComponentInfo info;
     private final VideoContextImpl ctxt;
+    private final SharedCodeProperty sharedCode;
 
     private int width = WIDTH_DEFAULT;
     private int height = HEIGHT_DEFAULT;
@@ -80,6 +87,10 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     private Lookup lookup;
 
     public DefaultVideoRoot() {
+
+        sharedCode = new SharedCodeProperty(this, this::handleLog);
+        registerControl("shared-code", sharedCode);
+
         registerControl("renderer", new RendererProperty());
         registerControl("width", new WidthProperty());
         registerControl("height", new HeightProperty());
@@ -90,32 +101,28 @@ public class DefaultVideoRoot extends AbstractRootContainer {
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
-                .control("renderer", c -> c
-                .property()
-                .defaultValue(PString.of(SOFTWARE))
-                .input(a -> a.string().allowed(RENDERERS.toArray(String[]::new))))
-                .control("width", c -> c
-                .property()
-                .defaultValue(PNumber.of(WIDTH_DEFAULT))
-                .input(a -> a
-                .number().min(1).max(16384)
+                .control("shared-code", SharedCodeProperty.INFO)
+                .control("renderer", c -> c.property()
+                    .defaultValue(PString.of(SOFTWARE))
+                    .input(a -> a.string().allowed(RENDERERS.toArray(String[]::new))))
+                .control("width", c -> c.property()
+                    .defaultValue(PNumber.of(WIDTH_DEFAULT))
+                    .input(a -> a
+                        .number().min(1).max(16384)
                 ))
-                .control("height", c -> c
-                .property()
-                .defaultValue(PNumber.of(HEIGHT_DEFAULT))
-                .input(a -> a
-                .number().min(1).max(16384)
+                .control("height", c -> c.property()
+                    .defaultValue(PNumber.of(HEIGHT_DEFAULT))
+                    .input(a -> a
+                        .number().min(1).max(16384)
                 ))
-                .control("fps", c -> c
-                .property()
-                .defaultValue(PNumber.of(FPS_DEFAULT))
-                .input(a -> a
-                .number().min(1).max(256)
+                .control("fps", c -> c.property()
+                    .defaultValue(PNumber.of(FPS_DEFAULT))
+                    .input(a -> a
+                        .number().min(1).max(256)
                 ))
-                .control("smooth", c -> c
-                .property()
-                .defaultValue(PBoolean.TRUE)
-                .input(PBoolean.class)
+                .control("smooth", c -> c.property()
+                    .defaultValue(PBoolean.TRUE)
+                    .input(PBoolean.class)
                 )
         );
 
@@ -125,7 +132,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     @Override
     public Lookup getLookup() {
         if (lookup == null) {
-            lookup = Lookup.of(super.getLookup(), ctxt);
+            lookup = Lookup.of(super.getLookup(), ctxt, sharedCode.getSharedCodeContext());
         }
         return lookup;
     }
@@ -188,6 +195,23 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     @Override
     public ComponentInfo getInfo() {
         return info;
+    }
+
+    private void handleLog(LogBuilder log) {
+        if (log.isEmpty()) {
+            return;
+        }
+        getLookup().find(Services.class)
+                .flatMap(srv -> srv.locate(LogService.class))
+                .ifPresent(logger -> {
+                    var to = ControlAddress.of(logger, LogService.LOG);
+                    var from = ControlAddress.of(getAddress(), "_log");
+                    var call = Call.createQuiet(to,
+                            from,
+                            getExecutionContext().getTime(),
+                            log.toList());
+                    getRouter().route(call);
+                });
     }
 
     private class VideoDelegate extends Delegate

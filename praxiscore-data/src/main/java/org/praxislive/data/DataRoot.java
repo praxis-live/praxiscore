@@ -24,6 +24,7 @@ package org.praxislive.data;
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.BindingContextControl;
 import org.praxislive.code.SharedCodeProperty;
+import org.praxislive.core.Call;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
@@ -31,14 +32,16 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
-
+import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogService;
+import org.praxislive.core.services.Services;
 
 /**
  *
- * 
+ *
  */
 public class DataRoot extends AbstractRootContainer {
-    
+
     private final static ComponentInfo INFO;
 
     static {
@@ -50,31 +53,57 @@ public class DataRoot extends AbstractRootContainer {
         );
     }
 
+    private final SharedCodeProperty sharedCode;
+
     private BindingContextControl bindings;
-    private SharedCodeProperty sharedCode;
+    private Lookup lookup;
+
+    public DataRoot() {
+        sharedCode = new SharedCodeProperty(this, this::handleLog);
+        registerControl("shared-code", sharedCode);
+    }
 
     @Override
     protected void activating() {
+        lookup = null;
         bindings = new BindingContextControl(ControlAddress.of(getAddress(), "_bindings"),
                 getExecutionContext(),
                 getRouter());
-        sharedCode = new SharedCodeProperty(this, l -> {});
         registerControl("_bindings", bindings);
-        registerControl("shared-code", sharedCode);
     }
-    
+
     @Override
     public Lookup getLookup() {
-        if (bindings != null) {
-            return Lookup.of(super.getLookup(), bindings, sharedCode.getSharedCodeContext());
-        } else {
-            return super.getLookup();
+        if (lookup == null) {
+            if (bindings != null) {
+                lookup = Lookup.of(super.getLookup(), bindings, sharedCode.getSharedCodeContext());
+            } else {
+                lookup = Lookup.of(super.getLookup(), sharedCode.getSharedCodeContext());
+            }
         }
+        return lookup;
     }
 
     @Override
     public ComponentInfo getInfo() {
         return INFO;
     }
-    
+
+    private void handleLog(LogBuilder log) {
+        if (log.isEmpty()) {
+            return;
+        }
+        getLookup().find(Services.class)
+                .flatMap(srv -> srv.locate(LogService.class))
+                .ifPresent(logger -> {
+                    var to = ControlAddress.of(logger, LogService.LOG);
+                    var from = ControlAddress.of(getAddress(), "_log");
+                    var call = Call.createQuiet(to,
+                            from,
+                            getExecutionContext().getTime(),
+                            log.toList());
+                    getRouter().route(call);
+                });
+    }
+
 }

@@ -152,7 +152,7 @@ class CodeProperty<D extends CodeDelegate>
         PError err;
         if (args.size() > 0) {
             err = PError.from(args.get(0))
-                    .orElse(PError.of(args.get(0).toString()));
+                    .orElseGet(() -> PError.of(args.get(0).toString()));
         } else {
             err = PError.of("");
         }
