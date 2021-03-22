@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,8 +42,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Clock;
 import org.praxislive.core.Lookup;
 import org.praxislive.video.ClientConfiguration;
@@ -60,12 +58,12 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * 
+ *
  */
 class SWPlayer implements Player {
 
     private final static Factory FACTORY = new Factory();
-    private final static Logger LOG = Logger.getLogger(SWPlayer.class.getName());
+    private final static System.Logger LOG = System.getLogger(SWPlayer.class.getName());
     private final static double DEG_90 = Math.toRadians(90);
     private final static double DEG_180 = Math.toRadians(180);
     private final static double DEG_270 = Math.toRadians(270);
@@ -79,7 +77,7 @@ class SWPlayer implements Player {
     private final WindowHints wHints;
     private final QueueContext queueContext;
     private final Clock clock;
-    
+
     private long period; // period per frame in nanosecs
 //    private long frameIndex; // index of current frame
     private long time; // time of currently computing frame in relation to clock
@@ -121,7 +119,7 @@ class SWPlayer implements Player {
     }
 
     public void run() {
-        LOG.info("Starting software renderer.");
+        LOG.log(System.Logger.Level.DEBUG, "Starting software renderer.");
         running = true;
         try {
             init();
@@ -150,8 +148,9 @@ class SWPlayer implements Player {
             if (difference > 0) {
                 fireListeners();
                 updateOnly();
-                if (LOG.isLoggable(Level.FINEST)) {
-                    LOG.log(Level.FINEST, "Frame skipped - Difference : " + (difference));
+                if (LOG.isLoggable(System.Logger.Level.TRACE)) {
+                    LOG.log(System.Logger.Level.TRACE,
+                            "Frame skipped - Difference : " + (difference));
                 }
             } else {
                 fireListeners();
@@ -228,8 +227,9 @@ class SWPlayer implements Player {
                     frame.setVisible(true);
                 }
 
-                LOG.info("Frame : " + frame.getBounds());
-                LOG.info("Canvas : " + canvas.getBounds());
+                LOG.log(System.Logger.Level.DEBUG, ()
+                        -> "Frame : " + frame.getBounds()
+                        + "\nCanvas : " + canvas.getBounds());
 
                 if (Boolean.getBoolean("ripl.exp.screensaver")) {
                     ScreenSaverListener l = new ScreenSaverListener();
@@ -271,8 +271,8 @@ class SWPlayer implements Player {
                 gd = screens[0];
             }
         }
-        LOG.log(Level.FINE, "Searching for screen index : {0}", outputDevice);
-        LOG.log(Level.FINE, "Found Screen Device : {0}", gd);
+        LOG.log(System.Logger.Level.TRACE, "Searching for screen index : {0}", outputDevice);
+        LOG.log(System.Logger.Level.TRACE, "Found Screen Device : {0}", gd);
         return gd;
     }
 
@@ -328,8 +328,8 @@ class SWPlayer implements Player {
                     rotated.draw(g2d, 0, 0, outputHeight, outputWidth);
                     break;
             }
-        } catch (Exception exception) {
-            LOG.log(Level.WARNING, "Exception in render", exception);
+        } catch (Throwable t) {
+            LOG.log(System.Logger.Level.WARNING, "Exception in render", t);
             g2d.dispose();
             return;
         }

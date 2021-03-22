@@ -18,12 +18,5 @@ module org.praxislive.video {
     
     provides org.praxislive.core.Port.TypeProvider with 
             org.praxislive.video.VideoPort.Provider;
-    provides org.praxislive.core.services.ComponentFactoryProvider with
-            org.praxislive.video.impl.components.VideoFactoryProvider;
-    
-    opens org.praxislive.video.impl.components to
-            org.praxislive.base;
-    
-    uses org.praxislive.video.PlayerFactory.Provider;
     
 }

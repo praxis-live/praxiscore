@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,8 +23,6 @@ package org.praxislive.video.impl.components;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import org.praxislive.base.AbstractComponent;
 import org.praxislive.base.AbstractProperty;
@@ -145,7 +143,8 @@ public class VideoOutput extends AbstractComponent {
                 ctxt.registerVideoOutputClient(client);
                 context = ctxt;
             } catch (ClientRegistrationException ex) {
-                Logger.getLogger(VideoOutput.class.getName()).log(Level.SEVERE, null, ex);
+                System.getLogger(VideoOutput.class.getName())
+                        .log(System.Logger.Level.ERROR, "", ex);
             }
         }
         ComponentAddress ad = getAddress();

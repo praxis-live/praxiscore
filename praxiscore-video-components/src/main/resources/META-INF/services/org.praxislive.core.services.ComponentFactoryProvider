@@ -1,1 +1,2 @@
 org.praxislive.video.components.VideoComponents
+org.praxislive.video.impl.components.VideoFactoryProvider
