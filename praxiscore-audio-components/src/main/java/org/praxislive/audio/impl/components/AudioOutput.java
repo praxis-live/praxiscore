@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,8 +21,6 @@
  */
 package org.praxislive.audio.impl.components;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.audio.AudioContext;
 import org.praxislive.audio.AudioPort;
 import org.praxislive.audio.ClientRegistrationException;
@@ -86,7 +84,8 @@ public class AudioOutput extends AbstractComponent {
                 ctxt.registerAudioOutputClient(client);
                 context = ctxt;
             } catch (ClientRegistrationException ex) {
-                Logger.getLogger(AudioOutput.class.getName()).log(Level.SEVERE, null, ex);
+                System.getLogger(AudioOutput.class.getName())
+                        .log(System.Logger.Level.ERROR, "", ex);
             }
         }
     }

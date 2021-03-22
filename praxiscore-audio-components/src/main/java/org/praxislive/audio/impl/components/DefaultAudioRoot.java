@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,8 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.praxislive.audio.AudioContext;
 import org.praxislive.audio.AudioSettings;
@@ -60,7 +58,7 @@ import org.praxislive.core.types.PString;
  */
 public class DefaultAudioRoot extends AbstractRootContainer {
 
-    private static final Logger LOG = Logger.getLogger(DefaultAudioRoot.class.getName());
+    private static final System.Logger LOG = System.getLogger(DefaultAudioRoot.class.getName());
     private static final int MAX_CHANNELS = 16;
     private static final int MIN_SAMPLERATE = 2000;
     private static final int MAX_SAMPLERATE = 192000;
@@ -105,7 +103,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         registerControl("client-name", clientName);
         audioLib = new LibraryProperty();
         registerControl("library", audioLib);
-        
+
         // dynamic
         deviceName = new DeviceProperty();
         inputDeviceName = new DeviceProperty();
@@ -117,34 +115,34 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
                 .control("sample-rate", c -> c.property()
-                    .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
-                    .input(a -> a.number()
-                        .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
-                        .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
+                .input(a -> a.number()
+                .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
+                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("block-size", c -> c.property()
-                    .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
-                    .input(a -> a.number()
-                        .min(1).max(MAX_BLOCKSIZE)
-                        .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
+                .input(a -> a.number()
+                .min(1).max(MAX_BLOCKSIZE)
+                .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("client-name", c -> c.property()
-                    .defaultValue(PString.EMPTY)
-                    .input(a -> a.string())
+                .defaultValue(PString.EMPTY)
+                .input(a -> a.string())
                 )
                 .control("library", c -> c.property()
-                    .defaultValue(PString.EMPTY)
-                    .input(a -> a.string()
-                        .emptyIsDefault()
-                        .allowed(
-                            Stream.concat(Stream.of(""),
+                .defaultValue(PString.EMPTY)
+                .input(a -> a.string()
+                .emptyIsDefault()
+                .allowed(
+                        Stream.concat(Stream.of(""),
                                 libraries.keySet().stream().sorted())
                                 .toArray(String[]::new))
                 ))
                 .property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
         );
         info = baseInfo;
-        
+
         audioCtxt = new AudioCtxt();
 
     }
@@ -157,15 +155,18 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 = Lookup.SYSTEM.findAll(AudioServerProvider.class)
                         .toArray(AudioServerProvider[]::new);
         for (AudioServerProvider lib : providers) {
-            LOG.log(Level.FINE, "Audio Library : {0}", lib.getLibraryName());
+            LOG.log(System.Logger.Level.TRACE,
+                    "Audio Library : {0}", lib.getLibraryName());
             devices.clear();
             inputDevices.clear();
             for (Device device : lib.findAll(Device.class)) {
                 if (device.getMaxOutputChannels() > 0) {
-                    LOG.log(Level.FINE, "-- Found device : {0}", device.getName());
+                    LOG.log(System.Logger.Level.TRACE,
+                            "-- Found device : {0}", device.getName());
                     devices.add(device);
                 } else if (device.getMaxInputChannels() > 0) {
-                    LOG.log(Level.FINE, "-- Found input device : {0}", device.getName());
+                    LOG.log(System.Logger.Level.TRACE,
+                            "-- Found input device : {0}", device.getName());
                     inputDevices.add(device);
                 }
             }
@@ -200,24 +201,24 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             info = Info.component(cmp -> cmp
                     .merge(baseInfo)
                     .control("device", c -> c.property()
-                        .defaultValue(PString.EMPTY)
-                        .input(a -> a.string()
-                            .suggested(deviceNames(libInfo.devices))
-                            .emptyIsDefault()
-                        )
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a.string()
+                    .suggested(deviceNames(libInfo.devices))
+                    .emptyIsDefault()
+                    )
                     )
                     .control("input-device", c -> c.property()
-                        .defaultValue(PString.EMPTY)
-                        .input(a -> a.string()
-                            .suggested(deviceNames(libInfo.devices))
-                            .emptyIsDefault()
-                        )
+                    .defaultValue(PString.EMPTY)
+                    .input(a -> a.string()
+                    .suggested(deviceNames(libInfo.devices))
+                    .emptyIsDefault()
+                    )
                     )
                     .control("ext-buffer-size", c -> c.property()
-                        .input(a -> a.number()
-                            .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
-                            .property(ArgumentInfo.KEY_SUGGESTED_VALUES,
-                                PArray.of(
+                    .input(a -> a.number()
+                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .property(ArgumentInfo.KEY_SUGGESTED_VALUES,
+                            PArray.of(
                                     PNumber.of(64),
                                     PNumber.of(128),
                                     PNumber.of(256),
@@ -225,12 +226,12 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                                     PNumber.of(1024),
                                     PNumber.of(2048),
                                     PNumber.of(4096)))
-                        )
+                    )
                     )
                     .control("timing-mode", c -> c.property()
-                        .defaultValue(PString.of("Blocking"))
-                        .input(a -> a.string()
-                            .allowed("Blocking", "Estimated", "FramePosition"))
+                    .defaultValue(PString.of("Blocking"))
+                    .input(a -> a.string()
+                    .allowed("Blocking", "Estimated", "FramePosition"))
                     )
             );
         }
@@ -268,7 +269,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             attachDelegate(delegate);
             delegate.start();
         } catch (Exception ex) {
-            Logger.getLogger(DefaultAudioRoot.class.getName()).log(Level.SEVERE, null, ex);
+            LOG.log(System.Logger.Level.ERROR, "", ex);
             setIdle();
         }
 
@@ -287,22 +288,25 @@ public class DefaultAudioRoot extends AbstractRootContainer {
             }
             usingDefault = true;
         }
-        LOG.log(Level.FINE, "Found audio library {0}\n{1}", new Object[]{
+        LOG.log(System.Logger.Level.TRACE,
+                "Found audio library {0}\n{1}", new Object[]{
             libInfo.provider.getLibraryName(), libInfo.provider.getLibraryDescription()
         });
 
         Device device = findDevice(libInfo, usingDefault, false);
         if (device != null) {
-            LOG.log(Level.FINE, "Found device : {0}", device.getName());
+            LOG.log(System.Logger.Level.TRACE,
+                    "Found device : {0}", device.getName());
         }
         Device inputDevice = null;
         if (device != null && device.getMaxInputChannels() == 0 && bus.getSourceCount() > 0) {
             inputDevice = findDevice(libInfo, usingDefault, true);
             if (inputDevice != null) {
-                LOG.log(Level.FINE, "Found input device : {0}", inputDevice.getName());
+                LOG.log(System.Logger.Level.TRACE,
+                        "Found input device : {0}", inputDevice.getName());
             }
         }
-        
+
         ClientID clientID;
         var id = clientName.value.toString();
         if (id.isBlank()) {
@@ -310,16 +314,16 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         } else {
             clientID = new ClientID(id);
         }
-        
+
         var timing = findTimingMode(this.timingMode.value.toString());
 
         AudioConfiguration ctxt = new AudioConfiguration(srate,
                 bus.getSourceCount(),
                 bus.getSinkCount(),
                 buffersize,
-                timing == null ?
-                createCheckedExts(device, inputDevice, clientID) :
-                createCheckedExts(device, inputDevice, clientID, timing) 
+                timing == null
+                        ? createCheckedExts(device, inputDevice, clientID)
+                        : createCheckedExts(device, inputDevice, clientID, timing)
         );
         return libInfo.provider.createServer(ctxt, bus);
     }
@@ -339,7 +343,8 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         while (bsize < req) {
             bsize += block;
         }
-        LOG.log(Level.FINE, "Requesting buffersize of : {0}", bsize);
+        LOG.log(System.Logger.Level.TRACE,
+                "Requesting buffersize of : {0}", bsize);
         return bsize;
     }
 
@@ -396,7 +401,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
         return names;
     }
-    
+
     private Object findTimingMode(String mode) {
         try {
             Class<?> modeClass = Class.forName("org.jaudiolibs.audioservers.javasound.JSTimingMode");
@@ -505,7 +510,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 try {
                     server.run();
                 } catch (Exception ex) {
-                    Logger.getLogger(DefaultAudioRoot.class.getName()).log(Level.SEVERE, null, ex);
+                    LOG.log(System.Logger.Level.ERROR, "", ex);
                 }
                 setIdle();
                 detachDelegate(this);
@@ -689,9 +694,9 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
 
     }
-    
+
     private class TimingModeProperty extends AbstractProperty {
-        
+
         private PString value = PString.of("Blocking");
 
         @Override
@@ -700,12 +705,12 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 throw new IllegalStateException("Can't set value while active");
             }
             switch (arg.toString()) {
-                case "Blocking" :
-                case "Estimated" :
-                case "FramePosition" :
+                case "Blocking":
+                case "Estimated":
+                case "FramePosition":
                     value = PString.of(arg);
                     break;
-                default :
+                default:
                     throw new IllegalArgumentException("Unknown timing mode value " + arg);
             }
         }
@@ -714,9 +719,9 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         protected Value get() {
             return value;
         }
-        
+
     }
-    
+
     private static class LibraryInfo {
 
         private final AudioServerProvider provider;

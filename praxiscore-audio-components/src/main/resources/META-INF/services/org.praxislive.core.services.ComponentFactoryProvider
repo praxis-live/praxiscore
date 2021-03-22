@@ -1,1 +1,2 @@
 org.praxislive.audio.components.AudioComponents
+org.praxislive.audio.impl.components.AudioFactoryProvider

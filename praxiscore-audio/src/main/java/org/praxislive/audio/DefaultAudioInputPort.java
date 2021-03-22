@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jaudiolibs.pipes.Pipe;
 import org.jaudiolibs.pipes.Add;
 
@@ -38,7 +36,7 @@ import org.jaudiolibs.pipes.Add;
  */
 public class DefaultAudioInputPort extends AudioPort.Input {
 
-    private final static Logger logger = Logger.getLogger(DefaultAudioInputPort.class.getName());
+    private final static System.Logger LOG = System.getLogger(DefaultAudioInputPort.class.getName());
     
     private final List<AudioPort.Output> connections;
     private final List<PortListener> listeners;
@@ -131,7 +129,8 @@ public class DefaultAudioInputPort extends AudioPort.Input {
             }
             portSink = mixer;
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "Error converting port to multi channel", ex);
+            LOG.log(System.Logger.Level.WARNING,
+                    "Error converting port to multi channel", ex);
             removeSources(mixer);
             removeSources(sink);
             connections.clear();
@@ -151,7 +150,8 @@ public class DefaultAudioInputPort extends AudioPort.Input {
             }
             portSink = sink;
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "Error converting port to single channel", ex);
+            LOG.log(System.Logger.Level.WARNING,
+                    "Error converting port to single channel", ex);
             removeSources(sink);
             removeSources(mixer);
             connections.clear();
@@ -161,11 +161,6 @@ public class DefaultAudioInputPort extends AudioPort.Input {
     }
 
     private Pipe[] removeSources(Pipe sink) {
-//        Pipe[] sources = sink.getSources();
-//        for (Source source : sources) {
-//            sink.removeSource(source);
-//        }
-//        return sources;
         Pipe[] sources = new Pipe[sink.getSourceCount()];
         for (int i=0; i<sources.length; i++) {
             sources[i] = sink.getSource(i);

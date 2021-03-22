@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jaudiolibs.pipes.Pipe;
 import org.jaudiolibs.pipes.Tee;
 
@@ -38,7 +36,7 @@ import org.jaudiolibs.pipes.Tee;
  */
 public class DefaultAudioOutputPort extends AudioPort.Output {
 
-    private final static Logger logger = Logger.getLogger(DefaultAudioOutputPort.class.getName());
+    private final static System.Logger LOG = System.getLogger(DefaultAudioOutputPort.class.getName());
     
     private final List<AudioPort.Input> connections;
     private final List<PortListener> listeners;
@@ -141,7 +139,8 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
             }
             portSource = splitter;
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "Error converting port to multi channel", ex);
+            LOG.log(System.Logger.Level.WARNING, 
+                    "Error converting port to multi channel", ex);
             removeSinks(splitter);
             removeSinks(source);
             portSource = source;
@@ -161,7 +160,8 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
             }
             portSource = source;
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "Error converting port to single channel", ex);
+            LOG.log(System.Logger.Level.WARNING,
+                    "Error converting port to single channel", ex);
             removeSinks(source);
             removeSinks(splitter);
             portSource = source;
@@ -171,11 +171,6 @@ public class DefaultAudioOutputPort extends AudioPort.Output {
     }
 
     private Pipe[] removeSinks(Pipe source) {
-//        Sink[] sinks = source.getSinks();
-//        for (Sink sink : sinks) {
-//            sink.removeSource(source);
-//        }
-//        return sinks;
         Pipe[] sinks = new Pipe[source.getSinkCount()];
         for (int i = 0; i < sinks.length; i++) {
             sinks[i] = source.getSink(i);
