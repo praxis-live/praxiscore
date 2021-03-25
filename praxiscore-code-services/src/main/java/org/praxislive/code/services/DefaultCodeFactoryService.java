@@ -365,6 +365,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
         protected Call processInvoke(Call call) throws Exception {
             SharedCodeService.Task task = findTask();
             PMap sources = validateSources(task.getSources());
+            if (sources.isEmpty()) {
+                if (task.getDependents().isEmpty()) {
+                    return call.reply(PReference.of(new SharedCodeService.Result()));
+                }
+            }
             Map<String, String> dependentSources = processDependentSources(task);
             if (!dependentSources.isEmpty()) {
                 sources = mergeSources(sources, dependentSources);

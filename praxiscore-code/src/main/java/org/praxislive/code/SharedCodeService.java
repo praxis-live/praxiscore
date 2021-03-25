@@ -92,6 +92,12 @@ public class SharedCodeService implements Service {
         private final Map<ControlAddress, DependentResult<CodeDelegate>> dependents;
         private final LogBuilder log;
 
+        public Result() {
+            this.sharedClasses = null;
+            this.dependents = Map.of();
+            this.log = new LogBuilder(LogLevel.ERROR);
+        }
+        
         public Result(ClassLoader sharedClasses,
                 Map<ControlAddress, DependentResult<CodeDelegate>> dependents,
                 LogBuilder log) {

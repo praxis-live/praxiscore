@@ -310,7 +310,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
         handleHierarchyChanged();
         refs.values().forEach(ReferenceDescriptor::dispose);
         refs.clear();
+        controls.values().forEach(ControlDescriptor::dispose);
         controls.clear();
+        ports.values().forEach(PortDescriptor::dispose);
         ports.clear();
         dispose();
     }

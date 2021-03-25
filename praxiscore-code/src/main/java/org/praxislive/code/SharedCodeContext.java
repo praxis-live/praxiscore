@@ -59,7 +59,7 @@ public class SharedCodeContext {
     }
 
     void clearDependency(CodeProperty<?> property) {
-        dependents.values().remove(property);
+        dependents.values().removeIf(v -> v == property);
     }
 
     Map<ControlAddress, SharedCodeService.DependentTask<?>> createDependentTasks() {
@@ -74,15 +74,15 @@ public class SharedCodeContext {
             throw new IllegalStateException("Dependency missing from reload");
         }
         sharedClasses = result.getSharedClasses();
-        result.getDependents().forEach((id, dep) -> {
+        result.getDependents().forEach((ad, dep) -> {
             try {
-                CodeProperty<?> code = dependents.get(id);
+                CodeProperty<?> code = dependents.get(ad);
                 if (code != null) {
                     if (code.getDelegateClass() != dep.getExisting()) {
                         result.getLog().log(LogLevel.WARNING,
                                 "Component code was changed during shared code compilation");
                     }
-                    code.installContext(dep.getContext());
+                    code.installContext(ad, dep.getContext());
                 }
             } catch (Exception ex) {
                 // Just log - can't stop halfway through

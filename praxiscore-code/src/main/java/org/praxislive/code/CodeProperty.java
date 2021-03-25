@@ -50,7 +50,7 @@ class CodeProperty<D extends CodeDelegate>
     private List<Value> sourceArgs;
     private long latest;
     private ControlAddress contextFactory;
-    private SharedCodeContext sharedContext;
+    private SharedCodeContext sharedCodeCtxt;
 
     private CodeProperty(CodeFactory<D> factory) {
         this.factory = factory;
@@ -61,7 +61,7 @@ class CodeProperty<D extends CodeDelegate>
     protected void attach(CodeContext<?> context) {
         this.context = (CodeContext<D>) context;
         contextFactory = null;
-        sharedContext = null;
+        sharedCodeCtxt = null;
     }
 
     @Override
@@ -85,6 +85,7 @@ class CodeProperty<D extends CodeDelegate>
                             context.locateService(CodeContextFactoryService.class)
                                     .orElseThrow(ServiceUnavailableException::new),
                             CodeContextFactoryService.NEW_CONTEXT);
+                    sharedCodeCtxt = context.getLookup().find(SharedCodeContext.class).orElse(null);
                 }
                 String code = args.get(0).toString();
                 CodeContextFactoryService.Task task
@@ -93,9 +94,7 @@ class CodeProperty<D extends CodeDelegate>
                                 code,
                                 context.getLogLevel(),
                                 context.getDelegate().getClass(),
-                                context.getLookup().find(SharedCodeContext.class)
-                                        .map(SharedCodeContext::getSharedClassLoader)
-                                        .orElse(null)
+                                sharedCodeCtxt == null ? null : sharedCodeCtxt.getSharedClassLoader()
                         );
                 taskCall = Call.create(contextFactory, call.to(), time, PReference.of(task));
                 router.route(taskCall);
@@ -130,9 +129,7 @@ class CodeProperty<D extends CodeDelegate>
             // flush log before we replace existing context
             context.flush();
             // install new code context, which will attach us and change context field
-            context.getComponent().install((CodeContext<D>) result.getContext());
-            context.getLookup().find(SharedCodeContext.class)
-                    .ifPresent(ctxt -> ctxt.checkDependency(call.to(), this));
+            installContext(call.to(), result.getContext());
             LogBuilder log = result.getLog();
             context.log(log);
             context.flush();
@@ -168,16 +165,28 @@ class CodeProperty<D extends CodeDelegate>
         return latest == 0 || (time - latest) >= 0;
     }
 
+    private void dispose() {
+        if (sharedCodeCtxt != null) {
+            sharedCodeCtxt.clearDependency(this);
+            sharedCodeCtxt = null;
+        }
+    }
+
     // for access from shared code property
     @SuppressWarnings("unchecked")
     Class<D> getDelegateClass() {
         return context == null ? null : (Class<D>) context.getDelegate().getClass();
     }
 
-    void installContext(CodeContext<?> context) {
+    void installContext(ControlAddress address, CodeContext<?> context) {
         this.context.getComponent().install((CodeContext<D>) context);
+        // shared code context is now null!
+        sharedCodeCtxt = context.getLookup().find(SharedCodeContext.class).orElse(null);
+        if (sharedCodeCtxt != null) {
+            sharedCodeCtxt.checkDependency(address, this);
+        }
     }
-    
+
     SharedCodeService.DependentTask<D> createSharedCodeReloadTask() {
         return new SharedCodeService.DependentTask<>(factory,
                 sourceArgs.get(0).toString(), getDelegateClass());
@@ -228,6 +237,11 @@ class CodeProperty<D extends CodeDelegate>
         @Override
         public ControlInfo getInfo() {
             return info;
+        }
+
+        @Override
+        public void dispose() {
+            control.dispose();
         }
 
     }
