@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,7 +24,6 @@ package org.praxislive.video.impl.components;
 import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.logging.Logger;
 import org.praxislive.video.render.PixelData;
 import org.praxislive.video.render.Surface;
 import org.praxislive.video.render.SurfaceOp;
@@ -38,7 +37,6 @@ import org.praxislive.video.render.utils.ImageUtils;
  */
 class SWSurface extends Surface {
 
-    private final static Logger LOG = Logger.getLogger(SWSurface.class.getName());
     private final static PixelData[] EMPTY_DATA = new PixelData[0];
     private SWSurfaceData sd;
     private boolean clear = true;

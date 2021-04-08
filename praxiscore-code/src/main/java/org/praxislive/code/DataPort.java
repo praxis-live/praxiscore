@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -43,24 +43,30 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * 
+ *
  */
 public abstract class DataPort<T> implements Port {
 
     public final static class Input<T> extends DataPort<T> {
 
         private final InPipe<T> in;
-        private final java.lang.reflect.Type type;
-        private final PortInfo info;
         private final List<Output<T>> connections;
         private final List<PortListener> listeners;
 
-        private Input(java.lang.reflect.Type type, PortInfo info) {
-            this.type = Objects.requireNonNull(type);
-            this.info = Objects.requireNonNull(info);
+        private java.lang.reflect.Type type;
+
+        private Input(InputDescriptor desc) {
+            this.type = Objects.requireNonNull(desc.type);
             in = new InPipe<>();
             connections = new ArrayList<>();
             listeners = new CopyOnWriteArrayList<>();
+        }
+
+        private void reconfigure(InputDescriptor desc) {
+            if (!Objects.equals(type, desc.type)) {
+                this.type = Objects.requireNonNull(desc.type);
+                in.reset(true);
+            }
         }
 
         @Override
@@ -77,10 +83,6 @@ public abstract class DataPort<T> implements Port {
             if (port instanceof Output) {
                 port.disconnect(this);
             }
-        }
-
-        public PortInfo getInfo() {
-            return info;
         }
 
         private void addDataOutputPort(Output<T> port, Data.Pipe<T> source) throws PortConnectionException {
@@ -125,16 +127,16 @@ public abstract class DataPort<T> implements Port {
             listeners.remove(listener);
         }
     }
-    
+
     private static class InPipe<T> extends Data.In<T> {
-        
+
         private void reset(boolean full) {
             disconnectSinks();
             if (full) {
                 clearCaches();
             }
         }
-        
+
     }
 
     static final class InputDescriptor extends PortDescriptor {
@@ -142,9 +144,9 @@ public abstract class DataPort<T> implements Port {
         private final Field field;
         private final java.lang.reflect.Type type;
         private final PortInfo info;
-        
+
         private Input<?> port;
-        
+
         private InputDescriptor(String id,
                 Category category,
                 int index,
@@ -161,14 +163,15 @@ public abstract class DataPort<T> implements Port {
         @Override
         @SuppressWarnings("unchecked")
         public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Input && 
-                    compatibleDataTypes(type, ((Input<?>) previous).type)) {
+            if (previous instanceof Input
+                    && compatibleDataTypes(type, ((Input<?>) previous).type)) {
                 port = (Input<?>) previous;
+                port.reconfigure(this);
             } else {
                 if (previous != null) {
                     previous.disconnectAll();
                 }
-                port = new Input<>(type, info);
+                port = new Input<>(this);
             }
             try {
                 field.set(context.getDelegate(), port.in);
@@ -193,19 +196,19 @@ public abstract class DataPort<T> implements Port {
                 port.in.reset(full);
             }
         }
-        
+
         static InputDescriptor create(CodeConnector<?> connector, In ann, Field field) {
             return create(connector, PortDescriptor.Category.In, ann.value(), field);
         }
-        
+
         static InputDescriptor create(CodeConnector<?> connector, AuxIn ann, Field field) {
             return create(connector, PortDescriptor.Category.AuxIn, ann.value(), field);
         }
-        
+
         private static InputDescriptor create(CodeConnector<?> connector,
                 PortDescriptor.Category category, int index, Field field) {
-            if (Data.In.class.equals(field.getType()) && 
-                    field.getGenericType() instanceof ParameterizedType) {
+            if (Data.In.class.equals(field.getType())
+                    && field.getGenericType() instanceof ParameterizedType) {
                 java.lang.reflect.Type type = extractDataType((ParameterizedType) field.getGenericType());
                 field.setAccessible(true);
                 return new InputDescriptor(connector.findID(field), category, index, field, type);
@@ -219,21 +222,23 @@ public abstract class DataPort<T> implements Port {
     public final static class Output<T> extends DataPort<T> {
 
         private final OutPipe<T> out;
-        private final java.lang.reflect.Type type;
-        private final PortInfo info;
         private final List<Input<T>> connections;
         private final List<PortListener> listeners;
 
-        private Output(java.lang.reflect.Type type, PortInfo info) {
-            this.type = Objects.requireNonNull(type);
-            this.info = Objects.requireNonNull(info);
+        private java.lang.reflect.Type type;
+
+        private Output(OutputDescriptor desc) {
+            this.type = Objects.requireNonNull(desc.type);
             out = new OutPipe<>();
             connections = new ArrayList<>();
             listeners = new CopyOnWriteArrayList<>();
         }
-
-        public final PortInfo getInfo() {
-            return info;
+        
+        private void reconfigure(OutputDescriptor desc) {
+            if (!Objects.equals(type, desc.type)) {
+                type = Objects.requireNonNull(desc.type);
+                out.reset(true);
+            }
         }
 
         @Override
@@ -292,24 +297,24 @@ public abstract class DataPort<T> implements Port {
     }
 
     private static class OutPipe<T> extends Data.Out<T> {
-        
+
         private void reset(boolean full) {
             disconnectSources();
             if (full) {
                 clearCaches();
             }
         }
-        
+
     }
-    
+
     static class OutputDescriptor extends PortDescriptor {
 
         private final Field field;
         private final java.lang.reflect.Type type;
         private final PortInfo info;
-        
+
         private Output<?> port;
-        
+
         private OutputDescriptor(String id,
                 Category category,
                 int index,
@@ -325,14 +330,15 @@ public abstract class DataPort<T> implements Port {
 
         @Override
         public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Output && 
-                    compatibleDataTypes(type, ((Output<?>) previous).type)) {
+            if (previous instanceof Output
+                    && compatibleDataTypes(type, ((Output<?>) previous).type)) {
                 port = (Output<?>) previous;
+                port.reconfigure(this);
             } else {
                 if (previous != null) {
                     previous.disconnectAll();
                 }
-                port = new Output<>(type, info);
+                port = new Output<>(this);
             }
             try {
                 field.set(context.getDelegate(), port.out);
@@ -357,19 +363,19 @@ public abstract class DataPort<T> implements Port {
                 port.out.reset(full);
             }
         }
-        
+
         static OutputDescriptor create(CodeConnector<?> connector, Out ann, Field field) {
             return create(connector, PortDescriptor.Category.Out, ann.value(), field);
         }
-        
+
         static OutputDescriptor create(CodeConnector<?> connector, AuxOut ann, Field field) {
             return create(connector, PortDescriptor.Category.AuxOut, ann.value(), field);
         }
-        
+
         private static OutputDescriptor create(CodeConnector<?> connector,
                 PortDescriptor.Category category, int index, Field field) {
-            if (Data.Out.class.equals(field.getType()) && 
-                    field.getGenericType() instanceof ParameterizedType) {
+            if (Data.Out.class.equals(field.getType())
+                    && field.getGenericType() instanceof ParameterizedType) {
                 java.lang.reflect.Type type = extractDataType((ParameterizedType) field.getGenericType());
                 field.setAccessible(true);
                 return new OutputDescriptor(connector.findID(field), category, index, field, type);
@@ -387,10 +393,8 @@ public abstract class DataPort<T> implements Port {
             return Stream.of(new Type<>(DataPort.class));
         }
 
-
     }
 
-    
     private static java.lang.reflect.Type extractDataType(ParameterizedType type) {
         java.lang.reflect.Type[] types = type.getActualTypeArguments();
         if (types.length > 0) {
@@ -399,18 +403,17 @@ public abstract class DataPort<T> implements Port {
             return Object.class; // throw Exception here?
         }
     }
-    
+
     private static boolean compatibleDataTypes(java.lang.reflect.Type type1, java.lang.reflect.Type type2) {
-        return type1.equals(type2);
+        return Objects.equals(type1, type2) || Objects.equals(type1.toString(), type2.toString());
     }
-    
-    
+
     private static String typeToCategory(java.lang.reflect.Type type) {
         StringBuilder sb = new StringBuilder();
         buildSimpleName(sb, type);
         return sb.toString();
     }
-    
+
     private static void buildSimpleName(StringBuilder sb, java.lang.reflect.Type type) {
         if (type instanceof Class) {
             sb.append(((Class<?>) type).getSimpleName());
@@ -448,5 +451,5 @@ public abstract class DataPort<T> implements Port {
             sb.append("?");
         }
     }
-    
+
 }

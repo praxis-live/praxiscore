@@ -35,6 +35,7 @@ import org.praxislive.core.types.PString;
  *
  * 
  */
+@Deprecated
 public abstract class TypeConverter<T> {
     
     public abstract Value toArgument(T value);

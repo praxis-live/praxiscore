@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,6 +22,7 @@
 package org.praxislive.code;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.services.Service;
@@ -31,8 +32,10 @@ import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
 
 /**
- *
- * 
+ * A {@link Service} for creating new {@link CodeContext}. Must be running in
+ * the same process as the CodeComponent due to Task and Result references.
+ * Should make use of a {@link CodeCompilerService} implementation for compiling
+ * source code (which does support other processes).
  */
 public class CodeContextFactoryService implements Service {
 
@@ -47,7 +50,7 @@ public class CodeContextFactoryService implements Service {
     public Stream<String> controls() {
         return Stream.of(NEW_CONTEXT);
     }
-    
+
     @Override
     public ControlInfo getControlInfo(String control) {
         if (NEW_CONTEXT.equals(control)) {
@@ -55,59 +58,144 @@ public class CodeContextFactoryService implements Service {
         }
         throw new IllegalArgumentException();
     }
-    
+
+    /**
+     * Task sent to the service to request a context and delegate be created
+     * from the provided source code.
+     *
+     * @param <D> delegate type
+     */
     public final static class Task<D extends CodeDelegate> {
+
         private final CodeFactory<D> factory;
         private final String code;
         private final LogLevel logLevel;
         private final Class<D> previous;
-        
+        private final ClassLoader sharedClassLoader;
+
+        /**
+         * Create task.
+         *
+         * @param factory code factory that handles actual context creation
+         * @param code source code
+         * @param logLevel log level
+         * @param previous previous delegate class, or null
+         */
         public Task(CodeFactory<D> factory,
                 String code,
                 LogLevel logLevel,
                 Class<D> previous) {
-            this.factory = factory;
-            this.code = code;
-            this.logLevel = logLevel;
+            this(factory, code, logLevel, previous, null);
+        }
+        
+        /**
+         * Create task.
+         *
+         * @param factory code factory that handles actual context creation
+         * @param code source code
+         * @param logLevel log level
+         * @param previous previous delegate class, or null
+         * @param sharedCodeClassloader shared code classloader, or null
+         */
+        public Task(CodeFactory<D> factory,
+                String code,
+                LogLevel logLevel,
+                Class<D> previous,
+                ClassLoader sharedCodeClassloader) {
+            this.factory = Objects.requireNonNull(factory);
+            this.code = Objects.requireNonNull(code);
+            this.logLevel = Objects.requireNonNull(logLevel);
             this.previous = previous;
+            this.sharedClassLoader = sharedCodeClassloader;
         }
 
+        /**
+         * Get the code factory.
+         *
+         * @return code factory
+         */
         public CodeFactory<D> getFactory() {
             return factory;
         }
 
+        /**
+         * Get user source code.
+         *
+         * @return source code
+         */
         public String getCode() {
             return code;
         }
 
+        /**
+         * Get active log level.
+         *
+         * @return log level
+         */
         public LogLevel getLogLevel() {
             return logLevel;
         }
 
+        /**
+         * Previous delegate class, or null.
+         *
+         * @return previous delegate, or null
+         */
         public Class<D> getPrevious() {
             return previous;
         }
+
+        /**
+         * Get the shared code classloader to use as parent (optional).
+         * 
+         * @return shared classloader, or null
+         */
+        public ClassLoader getSharedClassLoader() {
+            return sharedClassLoader;
+        }
         
+
     }
-    
+
+    /**
+     * Result from service on successful creation of context and delegate.
+     *
+     * @param <D> delegate type
+     */
     public final static class Result<D extends CodeDelegate> {
 
         private final CodeContext<D> context;
         private final LogBuilder log;
 
+        /**
+         * Create result, for use by service provider.
+         *
+         * @param context
+         * @param log
+         */
         public Result(CodeContext<D> context, LogBuilder log) {
             this.context = context;
             this.log = log;
         }
 
+        /**
+         * Get created context.
+         * 
+         * @return context
+         */
         public CodeContext<D> getContext() {
             return context;
         }
 
+        /**
+         * Get log builder with any warning or error messages.
+         * 
+         * @return log
+         */
         public LogBuilder getLog() {
             return log;
         }
-        
+
     }
-    
+
 }

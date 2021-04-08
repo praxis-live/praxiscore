@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -43,27 +43,28 @@ class CodeProperty<D extends CodeDelegate>
     public final static String MIME_TYPE = "text/x-praxis-java";
 
     private final CodeFactory<D> factory;
-    private final ControlInfo info;
+
     private CodeContext<D> context;
     private Call activeCall;
     private Call taskCall;
-    private List<Value> keys;
-    private boolean latestSet;
+    private List<Value> sourceArgs;
     private long latest;
     private ControlAddress contextFactory;
+    private SharedCodeContext sharedCodeCtxt;
 
-    private CodeProperty(CodeFactory<D> factory, ControlInfo info) {
+    private CodeProperty(CodeFactory<D> factory) {
         this.factory = factory;
-        this.info = info;
-        this.keys = List.of(PString.EMPTY);
+        this.sourceArgs = List.of(PString.EMPTY);
     }
 
     @SuppressWarnings("unchecked")
     protected void attach(CodeContext<?> context) {
         this.context = (CodeContext<D>) context;
         contextFactory = null;
+        sharedCodeCtxt = null;
     }
 
+    @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isRequest()) {
             processInvoke(call, router);
@@ -79,20 +80,23 @@ class CodeProperty<D extends CodeDelegate>
         long time = call.time();
         if (args.size() > 0 && isLatest(time)) {
             try {
+                if (contextFactory == null) {
+                    contextFactory = ControlAddress.of(
+                            context.locateService(CodeContextFactoryService.class)
+                                    .orElseThrow(ServiceUnavailableException::new),
+                            CodeContextFactoryService.NEW_CONTEXT);
+                    sharedCodeCtxt = context.getLookup().find(SharedCodeContext.class).orElse(null);
+                }
                 String code = args.get(0).toString();
                 CodeContextFactoryService.Task task
                         = new CodeContextFactoryService.Task(
                                 factory,
                                 code,
                                 context.getLogLevel(),
-                                context.getDelegate().getClass());
-                if (contextFactory == null) {
-                    contextFactory = ControlAddress.of(
-                            context.locateService(CodeContextFactoryService.class)
-                            .orElseThrow(ServiceUnavailableException::new),
-                            CodeContextFactoryService.NEW_CONTEXT);
-                }
-                taskCall = Call.create(contextFactory, context.getAddress(this), time, PReference.of(task));
+                                context.getDelegate().getClass(),
+                                sharedCodeCtxt == null ? null : sharedCodeCtxt.getSharedClassLoader()
+                        );
+                taskCall = Call.create(contextFactory, call.to(), time, PReference.of(task));
                 router.route(taskCall);
                 // managed to start task ok
                 setLatest(time);
@@ -104,7 +108,7 @@ class CodeProperty<D extends CodeDelegate>
                 router.route(call.error(PError.of(ex)));
             }
         } else {
-            router.route(call.reply(keys));
+            router.route(call.reply(sourceArgs));
         }
     }
 
@@ -117,15 +121,18 @@ class CodeProperty<D extends CodeDelegate>
             taskCall = null;
             CodeContextFactoryService.Result result
                     = PReference.from(call.args().get(0))
-                    .flatMap(r -> r.as(CodeContextFactoryService.Result.class))
-                    .orElseThrow(IllegalArgumentException::new);
-            keys = activeCall.args();
-            router.route(activeCall.reply(keys));
+                            .flatMap(r -> r.as(CodeContextFactoryService.Result.class))
+                            .orElseThrow(IllegalArgumentException::new);
+            sourceArgs = activeCall.args();
+            router.route(activeCall.reply(sourceArgs));
             activeCall = null;
+            // flush log before we replace existing context
             context.flush();
-            context.getComponent().install((CodeContext<D>) result.getContext());
+            // install new code context, which will attach us and change context field
+            installContext(call.to(), result.getContext());
             LogBuilder log = result.getLog();
             context.log(log);
+            context.flush();
         } catch (Exception ex) {
             router.route(activeCall.error(PError.of(ex)));
         }
@@ -142,7 +149,7 @@ class CodeProperty<D extends CodeDelegate>
         PError err;
         if (args.size() > 0) {
             err = PError.from(args.get(0))
-                    .orElse(PError.of(args.get(0).toString()));
+                    .orElseGet(() -> PError.of(args.get(0).toString()));
         } else {
             err = PError.of("");
         }
@@ -151,16 +158,38 @@ class CodeProperty<D extends CodeDelegate>
     }
 
     private void setLatest(long time) {
-        latestSet = true;
-        latest = time;
+        latest = time == 0 ? -1 : time;
     }
 
     private boolean isLatest(long time) {
-        if (latestSet) {
-            return (time - latest) >= 0;
-        } else {
-            return true;
+        return latest == 0 || (time - latest) >= 0;
+    }
+
+    private void dispose() {
+        if (sharedCodeCtxt != null) {
+            sharedCodeCtxt.clearDependency(this);
+            sharedCodeCtxt = null;
         }
+    }
+
+    // for access from shared code property
+    @SuppressWarnings("unchecked")
+    Class<D> getDelegateClass() {
+        return context == null ? null : (Class<D>) context.getDelegate().getClass();
+    }
+
+    void installContext(ControlAddress address, CodeContext<?> context) {
+        this.context.getComponent().install((CodeContext<D>) context);
+        // shared code context is now null!
+        sharedCodeCtxt = context.getLookup().find(SharedCodeContext.class).orElse(null);
+        if (sharedCodeCtxt != null) {
+            sharedCodeCtxt.checkDependency(address, this);
+        }
+    }
+
+    SharedCodeService.DependentTask<D> createSharedCodeReloadTask() {
+        return new SharedCodeService.DependentTask<>(factory,
+                sourceArgs.get(0).toString(), getDelegateClass());
     }
 
     static class Descriptor<D extends CodeDelegate>
@@ -195,7 +224,7 @@ class CodeProperty<D extends CodeDelegate>
                     && ((CodeProperty<?>) previous).factory == factory) {
                 control = (CodeProperty<?>) previous;
             } else {
-                control = new CodeProperty<>(factory, info);
+                control = new CodeProperty<>(factory);
             }
             control.attach(context);
         }
@@ -208,6 +237,11 @@ class CodeProperty<D extends CodeDelegate>
         @Override
         public ControlInfo getInfo() {
             return info;
+        }
+
+        @Override
+        public void dispose() {
+            control.dispose();
         }
 
     }

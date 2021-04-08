@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,8 +22,6 @@
 package org.praxislive.code.services.tools;
 
 import java.io.File;
-import java.io.StringReader;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,22 +84,28 @@ public class ClassBodyCompiler {
 
     public Map<String, byte[]> compile(String code) throws CompilationException {
         try {
-            ClassBodyEvaluator cbe = new ClassBodyEvaluator();
-            cbe.setCompiler(compiler);
-            cbe.setExtendedClass(classBodyContext.getExtendedClass());
-            cbe.setImplementedInterfaces(classBodyContext.getImplementedInterfaces());
-            cbe.setDefaultImports(classBodyContext.getDefaultImports());
+            String source = ClassBodyWrapper.create()
+                    .className(DEFAULT_CLASS_NAME)
+                    .extendsType(classBodyContext.getExtendedClass())
+                    .implementsTypes(List.of(classBodyContext.getImplementedInterfaces()))
+                    .defaultImports(List.of(classBodyContext.getDefaultImports()))
+                    .wrap(code);
+            
+            CompilerTask task = CompilerTask.create(Map.of(DEFAULT_CLASS_NAME, source));
+            
             if (messageHandler != null) {
-                cbe.setMessageHandler(messageHandler);
+                task.messageHandler(messageHandler);
             }
-            cbe.setOptions(Arrays.asList("-Xlint:all", "-proc:none",
+            
+            List<String> opts = List.of("-Xlint:all", "-proc:none",
                     "--release", String.valueOf(release.ordinal()),
                     "--add-modules", "ALL-MODULE-PATH",
                     "--module-path", defModulepath,
-                    "-classpath", buildClasspath()));
-
-            cbe.cook(new StringReader(code));
-            return cbe.getCompiledClasses();
+                    "-classpath", buildClasspath());
+            
+            task.options(opts);
+            return task.compile();
+            
         } catch (CompilationException ex) {
             throw new CompilationException(ex);
         } catch (Exception ex) {
