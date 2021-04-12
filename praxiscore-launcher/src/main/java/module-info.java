@@ -20,5 +20,6 @@ module org.praxislive.launcher {
             org.praxislive.launcher.SettingsProvider;
     
     uses org.praxislive.launcher.TerminalIOProvider;
-
+    uses org.praxislive.launcher.Signals;
+    
 }

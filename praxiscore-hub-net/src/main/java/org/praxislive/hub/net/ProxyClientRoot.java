@@ -215,6 +215,7 @@ class ProxyClientRoot extends AbstractRoot {
             var childInfo = childLauncher.launch(exec.javaOptions(), exec.arguments());
             execProcess = childInfo.handle();
             socketAddress = childInfo.address();
+            ChildRegistry.INSTANCE.add(execProcess);
         } else {
             throw new UnsupportedOperationException("Only default command supported at present");
         }
@@ -273,6 +274,7 @@ class ProxyClientRoot extends AbstractRoot {
                     LOG.log(Level.SEVERE, "Child process won't quit", ex);
                 }
             }
+            ChildRegistry.INSTANCE.remove(execProcess);
             execProcess = null;
         }
     }

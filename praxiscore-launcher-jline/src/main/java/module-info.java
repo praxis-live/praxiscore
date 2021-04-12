@@ -11,4 +11,7 @@ module org.praxislive.launcher.jline {
 
     provides org.praxislive.launcher.TerminalIOProvider with
             org.praxislive.launcher.jline.JLineTerminalIOProvider;
+    provides org.praxislive.launcher.Signals with 
+            org.praxislive.launcher.jline.JLineSignals;
+    
 }

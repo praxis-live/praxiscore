@@ -146,7 +146,7 @@ public class Launcher {
         private Integer port;
 
         @CommandLine.Option(names = {"-n", "--network"},
-                description = "{all | CIDR mask} : Launch a server that supports remote"
+                description = "{all | CIDR mask} : Launch a server that supports remote "
                 + "connections, from all addresses or matching mask. "
                 + "Implies --port auto if not otherwise specified.")
         private String network;
@@ -156,13 +156,21 @@ public class Launcher {
         private boolean interactive;
 
         @CommandLine.Option(names = "--child",
-                description = "Configure the process to run as a child process. "
-                + "Implies --port auto unless specified.")
+                description = {"Configure the process to run as a child process. "
+                    + "Implies --port auto unless specified.",
+                    "A child process may not respond to normal termination signals, "
+                    + "instead relying on the parent process to be terminated."
+                })
         private boolean child;
 
         @CommandLine.Option(names = "--show-environment",
                 description = {"Output useful debugging information about process environment."})
         private boolean showEnv;
+
+        @CommandLine.Option(names = "--no-signal-handlers",
+                description = "Don't install signal handlers.",
+                hidden = true)
+        private boolean noSignals;
 
         @CommandLine.Parameters(description = "Extra command line arguments.")
         private List<String> extraArgs;
@@ -183,8 +191,11 @@ public class Launcher {
             if (child) {
                 if (port == null) {
                     port = 0;
-                    // script == null?
                 }
+                if (!noSignals) {
+                    installChildSignalOverrides();
+                }
+                // assert script == null?
             }
 
             final boolean requireServer = network != null || port != null;
@@ -290,6 +301,29 @@ public class Launcher {
             } while (requireServer);
 
             return 0;
+        }
+
+        private void installChildSignalOverrides() {
+            // override same as JLine terminal
+            var signals = new String[]{"INT", "QUIT", "TSTP", "CONT", "INFO", "WINCH"};
+            try {
+                ServiceLoader.load(Signals.class)
+                        .findFirst()
+                        .ifPresent(s -> {
+                            for (String signal : signals) {
+                                s.register(signal, () -> {
+                                    System.getLogger(Launcher.class.getName())
+                                            .log(System.Logger.Level.DEBUG,
+                                                    () -> "Received signal : " + signal);
+                                });
+                            }
+                        });
+            } catch (Exception ex) {
+                System.getLogger(Launcher.class.getName())
+                        .log(System.Logger.Level.ERROR,
+                                "Error registering signal handler",
+                                ex);
+            }
         }
 
         private Root createTerminalIO() {
