@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -75,6 +75,16 @@ abstract class PGraphics extends PImage {
         } else {
             return super.find(type);
         }
+    }
+    
+    /**
+     * Access the underlying Processing PGraphics. Must only be called while the
+     * graphics is active on the current thread.
+     *
+     * @return underlying Processing PGraphics
+     */
+    public final processing.core.PGraphics unwrap() {
+        return g;
     }
     
     // EXTENSION METHODS

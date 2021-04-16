@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,10 +40,12 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public int mouseX, mouseY, pmouseX, pmouseY, keyCode;
     public char key;
     public boolean keyPressed, mousePressed;
+    public PGraphics2D g;
     
     PGraphics2D pg;
 
     void configure(PApplet parent, PGraphics2D pg, int width, int height) {
+        this.g = pg;
         this.pg = pg;
         this.width = width;
         this.height = height;
