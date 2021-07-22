@@ -44,6 +44,7 @@ import org.praxislive.code.userapi.Inject;
 import org.praxislive.code.userapi.Out;
 import org.praxislive.code.userapi.P;
 import org.praxislive.code.userapi.Property;
+import org.praxislive.code.userapi.Proxy;
 import org.praxislive.code.userapi.ReadOnly;
 import org.praxislive.code.userapi.Ref;
 import org.praxislive.code.userapi.T;
@@ -423,6 +424,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         if (inject != null && analyseInjectField(inject, field)) {
             return;
         }
+        Proxy proxy = field.getAnnotation(Proxy.class);
+        if (proxy != null && analyseProxyField(proxy, field)) {
+            return;
+        }
     }
 
     /**
@@ -610,6 +615,18 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    private boolean analyseProxyField(Proxy ann, Field field) {
+        
+        ProxyDescriptor desc = ProxyDescriptor.create(this, ann, field);
+        if (desc != null) {
+            addReference(desc);
+            return true;
+        } else {
+            return false;
+        }
+        
+    }
+    
     private boolean analyseTriggerMethod(T ann, Method method) {
         TriggerControl.Descriptor tdsc
                 = TriggerControl.Descriptor.create(this, ann, method);
