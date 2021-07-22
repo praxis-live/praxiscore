@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,6 +44,7 @@ import org.praxislive.core.Packet;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.ThreadContext;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
@@ -76,7 +76,8 @@ public abstract class AbstractRoot implements Root {
     private final AtomicReference<Delegate> delegate;
     private final Queue<Object> queue;
     private final Queue<Object> pending;
-    private final Lock lock;
+    private final ReentrantLock lock;
+    private final ThreadContext threadContext;
 
     private volatile long time;
 
@@ -100,6 +101,7 @@ public abstract class AbstractRoot implements Root {
         pending = new ArrayDeque<>();
         lock = new ReentrantLock();
         lookup = Lookup.EMPTY;
+        threadContext = new ThreadContextImpl();
     }
 
     @Override
@@ -114,7 +116,7 @@ public abstract class AbstractRoot implements Root {
             this.pendingPackets = new PacketQueue(time);
             this.context = createContext(time);
             this.router = createRouter();
-            this.lookup = Lookup.of(hub.getLookup(), router, context);
+            this.lookup = Lookup.of(hub.getLookup(), router, context, threadContext);
             if (state.compareAndSet(State.INITIALIZING, State.INITIALIZED)) {
                 controller = createController();
                 return controller;
@@ -474,6 +476,34 @@ public abstract class AbstractRoot implements Root {
 
     }
 
+    private class ThreadContextImpl implements ThreadContext {
+
+        @Override
+        public void invokeLater(Runnable task) {
+            AbstractRoot.this.invokeLater(task);
+        }
+
+        @Override
+        public boolean isInUpdate() {
+            return lock.isHeldByCurrentThread();
+        }
+
+        @Override
+        public boolean isRootThread() {
+            if (isInUpdate()) {
+                return true;
+            } else {
+                var del = delegate.get();
+                if (del != null) {
+                    return del.isRootThread();
+                } else {
+                    return false;
+                }
+            }
+        }
+
+    }
+
     /**
      * Implementation of Root.Controller.
      */
@@ -636,6 +666,8 @@ public abstract class AbstractRoot implements Root {
         private final ReentrantLock pollLock;
         private final Condition pollCondition;
 
+        private Thread delegateThread;
+
         protected Delegate() {
             this.pollLock = new ReentrantLock();
             this.pollCondition = pollLock.newCondition();
@@ -654,6 +686,7 @@ public abstract class AbstractRoot implements Root {
             if (delegate.get() == this) {
                 if (lock.tryLock()) {
                     try {
+                        delegateThread = Thread.currentThread();
                         return update(time, true);
                     } catch (Throwable t) {
                         LOG.log(Level.SEVERE, "Uncaught error", t);
@@ -678,6 +711,7 @@ public abstract class AbstractRoot implements Root {
             if (delegate.get() == this) {
                 if (lock.tryLock()) {
                     try {
+                        delegateThread = Thread.currentThread();
                         pollQueue();
                     } catch (Throwable t) {
                         LOG.log(Level.SEVERE, "Uncaught error", t);
@@ -740,6 +774,24 @@ public abstract class AbstractRoot implements Root {
                     pollLock.unlock();
                 }
             }
+        }
+
+        /**
+         * Check whether the currently executing thread is the current thread
+         * executing the delegate. The AbstractRoot ThreadContext implementation
+         * will delegate to this method if the current thread is not inside an
+         * update. The default implementation checks whether the current thread
+         * is the last thread that called {@link Delegate#doUpdate(long)} or
+         * {@link Delegate#doPollQueue()}. Implementations may want to override
+         * this, eg. to check if the current thread is a UI update thread. As a
+         * guide, this method should return true if blocking the current thread
+         * would block the root from executing.
+         *
+         * @see ThreadContext#isRootThread()
+         * @return current thread is root thread
+         */
+        protected boolean isRootThread() {
+            return Thread.currentThread() == delegateThread;
         }
 
     }
