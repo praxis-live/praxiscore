@@ -32,6 +32,7 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ThreadContext;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
@@ -53,7 +54,8 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
     private ExecutionContext execCtxt;
     private PacketRouter router;
     private LogInfo logInfo;
-
+    private ProxyContext proxyContext;
+    
     CodeComponent() {
 
     }
@@ -95,7 +97,7 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
         router = null;
         logInfo = null;
         codeCtxt.handleHierarchyChanged();
-        if (parent == null) {
+        if (address == null) {
             codeCtxt.handleDispose();
         }
     }
@@ -133,6 +135,10 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
         codeCtxt.handleHierarchyChanged();
     }
 
+    CodeContext<D> getCodeContext() {
+        return codeCtxt;
+    }
+    
     ComponentAddress getAddress() {
         return address;
     }
@@ -151,6 +157,15 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
                     .orElse(null);
         }
         return router;
+    }
+    
+    ProxyContext getProxyContext() {
+        if (proxyContext == null) {
+            ThreadContext threadCtxt = getLookup().find(ThreadContext.class)
+                    .orElseThrow(UnsupportedOperationException::new);
+            proxyContext = new ProxyContext(this, threadCtxt);
+        }
+        return proxyContext;
     }
 
     ControlAddress getLogToAddress() {
