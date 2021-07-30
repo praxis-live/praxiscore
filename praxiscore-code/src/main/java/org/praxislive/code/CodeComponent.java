@@ -135,6 +135,10 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
         codeCtxt.handleHierarchyChanged();
     }
 
+    CodeContext<D> getCodeContext() {
+        return codeCtxt;
+    }
+    
     ComponentAddress getAddress() {
         return address;
     }

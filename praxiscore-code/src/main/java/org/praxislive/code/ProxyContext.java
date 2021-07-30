@@ -102,7 +102,11 @@ class ProxyContext {
                     if (component.getAddress() == null) {
                         throw new IllegalStateException("Invalid component");
                     }
-                    return method.invoke(delegate, args);
+                    try {
+                        return method.invoke(delegate, args);
+                    } finally {
+                        component.getCodeContext().flush();
+                    }
                 }
 
             });
