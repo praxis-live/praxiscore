@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,14 +31,23 @@ import java.lang.annotation.Target;
  * created and persisted between code changes. Injected fields do not have ports
  * or controls, and values are not saved to projects.
  * <p>
- * The @Inject annotation may be used on fields of type {@link Ref}, {@link Property},
- * or any field type that can be backed by a Property - String, double, float, int, boolean,
- * PArray, PBytes, any enum, any Serializable implementation, or a List of Serializable
- * subclasses.
- * 
+ * The @Inject annotation may be used on fields of type
+ * {@link Ref}, {@link Property}, or any field type that can be backed by a
+ * Property - String, double, float, int, boolean, PArray, PBytes, any enum.
+ * <p>
+ * The @Inject annotation may also be used on fields of types supported by the
+ * default Ref.Handler, or the custom Ref.Handler specified.
+ *
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface Inject {
-    
+
+    /**
+     * A custom {@link Ref.Provider} that can initialize the provided field type.
+     *
+     * @return custom Ref.Handler or default handler
+     */
+    public Class<? extends Ref.Provider> provider() default Ref.Provider.class;
+
 }

@@ -59,6 +59,7 @@ import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogBuilder;
+import org.praxislive.core.services.LogLevel;
 
 /**
  * Base class for analysing a {@link CodeDelegate} and creating the resources
@@ -604,15 +605,27 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 return false;
             }
         }
+        
+        if (ann.provider() != Ref.Provider.class ||
+                Ref.Provider.getDefault().isSupportedType(field.getType())) {
+            InjectRefImpl.Descriptor idsc = InjectRefImpl.Descriptor.create(this, ann, field);
+            if (idsc != null) {
+                addReference(idsc);
+                return true;
+            }
+            // fall through
+        }
 
         PropertyControl.Descriptor pdsc
                 = PropertyControl.Descriptor.create(this, ann, field);
         if (pdsc != null) {
             addControl(pdsc);
             return true;
-        } else {
-            return false;
         }
+        
+        log.log(LogLevel.WARNING, "No handler found for injected field " + field.getName());
+        return false;
+        
     }
 
     private boolean analyseProxyField(Proxy ann, Field field) {
