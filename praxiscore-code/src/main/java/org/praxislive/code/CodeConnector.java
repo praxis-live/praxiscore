@@ -43,6 +43,7 @@ import org.praxislive.code.userapi.In;
 import org.praxislive.code.userapi.Inject;
 import org.praxislive.code.userapi.Out;
 import org.praxislive.code.userapi.P;
+import org.praxislive.code.userapi.Persist;
 import org.praxislive.code.userapi.Property;
 import org.praxislive.code.userapi.Proxy;
 import org.praxislive.code.userapi.ReadOnly;
@@ -429,6 +430,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         if (proxy != null && analyseProxyField(proxy, field)) {
             return;
         }
+        Persist persist = field.getAnnotation(Persist.class);
+        if (persist != null && analysePersistField(persist, field)) {
+            return;
+        } 
     }
 
     /**
@@ -631,6 +636,18 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private boolean analyseProxyField(Proxy ann, Field field) {
         
         ProxyDescriptor desc = ProxyDescriptor.create(this, ann, field);
+        if (desc != null) {
+            addReference(desc);
+            return true;
+        } else {
+            return false;
+        }
+        
+    }
+    
+    private boolean analysePersistField(Persist ann, Field field) {
+        
+        PersistDescriptor desc = PersistDescriptor.create(this, ann, field);
         if (desc != null) {
             addReference(desc);
             return true;
