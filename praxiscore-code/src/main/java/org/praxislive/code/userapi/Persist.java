@@ -27,27 +27,32 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotate a field to be injected - an injected field will be automatically
- * created and persisted between code changes. Injected fields do not have ports
- * or controls, and values are not saved to projects.
+ * Annotate a field to be persisted between code changes. Unlike injected
+ * fields, persisted fields are not automatically created. Fields may be of any
+ * type, and field types must match exactly between iterations (including
+ * generics) for values to be persisted.
  * <p>
- * The @Inject annotation may be used on fields of type
- * {@link Ref}, {@link Property}, or any field type that can be backed by a
- * Property - String, double, float, int, boolean, PArray, PBytes, any enum.
+ * By default, values will be reset when the root is stopped (idled), and
+ * {@link AutoCloseable} references will be closed when disposed.
  * <p>
- * The @Inject annotation may also be used on fields of types supported by the
- * default Ref.Handler, or the custom Ref.Handler specified.
- *
+ * Persisted fields should be used sparingly and with care!
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-public @interface Inject {
+public @interface Persist {
 
     /**
-     * A custom {@link Ref.Provider} that can initialize the provided field type.
+     * Control whether AutoCloseable field values are closed on disposal.
      *
-     * @return custom Ref.Handler or default handler
+     * @return auto close on dispose
      */
-    public Class<? extends Ref.Provider> provider() default Ref.Provider.class;
+    boolean autoClose() default true;
+
+    /**
+     * Control whether to reset values on root stop (idle).
+     *
+     * @return auto reset values
+     */
+    boolean autoReset() default true;
 
 }
