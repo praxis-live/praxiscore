@@ -48,6 +48,7 @@ import org.praxislive.core.ThreadContext;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PError;
 
 /**
  * A general purpose base implementation of {@link Root}. By default uses a
@@ -442,10 +443,20 @@ public abstract class AbstractRoot implements Root {
 
     private void processPacket(Packet packet) {
         if (packet instanceof Call) {
+            Call call = (Call) packet;
             try {
-                processCall((Call) packet, router);
+                processCall(call, router);
             } catch (Throwable t) {
                 LOG.log(Level.SEVERE, "Uncaught exception processing call", t);
+                if (call.isReplyRequired()) {
+                    Exception ex;
+                    if (t instanceof Exception) {
+                        ex = (Exception) t;
+                    } else {
+                        ex = new IllegalStateException(t);
+                    }
+                    router.route(((Call) packet).error(PError.of(ex)));
+                }
             }
         } else {
             throw new UnsupportedOperationException();
