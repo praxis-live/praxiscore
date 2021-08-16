@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,9 +36,11 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.hub.net.NetworkCoreFactory;
 import picocli.CommandLine;
 
@@ -282,8 +284,13 @@ public class Launcher {
                     hubBuilder.addExtension(new ScriptRunner(List.of(script)));
                 }
                 if (interactive) {
-                    hubBuilder.addExtension(createTerminalIO());
+                    var terminalIO = createTerminalIO();
+                    hubBuilder.addExtension(terminalIO);
                 }
+
+                var logLevel = LogLevel.INFO;
+                hubBuilder.addExtension(new LogServiceImpl(logLevel));
+                hubBuilder.extendLookup(logLevel);
 
                 var hub = hubBuilder.build();
                 hub.start();
@@ -378,7 +385,7 @@ public class Launcher {
             var ansiMsg = CommandLine.Help.Ansi.AUTO.string(
                     "@|bold,red " + msg + "|@"
             );
-            System.err.println(ansiMsg);
+            System.out.println(ansiMsg);
         }
 
     }
