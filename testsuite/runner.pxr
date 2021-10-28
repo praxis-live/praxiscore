@@ -1,0 +1,223 @@
+@ /runner root:data {
+  #%praxis.version 5.3.0
+  .shared-code "SHARED.Utils \{package SHARED;
+
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.stream.Collectors;
+import com.sun.jna.Platform;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class Utils \{
+
+    public static Path findLauncher() throws Exception \{
+        var launcherName = Platform.isWindows() ? \"praxis.bat\" : \"praxis\";
+        var appHome = System.getProperty(\"app.home\");
+        if (appHome != null) \{
+            Path launcher = Path.of(appHome)
+                    .resolve(\"bin\")
+                    .resolve(launcherName);
+            if (Files.exists(launcher)) \{
+                return launcher;
+            \}
+        \}
+        // try if running inside IDE
+        var nbHome = System.getProperty(\"netbeans.home\");
+        if (nbHome != null) \{
+            Path launcher = Path.of(nbHome).getParent()
+                    .resolve(\"praxiscore\")
+                    .resolve(\"bin\")
+                    .resolve(launcherName);
+            if (Files.exists(launcher)) \{
+                return launcher;
+            \}
+        \}
+        throw new IllegalStateException(\"No launcher found\");
+    \}
+
+    public static Future<String> collectOutput(Process process) \{
+        Callable<String> task = () -> \{
+            try (var in = new BufferedReader(new InputStreamReader(process.getInputStream()))) \{
+                String ret = in.lines().collect(Collectors.joining(System.lineSeparator()));
+//                int exit = process.waitFor();
+//                if (exit != 0) \{
+//                    ret = ret + System.lineSeparator()
+//                            + \"<FAIL> Test process output : \" + exit;
+//                \}
+                return ret;
+            \}
+        \};
+        FutureTask<String> future = new FutureTask<>(task) \{
+
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) \{
+                process.destroy();
+                return super.cancel(mayInterruptIfRunning);
+            \}
+
+        \};
+        new Thread(future).start();
+        return future;
+    \}
+
+\}
+\}"
+  @ ./start core:start-trigger {
+    #%graph.x 66
+    #%graph.y 79
+  }
+  @ ./exit core:custom {
+    #%graph.x 599
+    #%graph.y 79
+    .code "
+
+    @T(1)
+    void exitOK() \{
+        tellIn(0.2, self(\"exit\"), 0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        tellIn(0.2, self(\"exit\"), 1);
+    \}
+
+    @In(1) @Config.Port(false)
+    void exit(int value) \{
+        System.exit(value);
+    \}
+
+"
+  }
+  @ ./test-exec core:custom {
+    #%graph.x 309
+    #%graph.y 79
+    .code "import java.nio.file.Path;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import SHARED.Utils;
+import java.nio.file.Files;
+
+
+    final long TIMEOUT = Long.getLong(\"testsuite.timeout\", 20000);
+    final String SEP = System.lineSeparator();
+    
+    @P(1)
+    Optional<PResource> configuration;
+
+    @Out(1) Output done;
+    @Out(2) Output failed;
+
+    @Inject List<Path> tests;
+
+    @Persist Process process;
+    @Persist Future<String> result;
+    @Persist long processStart;
+    @Persist Path launcher;
+
+    @T(1) public void start() \{
+        stop();
+        try \{
+            launcher = Utils.findLauncher();
+            tests.addAll(readConfig());
+            logTests();
+            execNextTest();
+        \} catch (Exception ex) \{
+            log(ERROR, ex.toString());
+            failed.send();
+            return;
+        \}
+    \}
+
+    @T(2) public void stop() \{
+        if (process != null) \{
+            process.destroy();
+            process = null;
+        \}
+        result = null;
+        tests.clear();
+    \}
+
+    @Override
+    public void update() \{
+        if (result == null) \{
+            return;
+        \}
+        if (result.isDone()) \{
+            try \{
+                String output = result.get();
+                if (output.contains(\"<FAIL>\") || output.contains(\"<ERROR>\")) \{
+                    log(ERROR, output + SEP + \"TEST FAILED\" + SEP);
+                    stop();
+                    failed.send();
+                \} else \{
+                    log(INFO, output + SEP + \"TEST PASSED\" + SEP);
+                    execNextTest();
+                \}
+            \} catch (Exception ex) \{
+                log(ERROR, SEP + \"TEST EXCEPTION\" + SEP + ex.toString() + SEP);
+                stop();
+                failed.send();
+            \}
+        \} else if ((millis() - processStart) > TIMEOUT) \{
+            log(ERROR, SEP + \"<FAIL> TEST TIMEOUT\" + SEP);
+            if (process != null) \{
+                process.destroy();
+            \}
+            try \{
+                log(ERROR, result.get(2, TimeUnit.SECONDS));
+            \} catch (Exception ex) \{
+                log(ERROR, \"No output\");
+            \}
+            stop();
+            failed.send();
+        \}
+    \}
+    
+    private List<Path> readConfig() throws Exception \{
+        var conf = configuration.get().value();
+        return PArray.parse(Files.readString(Path.of(conf))).stream()
+                .map(rel -> conf.resolve(rel.toString()))
+                .map(Path::of)
+                .collect(Collectors.toList());
+    \}
+
+    private void logTests() \{
+        var output = tests.stream()
+                .map(Path::toString)
+                .collect(Collectors.joining(
+                        SEP, \"TEST SUITE\" + SEP + \"==========\" + SEP, SEP));
+        log(INFO, output);
+    \}
+
+    private void execNextTest() throws Exception \{
+        if (tests.isEmpty()) \{
+            stop();
+            done.send();
+            return;
+        \}
+        var test = tests.remove(0);
+        log(INFO, SEP + \"STARTING TEST : \" + test + SEP);
+        var pb = new ProcessBuilder(launcher.toString(), \"--file\", test.toString());
+        var javaHome = System.getProperty(\"java.home\");
+        if (javaHome != null) \{
+            pb.environment().put(\"JAVA_HOME\", javaHome);
+        \}
+        pb.redirectErrorStream(true);
+        processStart = millis();
+        process = pb.start();
+        log(INFO, process.info().toString());
+        result = Utils.collectOutput(process);
+    \}
+    
+"
+    .configuration [file "tests/config"]
+  }
+  ~ ./test-exec!done ./exit!exit-ok
+  ~ ./test-exec!failed ./exit!exit-fail
+  ~ ./start!out ./test-exec!start
+}

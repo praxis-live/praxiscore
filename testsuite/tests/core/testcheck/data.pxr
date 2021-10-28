@@ -1,0 +1,70 @@
+@ /data root:data {
+  #%praxis.version 5.3.0
+  #%graph.comment A test to test tests!\n\nCheck a value is correctly set and exit.
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 106
+    #%graph.y 144
+  }
+  @ ./test core:custom {
+    #%graph.x 666
+    #%graph.y 144
+    .code "
+
+    int value;
+    
+    @Out(1) Output testOK;
+    @Out(2) Output testFail;
+
+    @Override
+    public void init() \{
+        value = 24;
+    \}
+    
+    @T(1) void set() \{
+        value = 42;
+    \}
+    
+    @T(2) void test() \{
+        if (value == 42) \{
+            log(INFO, \"<PASS> Value is 42\");
+            testOK.send();
+        \} else \{
+            log(ERROR, \"<FAIL> Value is \" + value);
+            testFail.send();
+        \}
+    \}
+
+"
+  }
+  @ ./delay core:timing:delay {
+    #%graph.x 403
+    #%graph.y 236
+  }
+  @ ./exit core:custom {
+    #%graph.x 924
+    #%graph.y 170
+    .code "
+
+    @T(1)
+    void exitOK() \{
+        tellIn(0.2, self(\"exit\"), 0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        tellIn(0.2, self(\"exit\"), 1);
+    \}
+
+    @In(1) @Config.Port(false)
+    void exit(int value) \{
+        System.exit(value);
+    \}
+
+"
+  }
+  ~ ./start-trigger!out ./delay!in
+  ~ ./start-trigger!out ./test!set
+  ~ ./delay!out ./test!test
+  ~ ./test!test-ok ./exit!exit-ok
+  ~ ./test!test-fail ./exit!exit-fail
+}
