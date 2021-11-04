@@ -41,23 +41,26 @@
     #%graph.y 236
   }
   @ ./exit core:custom {
-    #%graph.x 924
-    #%graph.y 170
-    .code "
+    #%graph.x 913
+    #%graph.y 196
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
 
     @T(1)
     void exitOK() \{
-        tellIn(0.2, self(\"exit\"), 0);
+        exit(0);
     \}
 
     @T(2)
     void exitFail() \{
-        tellIn(0.2, self(\"exit\"), 1);
+        exit(1);
     \}
 
-    @In(1) @Config.Port(false)
-    void exit(int value) \{
-        System.exit(value);
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
     \}
 
 "
