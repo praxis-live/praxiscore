@@ -258,6 +258,8 @@ public class Launcher {
             }
 
             final var main = new MainThreadImpl();
+            
+            int exitValue = 0;
 
             do {
                 var coreBuilder = NetworkCoreFactory.builder()
@@ -304,10 +306,12 @@ public class Launcher {
                     out(LISTENING_STATUS + port);
                 }
                 main.run(hub);
+                
+                exitValue = hub.exitValue();
 
             } while (requireServer);
 
-            return 0;
+            return exitValue;
         }
 
         private void installChildSignalOverrides() {

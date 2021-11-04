@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,29 +21,33 @@
  */
 package org.praxislive.core.services;
 
-import java.util.List;
 import java.util.stream.Stream;
+import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
-import org.praxislive.core.types.PMap;
+import org.praxislive.core.Info;
+import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PNumber;
 
 /**
- * 
+ *
  */
 public class SystemManagerService implements Service {
-
+    
     public final static String SYSTEM_EXIT = "system-exit";
-
+    
     public final static ControlInfo SYSTEM_EXIT_INFO
-            = ControlInfo.createFunctionInfo(
-                    List.of(),
-                    List.of(),
-                    PMap.EMPTY);
-
+            = Info.control(c -> c.function()
+                .inputs(i -> i.type(PNumber.class)
+                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .property(ArgumentInfo.KEY_OPTIONAL, PBoolean.TRUE)
+                )
+            );
+    
     @Override
     public Stream<String> controls() {
         return Stream.of(SYSTEM_EXIT);
     }
-
+    
     @Override
     public ControlInfo getControlInfo(String control) {
         if (SYSTEM_EXIT.equals(control)) {
@@ -51,5 +55,5 @@ public class SystemManagerService implements Service {
         }
         throw new IllegalArgumentException();
     }
-
+    
 }
