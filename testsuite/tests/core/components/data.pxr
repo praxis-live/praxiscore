@@ -1,0 +1,272 @@
+@ /data root:data {
+  #%praxis.version 5.3.0
+  #%graph.comment Check all built-in core components can be created.
+  #%graph.properties Show
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 170
+    #%graph.y 160
+  }
+  @ ./exit core:custom {
+    #%graph.x 1474
+    #%graph.y 227
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./container core:container {
+    #%graph.x 420
+    #%graph.y 290
+    #%praxis.version 5.3.0
+    .ports "delay-in delay!in delay-out delay!out"
+    @ ./delay core:timing:delay {
+      #%graph.x 472
+      #%graph.y 296
+      .time 0.1
+    }
+  }
+  @ ./property core:property {
+    #%graph.x 571
+    #%graph.y 722
+    .value Hello
+  }
+  @ ./tracker core:tracker {
+    #%graph.x 651
+    #%graph.y 138
+    .patterns "Hello . . .
+World . . .
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+"
+  }
+  @ ./variable core:variable {
+    #%graph.x 1049
+    #%graph.y 689
+    .value World
+  }
+  @ ./iterator core:array:iterator {
+    #%graph.x 649
+    #%graph.y 529
+    .values [array Hello World]
+  }
+  @ ./order core:routing:order {
+    #%graph.x 800
+    #%graph.y 689
+  }
+  @ ./random core:array:random {
+    #%graph.x 303
+    #%graph.y 649
+    #%graph.minimized true
+  }
+  @ ./add core:math:add {
+    #%graph.x 130
+    #%graph.y 848
+    .value 20
+  }
+  @ ./multiply core:math:multiply {
+    #%graph.x 284
+    #%graph.y 854
+    .value 4
+  }
+  @ ./random-number core:math:random {
+    #%graph.x 178
+    #%graph.y 500
+    #%graph.minimized true
+  }
+  @ ./scale core:math:scale {
+    #%graph.x 462
+    #%graph.y 854
+    .x2 100
+    .y2 50
+  }
+  @ ./threshold core:math:threshold {
+    #%graph.x 641
+    #%graph.y 854
+    .threshold 43
+  }
+  @ ./one core:property {
+    #%graph.x 93
+    #%graph.y 755
+    .value 1
+  }
+  @ ./test core:custom {
+    #%graph.x 1303
+    #%graph.y 212
+    .code "
+
+    @P(1) @Transient @Config.Port(false)
+    String str1;
+    @P(2) @Transient @Config.Port(false)
+    String str2;
+    @P(3) @Transient @Config.Port(false)
+    String str3;
+    @P(4) @Transient @Config.Port(false)
+    String str4;
+    @P(5) @Transient @Config.Port(false)
+    int int1;
+
+    @Out(1) Output testOK;
+    @Out(2) Output testFail;
+    
+    @Override
+    public void init() \{
+        str1 = str2 = str3 = str4 = \"\";
+        int1 = 0;
+    \}
+
+    @In(1)
+    void in1(String in) \{
+        str1 = concat(str1, in);
+    \}
+
+    @In(2)
+    void in2(String in) \{
+        str2 = concat(str2, in);
+    \}
+
+    @In(3)
+    void in3(String in) \{
+        str3 = concat(str3, in);
+    \}
+
+    @In(4)
+    void in4(String in) \{
+        str4 = concat(str4, in);
+    \}
+    
+    @In(5)
+    void in5(int in) \{
+        int1 = in;
+    \}
+    
+    @T(1) @Config.Port(false)
+    void test() \{
+        boolean ok = true;
+        if (!\"Hello World\".equals(str1)) \{
+            ok = false;
+            log(ERROR, \"<FAIL> str1 = \" + str1);
+        \}
+        if (!\"Hello World\".equals(str2)) \{
+            ok = false;
+            log(ERROR, \"<FAIL> str2 = \" + str2);
+        \}
+        if (!\"Hello World\".equals(str3)) \{
+            ok = false;
+            log(ERROR, \"<FAIL> str3 = \" + str3);
+        \}
+        if (!\"World\".equals(str4)) \{
+            ok = false;
+            log(ERROR, \"<FAIL> str4 = \" + str4);
+        \}
+        if (int1 != 42) \{
+            ok = false;
+            log(ERROR, \"<FAIL> int1 = \" + int1);
+        \}
+        if (ok) \{
+            log(INFO, \"<PASS> all value tests passed\");
+            testOK.send();
+        \} else \{
+            testFail.send();
+        \}
+    \}
+
+    private String concat(String existing, String input) \{
+        return existing.isEmpty() ? input : existing + \" \" + input;
+    \}
+
+
+"
+  }
+  @ ./every core:routing:every {
+    #%graph.x 178
+    #%graph.y 552
+    #%graph.minimized true
+  }
+  @ ./gate core:routing:gate {
+    #%graph.x 858
+    #%graph.y 294
+    .active true
+    .pattern [array 0 1]
+  }
+  @ ./animator core:timing:animator {
+    #%graph.x 303
+    #%graph.y 595
+    #%graph.minimized true
+  }
+  @ ./timer core:timing:timer {
+    #%graph.x 174
+    #%graph.y 595
+    .period 0.5
+  }
+  @ ./join core:routing:join {
+    #%graph.x 1303
+    #%graph.y 543
+  }
+  @ ./inhibitor core:routing:inhibitor {
+    #%graph.x 1287
+    #%graph.y 716
+    .time 60
+  }
+  @ ./send core:routing:send {
+    #%graph.x 183
+    #%graph.y 396
+    .address /data/test.test
+  }
+  @ ./test-delay core:timing:delay {
+    #%graph.x 178
+    #%graph.y 255
+    .time 0.5
+  }
+  ~ ./start-trigger!out ./container!delay-in
+  ~ ./start-trigger!out ./tracker!trigger
+  ~ ./container!delay-out ./tracker!trigger
+  ~ ./property!out ./order!in
+  ~ ./order!out-2 ./variable!trigger
+  ~ ./one!out ./add!in
+  ~ ./add!out ./multiply!in
+  ~ ./multiply!out ./scale!in
+  ~ ./scale!out ./threshold!in
+  ~ ./tracker!out-1 ./test!in-1
+  ~ ./variable!out ./test!in-3
+  ~ ./order!out-1 ./test!in-3
+  ~ ./iterator!out ./test!in-2
+  ~ ./iterator!out ./gate!in
+  ~ ./gate!out ./test!in-4
+  ~ ./threshold!out-low ./test!in-5
+  ~ ./start-trigger!out ./iterator!reset
+  ~ ./start-trigger!out ./iterator!trigger
+  ~ ./container!delay-out ./iterator!trigger
+  ~ ./start-trigger!out ./test-delay!in
+  ~ ./test-delay!out ./send!in
+  ~ ./test!test-ok ./exit!exit-ok
+  ~ ./test!test-fail ./exit!exit-fail
+}

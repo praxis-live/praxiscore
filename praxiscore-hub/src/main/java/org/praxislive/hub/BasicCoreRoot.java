@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -49,6 +49,7 @@ import org.praxislive.core.services.Service;
 import org.praxislive.core.services.SystemManagerService;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 
@@ -64,11 +65,13 @@ public class BasicCoreRoot extends AbstractRoot {
     private final Map<String, Control> controls;
 
     private Controller controller;
+    private int exitValue;
 
     protected BasicCoreRoot(Hub.Accessor hubAccess, List<Root> exts) {
         this.hubAccess = Objects.requireNonNull(hubAccess);
         this.exts = Objects.requireNonNull(exts);
         this.controls = new HashMap<>();
+        this.exitValue = 0;
     }
 
     @Override
@@ -100,6 +103,10 @@ public class BasicCoreRoot extends AbstractRoot {
         controller.shutdown();
         interrupt();
     }
+    
+    protected int exitValue() {
+        return exitValue;
+    }
 
     @Override
     protected void processCall(Call call, PacketRouter router) {
@@ -130,6 +137,11 @@ public class BasicCoreRoot extends AbstractRoot {
         ctrls.computeIfAbsent(RootManagerService.ROOTS, k -> new RootsControl());
         ctrls.computeIfAbsent(SystemManagerService.SYSTEM_EXIT, k -> (call, router) -> {
             if (call.isRequest()) {
+                if (!call.args().isEmpty()) {
+                    exitValue = PNumber.from(call.args().get(0))
+                            .orElse(PNumber.ZERO)
+                            .toIntValue();
+                }
                 forceTermination();
                 router.route(call.reply());
             }

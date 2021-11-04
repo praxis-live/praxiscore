@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -119,6 +119,14 @@ public final class Hub {
     
     public boolean isAlive() {
         return coreThread.isAlive();
+    }
+    
+    public int exitValue() {
+        if (core instanceof BasicCoreRoot) {
+            return ((BasicCoreRoot) core).exitValue();
+        } else {
+            return 0;
+        }
     }
 
     private boolean registerRootController(String id, Root.Controller controller) {

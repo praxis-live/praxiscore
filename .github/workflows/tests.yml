@@ -1,0 +1,27 @@
+name: Test Suite
+
+on:
+  [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+          cache: 'maven'
+      - name: Build with Maven
+        run: mvn --batch-mode --update-snapshots install
+      - name: Assemble PraxisCORE
+        run: |
+          mvn --batch-mode -f ./praxiscore-bin package appassembler:assemble
+          mv ./praxiscore-bin/target/appassembler ./CORE
+          ./CORE/bin/praxis --show-environment
+      - name: Run Test Suite
+        run: ./CORE/bin/praxis -f ./testsuite/
+
