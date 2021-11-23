@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -39,7 +39,10 @@ import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
 
 /**
- *
+ * Abstract base implementation of {@link Component} supporting {@link Control}
+ * and {@link Port} management. A {@link ComponentProtocol#INFO} control is
+ * added automatically, returning the information provided by the abstract
+ * {@link #getInfo()} method.
  */
 public abstract class AbstractComponent implements Component {
 
@@ -87,7 +90,7 @@ public abstract class AbstractComponent implements Component {
     public Port getPort(String id) {
         return ports.get(id);
     }
-    
+
     protected ComponentAddress getAddress() {
         if (parent != null) {
             return parent.getAddress(this);
@@ -95,40 +98,40 @@ public abstract class AbstractComponent implements Component {
             return null;
         }
     }
-    
+
     protected Lookup getLookup() {
         return parent == null ? Lookup.EMPTY : parent.getLookup();
     }
-    
+
     protected ComponentAddress findService(Class<? extends Service> service)
             throws ServiceUnavailableException {
         return getLookup().find(Services.class)
                 .flatMap(sm -> sm.locate(service))
                 .orElseThrow(ServiceUnavailableException::new);
     }
-    
+
     protected void disconnectAll() {
         ports.values().forEach(Port::disconnectAll);
     }
-    
+
     protected final void registerControl(String id, Control control) {
         if (controls.putIfAbsent(Objects.requireNonNull(id),
                 Objects.requireNonNull(control)) != null) {
             throw new IllegalArgumentException();
         }
     }
-    
+
     protected final void unregisterControl(String id) {
         controls.remove(id);
     }
-    
+
     protected final void registerPort(String id, Port port) {
         if (ports.putIfAbsent(Objects.requireNonNull(id),
                 Objects.requireNonNull(port)) != null) {
             throw new IllegalArgumentException();
         }
     }
-    
+
     protected final void unregisterPort(String id) {
         Port port = ports.remove(id);
         if (port != null) {

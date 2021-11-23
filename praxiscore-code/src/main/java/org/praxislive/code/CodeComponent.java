@@ -46,7 +46,7 @@ import org.praxislive.core.services.LogService;
  *
  * @param <D> wrapped delegate type
  */
-public final class CodeComponent<D extends CodeDelegate> implements Component {
+public class CodeComponent<D extends CodeDelegate> implements Component {
 
     private Container parent;
     private CodeContext<D> codeCtxt;
@@ -61,7 +61,7 @@ public final class CodeComponent<D extends CodeDelegate> implements Component {
     }
 
     @Override
-    public Container getParent() {
+    public final Container getParent() {
         return parent;
     }
 

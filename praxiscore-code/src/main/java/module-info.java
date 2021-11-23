@@ -5,7 +5,8 @@ module org.praxislive.code {
     requires java.desktop;
     requires java.logging;
 
-    requires org.praxislive.core;
+    requires transitive org.praxislive.core;
+    requires org.praxislive.base;
     
     exports org.praxislive.code;
     exports org.praxislive.code.userapi;

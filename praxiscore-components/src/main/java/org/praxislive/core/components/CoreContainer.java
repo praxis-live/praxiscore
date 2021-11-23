@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -14,39 +14,44 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.base.components;
+package org.praxislive.core.components;
 
-import org.praxislive.base.AbstractComponentFactory;
-import org.praxislive.core.services.ComponentFactory;
-import org.praxislive.core.services.ComponentFactoryProvider;
+import org.praxislive.code.GenerateTemplate;
+
+import org.praxislive.core.code.CoreContainerDelegate;
+
+// default imports
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+
+import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
+ * 
  */
-public class BaseComponents implements ComponentFactoryProvider {
+@GenerateTemplate(CoreContainer.TEMPLATE_PATH)
+public class CoreContainer extends CoreContainerDelegate {
     
-    private final static ComponentFactory FACTORY = new Factory();
+    final static String TEMPLATE_PATH = "resources/container.pxj";
+
+    // PXJ-BEGIN:body
     
     @Override
-    public ComponentFactory getFactory() {
-        return FACTORY;
+    @ProxyPorts
+    public void init() {
+
     }
     
-    private static class Factory extends AbstractComponentFactory {
-        
-        private Factory() {
-            build();
-        }
-        
-        private void build() {
-            
-//            add("core:container", UserContainer.class);
-            
-        }
-    }
+    // PXJ-END:body
+    
 }

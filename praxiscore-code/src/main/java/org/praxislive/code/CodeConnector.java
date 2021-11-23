@@ -248,22 +248,34 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor> controls,
             Map<String, PortDescriptor> ports) {
         var cmp = Info.component();
+        buildBaseComponentInfo(cmp);
+        buildControlInfo(cmp, controls);
+        buildPortInfo(cmp, ports);
+        return cmp.build();
+    }
+    
+    protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
         cmp.merge(ComponentProtocol.API_INFO);
+        cmp.property(ComponentInfo.KEY_DYNAMIC, true);
+        cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.getComponentType());
+    }
+    
+    protected void buildControlInfo(Info.ComponentInfoBuilder cmp, Map<String, ControlDescriptor> controls) {
         for (var e : controls.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
                 cmp.control(e.getKey(), e.getValue().getInfo());
             }
         }
+    }
+    
+    protected void buildPortInfo(Info.ComponentInfoBuilder cmp, Map<String, PortDescriptor> ports) {
         for (var e : ports.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
                 cmp.port(e.getKey(), e.getValue().getInfo());
             }
         }
-        cmp.property(ComponentInfo.KEY_DYNAMIC, true);
-        cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.getComponentType());
-        return cmp.build();
     }
-
+    
     private boolean excludeFromInfo(String id, ControlDescriptor desc) {
         return desc.getInfo() == null || id.startsWith("_");
     }

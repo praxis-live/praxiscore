@@ -36,8 +36,7 @@ import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
 /**
- * CodeDelegate is the base class for all user rewritable code. Most uses will
- * extend from {@link DefaultCodeDelegate}.
+ * CodeDelegate is the base class for all user rewritable code.
  */
 public abstract class CodeDelegate {
 

@@ -22,9 +22,11 @@
 package org.praxislive.core.components;
 
 import org.praxislive.code.AbstractComponentFactory;
+import org.praxislive.code.CodeContainer;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.code.CoreCodeDelegate;
 import org.praxislive.core.code.CoreCodeFactory;
+import org.praxislive.core.code.CoreContainerCodeFactory;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 
@@ -82,6 +84,10 @@ public class CoreComponents implements ComponentFactoryProvider {
             add("core:timing:delay", CoreTimingDelay.class, CoreTimingDelay.TEMPLATE_PATH);
             add("core:timing:timer", CoreTimingTimer.class, CoreTimingTimer.TEMPLATE_PATH);
 
+            // CONTAINER
+            add(data(new CoreContainerCodeFactory(ComponentType.of("core:container"), 
+                    CoreContainer.class, source(CoreContainer.TEMPLATE_PATH))));
+            
         }
 
         private void add(String type, Class<? extends CoreCodeDelegate> cls, String path) {

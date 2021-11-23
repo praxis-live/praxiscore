@@ -165,7 +165,7 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
         return comp;
     }
 
-    private static class ContainerImpl extends AbstractContainer {
+    private static class ContainerImpl extends AbstractContainer.Delegate {
         
         private final AbstractRootContainer wrapper;
         
