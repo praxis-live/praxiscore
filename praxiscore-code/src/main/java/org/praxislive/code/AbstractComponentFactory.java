@@ -73,6 +73,10 @@ public class AbstractComponentFactory implements ComponentFactory {
     protected void add(Data info) {
         componentMap.put(info.factory.getComponentType(), info.toMetaData());
     }
+    
+    protected void add(CodeFactory<?> factory) {
+        add(data(factory));
+    }
 
     protected Data data(CodeFactory<?> factory) {
         return new Data(factory);

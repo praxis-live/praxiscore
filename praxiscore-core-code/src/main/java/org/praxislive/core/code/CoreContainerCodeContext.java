@@ -23,16 +23,16 @@
 package org.praxislive.core.code;
 
 import org.praxislive.code.CodeContainer;
+import org.praxislive.code.CodeContext;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
 
 /**
- *
- * 
+ * A {@link CodeContext} for core containers.
  */
-public class CoreContainerCodeContext extends CodeContainer.Context<CoreContainerDelegate> {
-
-    public CoreContainerCodeContext(CoreContainerCodeConnector connector) {
+class CoreContainerCodeContext extends CodeContainer.Context<CoreContainerDelegate> {
+    
+    CoreContainerCodeContext(CoreContainerCodeConnector connector) {
         super(connector);
     }
 

@@ -31,7 +31,6 @@ import org.praxislive.base.*;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.ComponentType;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlInfo;
@@ -330,32 +329,6 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     }
     
-    public static abstract class Factory<D extends CodeContainerDelegate> extends CodeFactory<D> {
-
-        public Factory(ClassBodyContext<D> cbc, ComponentType type, Class<? extends D> defaultCls, String template) {
-            super(cbc, type, defaultCls, template);
-        }
-
-        @Override
-        public abstract FactoryTask<D> task();
-        
-    }
-    
-    public static abstract class FactoryTask<D extends CodeContainerDelegate> extends CodeFactory.Task<D> {
-        
-        public FactoryTask(Factory<D> factory) {
-            super(factory);
-        }
-
-        @Override
-        public CodeComponent<D> createComponent(D delegate) {
-            CodeContainer<D> cmp = new CodeContainer<>();
-            cmp.install(createContext(delegate));
-            return cmp;
-        }
-
-    }
-
     private static class ContainerImpl extends AbstractContainer.Delegate {
 
         private final CodeContainer<?> wrapper;

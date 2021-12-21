@@ -22,12 +22,13 @@
 package org.praxislive.core.code;
 
 import org.praxislive.code.CodeContainerDelegate;
+import org.praxislive.code.DefaultDelegateAPI;
 
 /**
  *
  *
  */
-public class CoreContainerDelegate extends CodeContainerDelegate {
+public class CoreContainerDelegate extends CodeContainerDelegate implements DefaultDelegateAPI {
 
     @Override
     public void init() {

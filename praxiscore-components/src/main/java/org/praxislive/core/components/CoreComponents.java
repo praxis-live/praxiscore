@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,8 @@
 package org.praxislive.core.components;
 
 import org.praxislive.code.AbstractComponentFactory;
-import org.praxislive.code.CodeContainer;
-import org.praxislive.core.ComponentType;
+import org.praxislive.core.code.CoreCode;
 import org.praxislive.core.code.CoreCodeDelegate;
-import org.praxislive.core.code.CoreCodeFactory;
-import org.praxislive.core.code.CoreContainerCodeFactory;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 
@@ -52,7 +49,7 @@ public class CoreComponents implements ComponentFactoryProvider {
 
             // custom
             add("core:custom", CoreCustom.class, CoreCustom.TEMPLATE_PATH);
-
+            
             // built-in
             // CORE
             add("core:property", CoreProperty.class, CoreProperty.TEMPLATE_PATH);
@@ -85,15 +82,14 @@ public class CoreComponents implements ComponentFactoryProvider {
             add("core:timing:timer", CoreTimingTimer.class, CoreTimingTimer.TEMPLATE_PATH);
 
             // CONTAINER
-            add(data(new CoreContainerCodeFactory(ComponentType.of("core:container"), 
-                    CoreContainer.class, source(CoreContainer.TEMPLATE_PATH))));
-            
+            add(CoreCode.containerBase().create(
+                    "core:container", CoreContainer.class,
+                    source(CoreContainer.TEMPLATE_PATH)));
+
         }
 
         private void add(String type, Class<? extends CoreCodeDelegate> cls, String path) {
-            add(data(
-                    new CoreCodeFactory(ComponentType.of(type), cls, source(path))
-            ));
+            add(CoreCode.base().create(type, cls, source(path)));
         }
 
     }

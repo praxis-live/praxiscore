@@ -30,13 +30,13 @@ import org.praxislive.code.CodeFactory;
  *
  * 
  */
-public class CoreContainerCodeConnector extends CodeContainer.Connector<CoreContainerDelegate> {
+class CoreContainerCodeConnector extends CodeContainer.Connector<CoreContainerDelegate> {
 
     private final static String UPDATE = "update";
 
     private boolean foundUpdate;
 
-    public CoreContainerCodeConnector(CodeFactory.Task<CoreContainerDelegate> contextCreator,
+    CoreContainerCodeConnector(CodeFactory.Task<CoreContainerDelegate> contextCreator,
             CoreContainerDelegate delegate) {
         super(contextCreator, delegate);
     }

@@ -36,6 +36,7 @@ import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PArray;
 
 class CodeProperty<D extends CodeDelegate>
         implements Control {
@@ -208,11 +209,14 @@ class CodeProperty<D extends CodeDelegate>
         private ControlInfo createInfo(CodeFactory<D> factory) {
             return ControlInfo.createPropertyInfo(
                     ArgumentInfo.of(PString.class,
-                            PMap.of(
-                                    PString.KEY_MIME_TYPE, MIME_TYPE,
-                                    ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
-                                    ClassBodyContext.KEY, factory.getClassBodyContext().getClass().getName()
-                            )),
+                            PMap.builder(5)
+                                    .put(PString.KEY_MIME_TYPE, MIME_TYPE)
+                                    .put(ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate())
+                                    .put(ClassBodyContext.KEY, factory.getClassBodyContextName())
+                                    .put(CodeFactory.BASE_CLASS_KEY, factory.baseClass().getName())
+                                    .put(CodeFactory.BASE_IMPORTS_KEY, factory.baseImports().stream().map(PString::of).collect(PArray.collector()))
+                                    .build()
+                    ),
                     PString.EMPTY,
                     PMap.EMPTY);
         }
