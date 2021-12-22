@@ -283,6 +283,13 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
                 }
             }
         }
+
+        @Override
+        public CodeContainer<D> getComponent() {
+            return (CodeContainer<D>) super.getComponent();
+        }
+        
+        
         
     }
 

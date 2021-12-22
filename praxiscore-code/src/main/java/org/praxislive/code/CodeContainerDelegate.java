@@ -25,6 +25,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.stream.Stream;
 
 /**
  *
@@ -32,6 +33,15 @@ import java.lang.annotation.Target;
 public class CodeContainerDelegate extends CodeDelegate {
     
     public void init() {}
+    
+    public final Stream<String> children() {
+        var ctxt = getContext();
+        if (ctxt instanceof CodeContainer.Context) {
+            return ((CodeContainer.Context<?>) ctxt).getComponent().children();
+        } else {
+            return Stream.empty();
+        }
+    }
     
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
