@@ -21,48 +21,19 @@
  */
 package org.praxislive.code;
 
-import java.lang.reflect.Array;
-import java.util.Optional;
-import java.util.Random;
-import org.praxislive.code.userapi.Constants;
+import java.util.concurrent.ThreadLocalRandom;
 import org.praxislive.code.userapi.Property;
-import org.praxislive.core.Call;
-import org.praxislive.core.Component;
-import org.praxislive.core.ComponentAddress;
-import org.praxislive.core.Container;
-import org.praxislive.core.Control;
-import org.praxislive.core.ControlAddress;
-import org.praxislive.core.ControlPort;
-import org.praxislive.core.Lookup;
-import org.praxislive.core.Port;
+import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
-import org.praxislive.core.Value;
-import org.praxislive.core.services.LogLevel;
 
 /**
- * Default base for code delegates providing a variety of functions.
+ * Default delegate API for use as trait by delegate subclasses. 
  */
-public class DefaultCodeDelegate extends CodeDelegate {
-
-    final static String[] IMPORTS = {
-        "java.util.*",
-        "java.util.function.*",
-        "java.util.stream.*",
-        "org.praxislive.core.*",
-        "org.praxislive.core.types.*",
-        "org.praxislive.code.userapi.*",
-        "static org.praxislive.code.userapi.Constants.*"
-    };
-
-    protected final Random RND;
-
-    public DefaultCodeDelegate() {
-        RND = new Random();
-    }
-
+public interface DefaultDelegateAPI {
+    
     /**
      * Extract a double from the Property's current Value, or zero if the value
      * cannot be coerced.
@@ -70,7 +41,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param p
      * @return
      */
-    public final double d(Property p) {
+    public default double d(Property p) {
         return p.getDouble();
     }
 
@@ -81,7 +52,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param v
      * @return
      */
-    public final double d(Value v) {
+    public default double d(Value v) {
         if (v instanceof PNumber) {
             return ((PNumber) v).value();
         } else {
@@ -95,7 +66,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param s
      * @return
      */
-    public final double d(String s) {
+    public default double d(String s) {
         return d(PString.of(s));
     }
 
@@ -106,7 +77,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param p
      * @return
      */
-    public final int i(Property p) {
+    public default int i(Property p) {
         return p.getInt();
     }
 
@@ -117,7 +88,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param v
      * @return
      */
-    public final int i(Value v) {
+    public default int i(Value v) {
         if (v instanceof PNumber) {
             return ((PNumber) v).toIntValue();
         } else {
@@ -131,7 +102,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param s
      * @return
      */
-    public final int i(String s) {
+    public default int i(String s) {
         return i(PString.of(s));
     }
 
@@ -142,7 +113,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param p
      * @return
      */
-    public final boolean b(Property p) {
+    public default boolean b(Property p) {
         return p.getBoolean();
     }
 
@@ -153,7 +124,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param v
      * @return
      */
-    public final boolean b(Value v) {
+    public default boolean b(Value v) {
         if (v instanceof PBoolean) {
             return ((PBoolean) v).value();
         } else {
@@ -168,7 +139,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param s
      * @return
      */
-    public final boolean b(String s) {
+    public default boolean b(String s) {
         return b(PString.of(s));
     }
 
@@ -178,7 +149,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param p
      * @return
      */
-    public final String s(Property p) {
+    public default String s(Property p) {
         return p.get().toString();
     }
 
@@ -188,7 +159,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param v
      * @return
      */
-    public final String s(Value v) {
+    public default String s(Value v) {
         return v.toString();
     }
 
@@ -201,7 +172,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param p
      * @return
      */
-    public final PArray array(Property p) {
+    public default PArray array(Property p) {
         return PArray.from(p.get()).orElse(PArray.EMPTY);
     }
 
@@ -213,7 +184,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param s
      * @return
      */
-    public final PArray array(Value v) {
+    public default PArray array(Value v) {
         return PArray.from(v).orElse(PArray.EMPTY);
     }
 
@@ -224,7 +195,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param s
      * @return
      */
-    public final PArray array(String s) {
+    public default PArray array(String s) {
         return array(PString.of(s));
     }
 
@@ -234,8 +205,9 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param max the upper bound of the range
      * @return
      */
-    public final double random(double max) {
-        return RND.nextDouble() * max;
+    public default double random(double max) {
+//        return RND.nextDouble() * max;
+        return ThreadLocalRandom.current().nextDouble(max);
     }
 
     /**
@@ -245,11 +217,11 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param max the upper bound of the range
      * @return
      */
-    public final double random(double min, double max) {
+    public default double random(double min, double max) {
         if (min >= max) {
             return min;
         }
-        return random(max - min) + min;
+        return ThreadLocalRandom.current().nextDouble(min, max);
     }
 
     /**
@@ -258,8 +230,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values list of values, may not be empty
      * @return random element
      */
-    public final double randomOf(double... values) {
-        return values[RND.nextInt(values.length)];
+    public default double randomOf(double... values) {
+        return values[ThreadLocalRandom.current().nextInt(values.length)];
     }
 
     /**
@@ -268,8 +240,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values list of values, may not be empty
      * @return random element
      */
-    public final int randomOf(int... values) {
-        return values[RND.nextInt(values.length)];
+    public default int randomOf(int... values) {
+        return values[ThreadLocalRandom.current().nextInt(values.length)];
     }
 
     /**
@@ -278,8 +250,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values list of values, may not be empty
      * @return random element
      */
-    public final String randomOf(String... values) {
-        return values[RND.nextInt(values.length)];
+    public default String randomOf(String... values) {
+        return values[ThreadLocalRandom.current().nextInt(values.length)];
     }
 
     /**
@@ -290,7 +262,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param n
      * @return
      */
-    public final double abs(double n) {
+    public default double abs(double n) {
         return Math.abs(n);
     }
 
@@ -300,7 +272,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param a
      * @return
      */
-    public final double sq(double a) {
+    public default double sq(double a) {
         return a * a;
     }
 
@@ -312,7 +284,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param a
      * @return
      */
-    public final double sqrt(double a) {
+    public default double sqrt(double a) {
         return Math.sqrt(a);
     }
 
@@ -324,7 +296,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param a
      * @return
      */
-    public final double log(double a) {
+    public default double log(double a) {
         return Math.log(a);
     }
 
@@ -336,7 +308,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param a
      * @return
      */
-    public final double exp(double a) {
+    public default double exp(double a) {
         return Math.exp(a);
     }
 
@@ -350,7 +322,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param b the exponent
      * @return the value a<sup>b</sup>
      */
-    public final double pow(double a, double b) {
+    public default double pow(double a, double b) {
         return Math.pow(a, b);
     }
 
@@ -361,7 +333,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param b
      * @return
      */
-    public final int max(int a, int b) {
+    public default int max(int a, int b) {
         return Math.max(a, b);
     }
 
@@ -373,8 +345,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param c
      * @return
      */
-    public final int max(int a, int b, int c) {
-        return max(a, max(b, c));
+    public default int max(int a, int b, int c) {
+        return Math.max(a, Math.max(b, c));
     }
 
     /**
@@ -383,13 +355,13 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values value list - must not be empty
      * @return maximum value
      */
-    public final int max(int ... values) {
+    public default int max(int ... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
         int value = values[0];
         for (int i = 1; i < values.length; i++) {
-            value = max(value, values[i]);
+            value = Math.max(value, values[i]);
         }
         return value;
     }
@@ -401,7 +373,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param b
      * @return
      */
-    public final double max(double a, double b) {
+    public default double max(double a, double b) {
         return Math.max(a, b);
     }
 
@@ -413,8 +385,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param c
      * @return
      */
-    public final double max(double a, double b, double c) {
-        return max(a, max(b, c));
+    public default double max(double a, double b, double c) {
+        return Math.max(a, Math.max(b, c));
     }
 
     /**
@@ -423,13 +395,13 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values value list - must not be empty
      * @return maximum value
      */
-    public final double max(double ... values) {
+    public default double max(double ... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
         double value = values[0];
         for (int i = 1; i < values.length; i++) {
-            value = max(value, values[i]);
+            value = Math.max(value, values[i]);
         }
         return value;
     }
@@ -441,7 +413,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param b
      * @return
      */
-    public final int min(int a, int b) {
+    public default int min(int a, int b) {
         return Math.min(a, b);
     }
 
@@ -453,8 +425,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param c
      * @return
      */
-    public final int min(int a, int b, int c) {
-        return min(a, min(b, c));
+    public default int min(int a, int b, int c) {
+        return Math.min(a, Math.min(b, c));
     }
 
     /**
@@ -463,13 +435,13 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values value list - must not be empty
      * @return minimum value
      */
-    public final int min(int ... values) {
+    public default int min(int ... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
         int value = values[0];
         for (int i = 1; i < values.length; i++) {
-            value = min(value, values[i]);
+            value = Math.min(value, values[i]);
         }
         return value;
     }
@@ -481,7 +453,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param b
      * @return
      */
-    public final double min(double a, double b) {
+    public default double min(double a, double b) {
         return Math.min(a, b);
     }
 
@@ -493,8 +465,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param c
      * @return
      */
-    public final double min(double a, double b, double c) {
-        return min(a, min(b, c));
+    public default double min(double a, double b, double c) {
+        return Math.min(a, Math.min(b, c));
     }
 
     /**
@@ -503,13 +475,13 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param values value list - must not be empty
      * @return minimum value
      */
-    public final double min(double ... values) {
+    public default double min(double ... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
         double value = values[0];
         for (int i = 1; i < values.length; i++) {
-            value = min(value, values[i]);
+            value = Math.min(value, values[i]);
         }
         return value;
     }
@@ -522,7 +494,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param high highest allowed value
      * @return constrained value
      */
-    public final int constrain(int amt, int low, int high) {
+    public default int constrain(int amt, int low, int high) {
         return (amt < low) ? low : ((amt > high) ? high : amt);
     }
 
@@ -534,7 +506,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param high highest allowed value
      * @return constrained value
      */
-    public final double constrain(double amt, double low, double high) {
+    public default double constrain(double amt, double low, double high) {
         return (amt < low) ? low : ((amt > high) ? high : amt);
     }
     
@@ -544,7 +516,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param amt input value
      * @return rounded value
      */
-    public final int round(double amt) {
+    public default int round(double amt) {
         return Math.round((float) amt);
     }
 
@@ -556,7 +528,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param radians
      * @return
      */
-    public final double degrees(double radians) {
+    public default double degrees(double radians) {
         return Math.toDegrees(radians);
     }
 
@@ -568,7 +540,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param degrees
      * @return
      */
-    public final double radians(double degrees) {
+    public default double radians(double degrees) {
         return Math.toRadians(degrees);
     }
 
@@ -580,7 +552,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param angle
      * @return
      */
-    public final double sin(double angle) {
+    public default double sin(double angle) {
         return Math.sin(angle);
     }
 
@@ -592,7 +564,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param angle
      * @return
      */
-    public final double cos(double angle) {
+    public default double cos(double angle) {
         return Math.cos(angle);
     }
 
@@ -604,7 +576,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param angle
      * @return
      */
-    public final double tan(double angle) {
+    public default double tan(double angle) {
         return Math.tan(angle);
     }
 
@@ -616,7 +588,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param value
      * @return
      */
-    public final double asin(double value) {
+    public default double asin(double value) {
         return Math.asin(value);
     }
 
@@ -628,7 +600,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param value
      * @return
      */
-    public final double acos(double value) {
+    public default double acos(double value) {
         return Math.acos(value);
     }
 
@@ -640,7 +612,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param value
      * @return
      */
-    public final double atan(double value) {
+    public default double atan(double value) {
         return Math.atan(value);
     }
 
@@ -654,7 +626,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param x
      * @return
      */
-    public final double atan2(double y, double x) {
+    public default double atan2(double y, double x) {
         return Math.atan2(y, x);
     }
 
@@ -669,7 +641,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param stop2 upper bound of the value's target range
      * @return
      */
-    public final double map(double value,
+    public default double map(double value,
             double start1, double stop1,
             double start2, double stop2) {
         return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
@@ -684,7 +656,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param x2 x-coordinate of the second point
      * @param y2 y-coordinate of the second point
      */
-    public final double dist(double x1, double y1, double x2, double y2) {
+    public default double dist(double x1, double y1, double x2, double y2) {
         return sqrt(sq(x2 - x1) + sq(y2 - y1));
     }
 
@@ -699,7 +671,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param y2 y-coordinate of the second point
      * @param z2 z-coordinate of the second point
      */
-    public final double dist(double x1, double y1, double z1,
+    public default double dist(double x1, double y1, double z1,
             double x2, double y2, double z2) {
         return sqrt(sq(x2 - x1) + sq(y2 - y1) + sq(z2 - z1));
     }
@@ -716,7 +688,7 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param stop second value
      * @param amt between 0.0 and 1.0
      */
-    public final double lerp(double start, double stop, double amt) {
+    public default double lerp(double start, double stop, double amt) {
         return start + (stop - start) * amt;
     }
 
@@ -733,230 +705,8 @@ public class DefaultCodeDelegate extends CodeDelegate {
      * @param start lower bound of the value's current range
      * @param stop upper bound of the value's current range
      */
-    public final double norm(double value, double start, double stop) {
+    public default double norm(double value, double start, double stop) {
         return (value - start) / (stop - start);
-    }
-
-    // PERLIN NOISE - copied from Processing core.
-    // @TODO fully convert to double???
-    private static final int PERLIN_YWRAPB = 4;
-    private static final int PERLIN_YWRAP = 1 << PERLIN_YWRAPB;
-    private static final int PERLIN_ZWRAPB = 8;
-    private static final int PERLIN_ZWRAP = 1 << PERLIN_ZWRAPB;
-    private static final int PERLIN_SIZE = 4095;
-//  private static final float sinLUT[];
-    private static final float cosLUT[];
-    private static final float SINCOS_PRECISION = 0.5f;
-    private static final int SINCOS_LENGTH = (int) (360f / SINCOS_PRECISION);
-
-    static {
-//    sinLUT = new float[SINCOS_LENGTH];
-        cosLUT = new float[SINCOS_LENGTH];
-        for (int i = 0; i < SINCOS_LENGTH; i++) {
-//      sinLUT[i] = (float) Math.sin(i * Constants.DEG_TO_RAD * SINCOS_PRECISION);
-            cosLUT[i] = (float) Math.cos(i * Constants.DEG_TO_RAD * SINCOS_PRECISION);
-        }
-    }
-    private int perlin_octaves = 4; // default to medium smooth
-    private float perlin_amp_falloff = 0.5f; // 50% reduction/octave
-    private int perlin_TWOPI, perlin_PI;
-    private float[] perlin_cosTable;
-    private float[] perlin;
-    private Random perlinRandom;
-
-    /**
-     * Computes the Perlin noise function value at point x.
-     *
-     * @param x
-     * @return
-     */
-    public final double noise(double x) {
-        return noise(x, 0f, 0f);
-    }
-
-    /**
-     * Computes the Perlin noise function value at the point x, y.
-     *
-     * @param x
-     * @param y
-     * @return
-     */
-    public final double noise(double x, double y) {
-        return noise(x, y, 0f);
-    }
-
-    /**
-     * Computes the Perlin noise function value at x, y, z.
-     *
-     * @param x
-     * @param z
-     * @param y
-     * @return
-     */
-    public final double noise(double x, double y, double z) {
-        if (perlin == null) {
-            if (perlinRandom == null) {
-                perlinRandom = new Random();
-            }
-            perlin = new float[PERLIN_SIZE + 1];
-            for (int i = 0; i < PERLIN_SIZE + 1; i++) {
-                perlin[i] = perlinRandom.nextFloat();
-            }
-            perlin_cosTable = cosLUT;
-            perlin_TWOPI = perlin_PI = SINCOS_LENGTH;
-            perlin_PI >>= 1;
-        }
-
-        if (x < 0) {
-            x = -x;
-        }
-        if (y < 0) {
-            y = -y;
-        }
-        if (z < 0) {
-            z = -z;
-        }
-
-        int xi = (int) x, yi = (int) y, zi = (int) z;
-        float xf = (float) (x - xi);
-        float yf = (float) (y - yi);
-        float zf = (float) (z - zi);
-        float rxf, ryf;
-
-        float r = 0;
-        float ampl = 0.5f;
-
-        float n1, n2, n3;
-
-        for (int i = 0; i < perlin_octaves; i++) {
-            int of = xi + (yi << PERLIN_YWRAPB) + (zi << PERLIN_ZWRAPB);
-
-            rxf = noise_fsc(xf);
-            ryf = noise_fsc(yf);
-
-            n1 = perlin[of & PERLIN_SIZE];
-            n1 += rxf * (perlin[(of + 1) & PERLIN_SIZE] - n1);
-            n2 = perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-            n2 += rxf * (perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n2);
-            n1 += ryf * (n2 - n1);
-
-            of += PERLIN_ZWRAP;
-            n2 = perlin[of & PERLIN_SIZE];
-            n2 += rxf * (perlin[(of + 1) & PERLIN_SIZE] - n2);
-            n3 = perlin[(of + PERLIN_YWRAP) & PERLIN_SIZE];
-            n3 += rxf * (perlin[(of + PERLIN_YWRAP + 1) & PERLIN_SIZE] - n3);
-            n2 += ryf * (n3 - n2);
-
-            n1 += noise_fsc(zf) * (n2 - n1);
-
-            r += n1 * ampl;
-            ampl *= perlin_amp_falloff;
-            xi <<= 1;
-            xf *= 2;
-            yi <<= 1;
-            yf *= 2;
-            zi <<= 1;
-            zf *= 2;
-
-            if (xf >= 1.0f) {
-                xi++;
-                xf--;
-            }
-            if (yf >= 1.0f) {
-                yi++;
-                yf--;
-            }
-            if (zf >= 1.0f) {
-                zi++;
-                zf--;
-            }
-        }
-        return r;
-    }
-
-    private float noise_fsc(float i) {
-        return 0.5f * (1.0f - perlin_cosTable[(int) (i * perlin_PI) % perlin_TWOPI]);
-    }
-
-    // make perlin noise quality user controlled to allow
-    // for different levels of detail. lower values will produce
-    // smoother results as higher octaves are surpressed
-    /**
-     *
-     * @param lod
-     */
-    public final void noiseDetail(int lod) {
-        if (lod > 0) {
-            perlin_octaves = lod;
-        }
-    }
-
-    /**
-     *
-     * @param lod
-     * @param falloff
-     */
-    public final void noiseDetail(int lod, double falloff) {
-        if (lod > 0) {
-            perlin_octaves = lod;
-        }
-        if (falloff > 0) {
-            perlin_amp_falloff = (float) falloff;
-        }
-    }
-
-    /**
-     *
-     * @param what
-     */
-    public final void noiseSeed(long what) {
-        if (perlinRandom == null) {
-            perlinRandom = new Random();
-        }
-        perlinRandom.setSeed(what);
-        perlin = null;
-    }
-
-    // end of Perlin noise functions
-    // start of PApplet statics
-
-    /**
-     * Copies an array (or part of an array) to another array. The src array is
-     * copied to the dst array, beginning at the position specified by srcPos 
-     * and into the position specified by dstPos. The number of elements to copy
-     * is determined by length.
-     * 
-     * @param src
-     * @param srcPosition
-     * @param dst
-     * @param dstPosition
-     * @param length
-     */
-    public final void arrayCopy(Object src, int srcPosition, Object dst, int dstPosition, int length) {
-        System.arraycopy(src, srcPosition, dst, dstPosition, length);
-    }
-
-    /**
-     * Copies an array (or part of an array) to another array. The src array is
-     * copied to the dst array. The number of elements to copy
-     * is determined by length.
-     * 
-     * @param src
-     * @param dst
-     * @param length
-     */
-    public final void arrayCopy(Object src, Object dst, int length) {
-        System.arraycopy(src, 0, dst, 0, length);
-    }
-
-    /**
-     * Copies an array to another array. The src array is copied to the dst array.
-     * 
-     * @param src
-     * @param dst
-     */
-    public final void arrayCopy(Object src, Object dst) {
-        System.arraycopy(src, 0, dst, 0, Array.getLength(src));
     }
 
 }

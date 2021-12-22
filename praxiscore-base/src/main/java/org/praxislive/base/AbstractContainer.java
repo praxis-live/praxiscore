@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,6 @@
  */
 package org.praxislive.base;
 
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,7 +50,12 @@ import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 
 /**
- *
+ * Abstract base class for {@link Container} supporting all controls of
+ * {@link ContainerProtocol}.
+ * <p>
+ * Use the {@link Delegate} subclass to reuse the functionality here inside an
+ * alternative Container implementation (see eg. use in
+ * {@link AbstractRootContainer} ).
  */
 public abstract class AbstractContainer extends AbstractComponent implements Container {
 
@@ -115,11 +119,11 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         }
         child.hierarchyChanged();
     }
-    
+
     protected void notifyChild(Component child) throws VetoException {
         child.parentNotify(this);
     }
-    
+
     protected Component removeChild(String id) {
         Component child = childMap.remove(id);
         if (child != null) {
@@ -305,6 +309,27 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
                 p2.removeListener(this);
             }
         }
+    }
+
+    /**
+     * Delegate base class to be used inside a wrapper class implementing
+     * {@link Container}. The abstract methods must be implemented to return the
+     * information from the wrapper, or in the case of
+     * {@link #notifyChild(org.praxislive.core.Component)} call through to
+     * {@link Component#parentNotify(org.praxislive.core.Container)} with the
+     * wrapper.
+     */
+    public static abstract class Delegate extends AbstractContainer {
+
+        @Override
+        public abstract Lookup getLookup();
+
+        @Override
+        protected abstract ComponentAddress getAddress();
+
+        @Override
+        protected abstract void notifyChild(Component child) throws VetoException;
+
     }
 
 }

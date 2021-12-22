@@ -21,8 +21,13 @@
  */
 package org.praxislive.code;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import org.praxislive.core.ComponentType;
+import org.praxislive.core.Lookup;
 import org.praxislive.core.services.LogBuilder;
 
 /**
@@ -31,12 +36,29 @@ import org.praxislive.core.services.LogBuilder;
  *
  * @param <D> base delegate type
  */
-public abstract class CodeFactory<D extends CodeDelegate> {
+public class CodeFactory<D extends CodeDelegate> {
 
+    /**
+     * Key for use in control info properties with the name of the base delegate
+     * type (class) as the value.
+     */
+    public static final String BASE_CLASS_KEY = "base-class";
+
+    /**
+     * Key for use in control info properties with the base imports that should
+     * be available in source code. The value should be a PArray of import
+     * lines, each containing a full import declaration.
+     */
+    public static final String BASE_IMPORTS_KEY = "base-imports";
+
+    private final Class<D> baseClass;
+    private final List<String> baseImports;
     private final ComponentType type;
-    private final ClassBodyContext<D> cbc;
     private final String template;
     private final Class<? extends D> defaultDelegateClass;
+    private final Lookup lookup;
+    private final Supplier<? extends CodeComponent<D>> componentCreator;
+    private final BiFunction<CodeFactory.Task<D>, D, CodeContext<D>> contextCreator;
 
     /**
      * Construct CodeFactory for a type extending the base code delegate type.
@@ -49,15 +71,31 @@ public abstract class CodeFactory<D extends CodeDelegate> {
      * @param defaultCls precompiled default delegate
      * @param template code template reflecting default delegate
      */
+    @Deprecated
     protected CodeFactory(
             ClassBodyContext<D> cbc,
             ComponentType type,
             Class<? extends D> defaultCls,
             String template) {
-        this.cbc = cbc;
+        this.baseClass = cbc.getExtendedClass();
+        this.baseImports = List.of(cbc.getDefaultImports());
+        this.lookup = Lookup.of(cbc);
         this.type = type;
         this.defaultDelegateClass = defaultCls;
         this.template = template;
+        this.componentCreator = CodeComponent::new;
+        this.contextCreator = null;
+    }
+
+    private CodeFactory(Base<D> base, ComponentType type, Class<? extends D> defaultCls, String template) {
+        this.baseClass = base.baseClass;
+        this.baseImports = base.baseImports;
+        this.componentCreator = base.componentCreator;
+        this.contextCreator = base.contextCreator;
+        this.lookup = base.lookup;
+        this.type = Objects.requireNonNull(type);
+        this.defaultDelegateClass = Objects.requireNonNull(defaultCls);
+        this.template = Objects.requireNonNull(template);
     }
 
     /**
@@ -69,6 +107,7 @@ public abstract class CodeFactory<D extends CodeDelegate> {
      * @param type the component type
      * @param template code template reflecting default delegate
      */
+    @Deprecated
     protected CodeFactory(
             ClassBodyContext<D> cbc,
             ComponentType type,
@@ -90,8 +129,23 @@ public abstract class CodeFactory<D extends CodeDelegate> {
      *
      * @return class body context
      */
+    @SuppressWarnings("unchecked")
+    @Deprecated
     public final ClassBodyContext<D> getClassBodyContext() {
-        return cbc;
+        return (ClassBodyContext<D>) lookup.find(ClassBodyContext.class)
+                .orElseGet(() -> new ClassBodyContext(baseClass) {
+            @Override
+            public String[] getDefaultImports() {
+                return baseImports.toArray(String[]::new);
+            }
+
+        });
+    }
+    
+    final String getClassBodyContextName() {
+        return lookup.find(ClassBodyContext.class)
+                .map(cbc -> cbc.getClass().getName())
+                .orElse(ClassBodyContext.Default.class.getName());
     }
 
     /**
@@ -113,20 +167,83 @@ public abstract class CodeFactory<D extends CodeDelegate> {
     }
 
     /**
+     * Query the base delegate class. This is the superclass for the source
+     * template and any derived code body.
+     *
+     * @return base delegate class
+     */
+    public final Class<D> baseClass() {
+        return baseClass;
+    }
+
+    /**
+     * Query the base imports to be automatically added to the source body.
+     *
+     * @return base imports
+     */
+    public final List<String> baseImports() {
+        return baseImports;
+    }
+
+    /**
      * Create a task for constructing a context or component from a delegate
      * class. This will return a suitable Task subclass that should be
      * configured and used to create a context or component.
      *
      * @return code factory task
      */
-    public abstract Task<D> task();
+    public Task<D> task() {
+        return new Task<>(this, false);
+    }
+
+    /**
+     * Create a component {@link CodeFactory.Base} for the given base delegate
+     * class, from which can be created individual CodeFactory instances. The
+     * base class and default imports will be used to wrap user sources passed
+     * across to the compiler. The context creator function is used to wrap the
+     * compiled delegate in a {@link CodeContext}, and will usually correspond
+     * to <code>(task, delegate) -> new XXXCodeContext(new
+     * XXXCodeConnector(task, delegate))</code>
+     *
+     * @param <B> base delegate type
+     * @param baseClass base delegate superclass
+     * @param baseImports default base imports
+     * @param contextCreator create context for delegate
+     * @return code factory base
+     */
+    public static <B extends CodeDelegate> Base<B> base(Class<B> baseClass,
+            List<String> baseImports,
+            BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator) {
+        return new Base<>(baseClass, baseImports, CodeComponent::new, contextCreator, Lookup.EMPTY);
+    }
+
+    /**
+     * Create a container {@link CodeFactory.Base} for the given base delegate
+     * class, from which can be created individual CodeFactory instances. The
+     * base class and default imports will be used to wrap user sources passed
+     * across to the compiler. The context creator function is used to wrap the
+     * compiled delegate in a {@link CodeContext}, and will usually correspond
+     * to <code>(task, delegate) -> new XXXCodeContext(new
+     * XXXCodeConnector(task, delegate))</code>
+     *
+     * @param <B> base delegate type
+     * @param baseClass base delegate superclass
+     * @param baseImports default base imports
+     * @param contextCreator create context for delegate
+     * @return code factory base
+     */
+    public static <B extends CodeContainerDelegate> Base<B> containerBase(Class<B> baseClass,
+            List<String> baseImports,
+            BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator) {
+        return new Base<>(baseClass, baseImports, CodeContainer::new, contextCreator, Lookup.EMPTY);
+    }
 
     /**
      * A task for creating a component or context for a given delegate.
      *
      * @param <D> delegate base type
      */
-    public static abstract class Task<D extends CodeDelegate> {
+    public static class Task<D extends CodeDelegate> {
 
         private final CodeFactory<D> factory;
 
@@ -139,7 +256,11 @@ public abstract class CodeFactory<D extends CodeDelegate> {
          * @param factory
          */
         public Task(CodeFactory<D> factory) {
-            this.factory = factory;
+            this(factory, true);
+        }
+
+        private Task(CodeFactory<D> factory, boolean verify) {
+            this.factory = Objects.requireNonNull(factory);
         }
 
         /**
@@ -174,7 +295,7 @@ public abstract class CodeFactory<D extends CodeDelegate> {
          * @return code component
          */
         public CodeComponent<D> createComponent(D delegate) {
-            CodeComponent<D> cmp = new CodeComponent<>();
+            CodeComponent<D> cmp = factory.componentCreator.get();
             cmp.install(createContext(delegate));
             return cmp;
         }
@@ -227,7 +348,70 @@ public abstract class CodeFactory<D extends CodeDelegate> {
          * @param delegate delegate to create context for
          * @return code context
          */
-        protected abstract CodeContext<D> createCodeContext(D delegate);
+        protected CodeContext<D> createCodeContext(D delegate) {
+            return factory.contextCreator.apply(this, delegate);
+        }
+
+    }
+
+    /**
+     * Base code factory for a given base delegate class. Encompasses shared
+     * configuration, component and context creation. Create specific
+     * CodeFactory instances with the create methods. See
+     * {@link #base(java.lang.Class, java.util.List, java.util.function.BiFunction)}
+     * and
+     * {@link #containerBase(java.lang.Class, java.util.List, java.util.function.BiFunction)}
+     *
+     * @param <B> base delegate type
+     */
+    public static final class Base<B extends CodeDelegate> {
+
+        private final Class<B> baseClass;
+        private final List<String> baseImports;
+        private final Supplier<? extends CodeComponent<B>> componentCreator;
+        private final BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator;
+        private final Lookup lookup;
+
+        Base(Class<B> baseClass,
+                List<String> baseImports,
+                Supplier<? extends CodeComponent<B>> componentCreator,
+                BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator,
+                Lookup lookup) {
+            this.baseClass = Objects.requireNonNull(baseClass);
+            this.baseImports = List.copyOf(baseImports);
+            this.componentCreator = Objects.requireNonNull(componentCreator);
+            this.contextCreator = Objects.requireNonNull(contextCreator);
+            this.lookup = Objects.requireNonNull(lookup);
+        }
+
+        /**
+         * Create a CodeFactory with the given component type, default
+         * precompiled delegate class, and source class body corresponding to
+         * the compiled delegate.
+         *
+         * @param type component type as String, passed to
+         * {@link ComponentType#of(java.lang.String)}
+         * @param defaultDelegate default delegate class
+         * @param defaultSource default source class body
+         * @return code factory
+         */
+        public CodeFactory<B> create(String type, Class<? extends B> defaultDelegate, String defaultSource) {
+            return create(ComponentType.of(type), defaultDelegate, defaultSource);
+        }
+
+        /**
+         * Create a CodeFactory with the given component type, default
+         * precompiled delegate class, and source class body corresponding to
+         * the compiled delegate.
+         *
+         * @param type component type
+         * @param defaultDelegate default delegate class
+         * @param defaultSource default source class body
+         * @return code factory
+         */
+        public CodeFactory<B> create(ComponentType type, Class<? extends B> defaultDelegate, String defaultSource) {
+            return new CodeFactory<>(this, type, defaultDelegate, defaultSource);
+        }
 
     }
 

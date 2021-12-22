@@ -505,6 +505,10 @@ public abstract class CodeContext<D extends CodeDelegate> {
         }
         if (execCtxt != null) {
             if (execCtxt.getState() == ExecutionContext.State.ACTIVE) {
+                var parent = getComponent().getParent();
+                if (parent instanceof CodeComponent) {
+                    ((CodeComponent) parent).getCodeContext().checkActive();
+                }
                 handleStateChanged(execCtxt, true);
                 return execState == ExecutionContext.State.ACTIVE;
             }

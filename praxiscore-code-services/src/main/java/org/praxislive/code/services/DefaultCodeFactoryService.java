@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.base.AbstractRoot;
@@ -44,7 +42,6 @@ import org.praxislive.code.CodeContext;
 import org.praxislive.code.CodeContextFactoryService;
 import org.praxislive.code.CodeDelegate;
 import org.praxislive.code.CodeFactory;
-import org.praxislive.code.ClassBodyContext;
 import org.praxislive.code.SharedCodeService;
 import org.praxislive.code.services.tools.ClassBodyWrapper;
 import org.praxislive.core.Call;
@@ -70,9 +67,6 @@ import org.praxislive.core.types.PBytes;
  */
 public class DefaultCodeFactoryService extends AbstractRoot
         implements RootHub.ServiceProvider {
-
-    private final static ConcurrentMap<ClassCacheKey, Class<? extends CodeDelegate>> CODE_CACHE
-            = new ConcurrentHashMap<>();
 
     private final static String SHARED_PREFIX = "SHARED.";
     private final static String WRAPPED_CLASS_NAME = "$";
@@ -119,12 +113,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
                 CodeCompilerService.COMPILE);
     }
 
-    private String wrapClassBody(String fullClassName, ClassBodyContext<?> cbc, String code) {
+    private String wrapClassBody(Class<?> baseClass, List<String> imports, String fullClassName, String code) {
         return ClassBodyWrapper.create()
                 .className(fullClassName)
-                .extendsType(cbc.getExtendedClass())
-                .implementsTypes(List.of(cbc.getImplementedInterfaces()))
-                .defaultImports(List.of(cbc.getDefaultImports()))
+                .extendsType(baseClass)
+                .defaultImports(imports)
                 .wrap(code);
     }
 
@@ -195,11 +188,9 @@ public class DefaultCodeFactoryService extends AbstractRoot
 
         @Override
         protected Call processInvoke(Call call) throws Exception {
-            CodeFactory<CodeDelegate> codeFactory = findCodeFactory();
-            ClassBodyContext<?> cbc = codeFactory.getClassBodyContext();
-            String src = codeFactory.getSourceTemplate();
-            Class<? extends CodeDelegate> cls = codeFactory.getDefaultDelegateClass()
-                    .orElseGet(() -> CODE_CACHE.get(new ClassCacheKey(cbc, src)));
+            var codeFactory = findCodeFactory();
+            var src = codeFactory.getSourceTemplate();
+            var cls = codeFactory.getDefaultDelegateClass().orElse(null);
             if (cls != null) {
                 return call.reply(PReference.of(createComponent(codeFactory, cls)));
             } else {
@@ -207,7 +198,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(cbc, src));
+                        createCompilerTask(codeFactory, src));
             }
 
         }
@@ -220,7 +211,6 @@ public class DefaultCodeFactoryService extends AbstractRoot
                 Class<? extends CodeDelegate> cls = extractCodeDelegateClass(data, null);
                 CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
                 CodeComponent<CodeDelegate> cmp = codeFactory.task().createComponent(delegate);
-                CODE_CACHE.putIfAbsent(new ClassCacheKey(codeFactory.getClassBodyContext(), codeFactory.getSourceTemplate()), cls);
                 return getActiveCall().reply(PReference.of(cmp));
             } catch (Throwable throwable) {
                 if (throwable instanceof Exception) {
@@ -231,6 +221,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             }
         }
 
+        @SuppressWarnings("unchecked")
         private CodeFactory<CodeDelegate> findCodeFactory() throws Exception {
             ComponentType type = ComponentType.from(getActiveCall().args().get(0)).orElseThrow();
             ComponentFactory cmpFactory = registry.getComponentFactory(type);
@@ -244,9 +235,10 @@ public class DefaultCodeFactoryService extends AbstractRoot
             return codeFactory.task().createComponent(delegateClass.getDeclaredConstructor().newInstance());
         }
 
-        private PMap createCompilerTask(ClassBodyContext<?> cbc, String code) {
+        private PMap createCompilerTask(CodeFactory<?> codeFactory, String code) {
             String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
-            String source = wrapClassBody(fullClassName, cbc, code);
+            String source = wrapClassBody(codeFactory.baseClass(), codeFactory.baseImports(),
+                    fullClassName, code);
             return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source));
         }
 
@@ -262,12 +254,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
             usingShared = false;
             CodeContextFactoryService.Task<CodeDelegate> task = findTask();
             CodeFactory<CodeDelegate> factory = task.getFactory();
-            ClassBodyContext<CodeDelegate> cbc = factory.getClassBodyContext();
             String src = task.getCode();
             Class<? extends CodeDelegate> cls;
             if (src.isBlank()) {
                 src = factory.getSourceTemplate();
-                cls = CODE_CACHE.get(new ClassCacheKey(cbc, src));
+                cls = factory.getDefaultDelegateClass().orElse(null);
             } else {
                 // @TODO weak code cache for user code
                 cls = null;
@@ -283,7 +274,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(task, cbc, fullClassName, src, usingShared));
+                        createCompilerTask(task, fullClassName, src, usingShared));
             }
 
         }
@@ -316,6 +307,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             return super.processError(call);
         }
 
+        @SuppressWarnings("unchecked")
         private CodeContextFactoryService.Task<CodeDelegate> findTask() throws Exception {
             return PReference.from(getActiveCall().args().get(0))
                     .flatMap(r -> r.as(CodeContextFactoryService.Task.class))
@@ -334,11 +326,13 @@ public class DefaultCodeFactoryService extends AbstractRoot
         }
 
         private PMap createCompilerTask(CodeContextFactoryService.Task<?> task,
-                ClassBodyContext<?> cbc,
                 String fullClassName,
                 String code,
                 boolean shared) {
-            String source = wrapClassBody(fullClassName, cbc, code);
+            var codeFactory = task.getFactory();
+            String source = wrapClassBody(codeFactory.baseClass(),
+                    codeFactory.baseImports(),
+                    fullClassName, code);
             if (shared) {
                 PMap sharedClasses;
                 ClassLoader sharedCL = task.getSharedClassLoader();
@@ -429,8 +423,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
                         var depAddress = e.getKey();
                         var depTask = e.getValue();
                         String clsName = codeAddressToPackage(depAddress) + "." + WRAPPED_CLASS_NAME;
-                        String source = wrapClassBody(clsName,
-                                depTask.getFactory().getClassBodyContext(),
+                        var codeFactory = depTask.getFactory();
+                        String source = wrapClassBody(
+                                codeFactory.baseClass(),
+                                codeFactory.baseImports(),
+                                clsName,
                                 depTask.getExistingSource());
                         return Map.entry(clsName, source);
                     })

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,7 +37,7 @@ public class InfoProperty implements Control {
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isReplyRequired()) {
-            router.route(call.reply(context.getInfo()));
+            router.route(call.reply(context.getComponent().getInfo()));
         }
     }
 

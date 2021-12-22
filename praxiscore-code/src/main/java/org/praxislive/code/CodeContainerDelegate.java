@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -14,39 +14,37 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.base.components;
+package org.praxislive.code;
 
-import org.praxislive.base.AbstractComponentFactory;
-import org.praxislive.core.services.ComponentFactory;
-import org.praxislive.core.services.ComponentFactoryProvider;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.stream.Stream;
 
 /**
  *
  */
-public class BaseComponents implements ComponentFactoryProvider {
+public class CodeContainerDelegate extends CodeDelegate {
     
-    private final static ComponentFactory FACTORY = new Factory();
+    public void init() {}
     
-    @Override
-    public ComponentFactory getFactory() {
-        return FACTORY;
-    }
-    
-    private static class Factory extends AbstractComponentFactory {
-        
-        private Factory() {
-            build();
-        }
-        
-        private void build() {
-            
-//            add("core:container", UserContainer.class);
-            
+    public final Stream<String> children() {
+        var ctxt = getContext();
+        if (ctxt instanceof CodeContainer.Context) {
+            return ((CodeContainer.Context<?>) ctxt).getComponent().children();
+        } else {
+            return Stream.empty();
         }
     }
+    
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface ProxyPorts {}
+
 }

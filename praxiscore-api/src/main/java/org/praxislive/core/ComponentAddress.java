@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,23 +29,17 @@ import java.util.regex.Pattern;
 import org.praxislive.core.types.PMap;
 
 /**
- * Address of a Component
- *
- * A component is a slash separated path of IDs, starting with the ID of the Root
- * that the Component is in.
- *
- * eg. /rootID/parentID/componentID
- *
- * ComponentAddresses are always absolute.
- *
+ * Address of a Component. A component is a slash separated path of IDs,
+ * starting with the ID of the Root that the Component is in, eg.
+ * {@code /rootID/parentID/componentID}. ComponentAddresses are always absolute.
  */
 public final class ComponentAddress extends Value {
-    
+
     private static final String ADDRESS_REGEX = "\\G/([_\\-\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*)";
     private static final String ID_REGEX = "[_\\-\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*";
     private static final Pattern ID_PATTERN = Pattern.compile(ID_REGEX);
     private static final Pattern ADDRESS_PATTERN = Pattern.compile(ADDRESS_REGEX);
-    
+
     private final String[] address;
     private final String addressString;
 
@@ -81,7 +75,7 @@ public final class ComponentAddress extends Value {
     public String componentID() {
         return address[address.length - 1];
     }
-    
+
     /**
      * Equivalent to componentID(0).
      *
@@ -90,7 +84,12 @@ public final class ComponentAddress extends Value {
     public String rootID() {
         return address[0];
     }
-    
+
+    /**
+     * The parent address. Returns null if this is a root address (depth == 1).
+     *
+     * @return parent address, or null if root address.
+     */
     public ComponentAddress parent() {
         if (address.length == 1) {
             return null;
@@ -102,7 +101,38 @@ public final class ComponentAddress extends Value {
             return new ComponentAddress(a, s);
         }
     }
-    
+
+    /**
+     * Resolve the provided path or child ID against this address. The path
+     * should be relative and not start with a slash.
+     *
+     * @param path relative address to resolve
+     * @return resolved address
+     */
+    public ComponentAddress resolve(String path) {
+        return ComponentAddress.of(this, path);
+    }
+
+    /**
+     * Get a {@link ControlAddress} for a control on this component.
+     *
+     * @param id control id
+     * @return control address
+     */
+    public ControlAddress control(String id) {
+        return ControlAddress.of(this, id);
+    }
+
+    /**
+     * Get a {@link PortAddress} for a port on this component.
+     *
+     * @param id port id
+     * @return port address
+     */
+    public PortAddress port(String id) {
+        return PortAddress.of(this, id);
+    }
+
     @Override
     public String toString() {
         return this.addressString;
@@ -136,7 +166,7 @@ public final class ComponentAddress extends Value {
         return new ComponentAddress(address, cache(addressString));
 
     }
-    
+
     /**
      * Create an address from the supplied String
      *
@@ -151,7 +181,7 @@ public final class ComponentAddress extends Value {
             throw new IllegalArgumentException(ex);
         }
     }
-    
+
     /**
      * Create a ComponentAddress by adding the supplied path to the end of the
      * supplied ComponentAddress.
@@ -167,9 +197,9 @@ public final class ComponentAddress extends Value {
         } catch (ValueFormatException ex) {
             throw new IllegalArgumentException(ex);
         }
-        
+
     }
-    
+
     private static ComponentAddress coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ComponentAddress) {
             return (ComponentAddress) arg;
@@ -177,7 +207,7 @@ public final class ComponentAddress extends Value {
             return parse(arg.toString());
         }
     }
-    
+
     public static Optional<ComponentAddress> from(Value arg) {
         try {
             return Optional.of(coerce(arg));
@@ -185,7 +215,7 @@ public final class ComponentAddress extends Value {
             return Optional.empty();
         }
     }
-    
+
     /**
      *
      * @param id
@@ -195,8 +225,6 @@ public final class ComponentAddress extends Value {
         return ID_PATTERN.matcher(id).matches();
     }
 
-
-    
     private static String[] parseAddress(String addressString) throws ValueFormatException {
         Matcher match = ADDRESS_PATTERN.matcher(addressString);
         ArrayList<String> addressList = new ArrayList<String>();
@@ -210,9 +238,8 @@ public final class ComponentAddress extends Value {
             throw new ValueFormatException();
         }
         return addressList.toArray(new String[addressList.size()]);
-        
-    }
 
+    }
 
     public static ArgumentInfo info() {
         return ArgumentInfo.of(ComponentAddress.class, PMap.EMPTY);

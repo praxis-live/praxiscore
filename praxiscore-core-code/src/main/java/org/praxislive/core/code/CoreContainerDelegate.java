@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -14,39 +14,33 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.base.components;
+package org.praxislive.core.code;
 
-import org.praxislive.base.AbstractComponentFactory;
-import org.praxislive.core.services.ComponentFactory;
-import org.praxislive.core.services.ComponentFactoryProvider;
+import org.praxislive.code.CodeContainerDelegate;
+import org.praxislive.code.DefaultDelegateAPI;
 
 /**
  *
+ *
  */
-public class BaseComponents implements ComponentFactoryProvider {
-    
-    private final static ComponentFactory FACTORY = new Factory();
-    
+public class CoreContainerDelegate extends CodeContainerDelegate implements DefaultDelegateAPI {
+
     @Override
-    public ComponentFactory getFactory() {
-        return FACTORY;
+    public void init() {
     }
-    
-    private static class Factory extends AbstractComponentFactory {
-        
-        private Factory() {
-            build();
-        }
-        
-        private void build() {
-            
-//            add("core:container", UserContainer.class);
-            
-        }
+
+    public void starting() {
     }
+
+    public void update() {
+    }
+
+    public void stopping() {
+    }
+
 }

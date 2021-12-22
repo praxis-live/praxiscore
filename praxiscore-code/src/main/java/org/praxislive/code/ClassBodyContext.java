@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2021 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,6 +25,7 @@ package org.praxislive.code;
  *
  * 
  */
+@Deprecated
 public abstract class ClassBodyContext<T> {
     
     public final static String KEY = "class-body-context";
@@ -60,6 +61,19 @@ public abstract class ClassBodyContext<T> {
         return obj == null ? false : this.getClass().equals(obj.getClass());
     }
     
+    @Deprecated
+    public static class Default extends ClassBodyContext<DefaultCodeDelegate> {
+        
+        public Default() {
+            super(DefaultCodeDelegate.class);
+        }
+        
+        @Override
+        public String[] getDefaultImports() {
+            return CodeUtils.defaultImports();
+        }
+        
+    }
     
     
 }
