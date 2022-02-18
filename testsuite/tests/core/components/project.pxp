@@ -1,30 +1,5 @@
 hub {
-  enable-fileserver false
-  proxies {
-    video {
-      host localhost
-      port auto
-      id-pattern *
-      type-pattern video
-      exec {
-        command default
-        java-options {
-          -XstartOnFirstThread
-          -XX:+IgnoreUnrecognizedVMOptions
-          -Djava.awt.headless=true
-        }
-      }
-    }
-    audio {
-      host localhost
-      port auto
-      id-pattern *
-      type-pattern audio
-      exec {
-        command default
-      }
-    }
-  }
+
 }
 compiler {
   release 11
