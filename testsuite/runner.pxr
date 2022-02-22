@@ -1,5 +1,5 @@
 @ /runner root:data {
-  #%praxis.version 5.3.0
+  #%praxis.version 5.4.0
   .shared-code "SHARED.Utils \{package SHARED;
 
 import java.util.concurrent.Callable;
@@ -74,21 +74,24 @@ public class Utils \{
   @ ./exit core:custom {
     #%graph.x 599
     #%graph.y 79
-    .code "
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
 
     @T(1)
     void exitOK() \{
-        tellIn(0.2, self(\"exit\"), 0);
+        exit(0);
     \}
 
     @T(2)
     void exitFail() \{
-        tellIn(0.2, self(\"exit\"), 1);
+        exit(1);
     \}
 
-    @In(1) @Config.Port(false)
-    void exit(int value) \{
-        System.exit(value);
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
     \}
 
 "

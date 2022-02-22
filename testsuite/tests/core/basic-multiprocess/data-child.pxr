@@ -1,0 +1,35 @@
+@ /data-child root:data {
+  #%praxis.version 5.4.0
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 125
+    #%graph.y 131
+  }
+  @ ./gen-data core:custom {
+    #%graph.x 393
+    #%graph.y 131
+    .code "
+
+    @Out(1) Output out;
+
+    byte\[\] data;
+
+    @Override
+    public void init() \{
+        data = new byte\[\]\{0, 1, 2, 3, 4, 5, 6, 7\};
+    \}
+
+    @T(1)
+    void trigger() \{
+        out.send(PBytes.valueOf(data));
+    \}
+
+"
+  }
+  @ ./send core:routing:send {
+    #%graph.x 659
+    #%graph.y 131
+    .address /data-parent/test.test-bytes
+  }
+  ~ ./start-trigger!out ./gen-data!trigger
+  ~ ./gen-data!out ./send!in
+}

@@ -1,0 +1,29 @@
+hub {
+  enable-fileserver false
+  proxies {
+    child {
+      host localhost
+      port auto
+      id-pattern data-child
+      type-pattern *
+      exec {
+        command default
+        java-options {
+          -Dpraxis.test.child=true
+        }
+      }
+    }
+  }
+}
+compiler {
+  release 11
+}
+libraries {}
+
+# <<<BUILD>>>
+include [file "data-parent.pxr"]
+include [file "data-child.pxr"]
+
+# <<<RUN>>>
+/data-parent.start
+/data-child.start
