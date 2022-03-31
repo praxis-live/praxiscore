@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,15 +41,18 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 
 /**
- *
+ * A property control for shared code classes. A SharedCodeProperty can be added
+ * to a container (eg. Root). The {@link SharedCodeContext} should be added to
+ * the container's lookup where it can be found and used by contained code
+ * components.
  */
 public class SharedCodeProperty implements Control {
 
     public final static ControlInfo INFO
             = Info.control(c -> c.property()
-                    .input(PMap.class)
-                    .defaultValue(PMap.EMPTY)
-                    .property("shared-code", true));
+            .input(PMap.class)
+            .defaultValue(PMap.EMPTY)
+            .property("shared-code", true));
 
     private final SharedCodeContext context;
     private final Lookup.Provider lookupContext;
@@ -60,6 +63,12 @@ public class SharedCodeProperty implements Control {
     private Call activeCall;
     private Call taskCall;
 
+    /**
+     * Create a shared code property.
+     *
+     * @param lookupContext lookup provider, eg. the container
+     * @param logHandler a consumer for logs
+     */
     public SharedCodeProperty(Lookup.Provider lookupContext, Consumer<LogBuilder> logHandler) {
         this.lookupContext = Objects.requireNonNull(lookupContext);
         this.logHandler = Objects.requireNonNull(logHandler);
@@ -78,6 +87,11 @@ public class SharedCodeProperty implements Control {
         }
     }
 
+    /**
+     * The shared code context, which should be added to the container's lookup.
+     * 
+     * @return shared code context
+     */
     public SharedCodeContext getSharedCodeContext() {
         return context;
     }

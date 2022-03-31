@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,8 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.services.LogLevel;
 
 /**
- *
+ * A context object that should be acquired from a {@link SharedCodeProperty}
+ * and added to the container's lookup.
  */
 public class SharedCodeContext {
 
@@ -65,10 +66,10 @@ public class SharedCodeContext {
     Map<ControlAddress, SharedCodeService.DependentTask<?>> createDependentTasks() {
         return dependents.entrySet().stream()
                 .map(e -> Map.entry(e.getKey(),
-                        e.getValue().createSharedCodeReloadTask()))
+                e.getValue().createSharedCodeReloadTask()))
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
     }
-    
+
     void update(SharedCodeService.Result result) throws Exception {
         if (!result.getDependents().keySet().containsAll(dependents.keySet())) {
             throw new IllegalStateException("Dependency missing from reload");
