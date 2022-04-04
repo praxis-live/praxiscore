@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,11 +27,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
-import java.util.EnumMap;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.praxislive.code.userapi.AuxIn;
@@ -87,8 +88,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private final CodeFactory<D> factory;
     private final LogBuilder log;
     private final D delegate;
-    private final Map<ControlDescriptor.Category, Map<Integer, ControlDescriptor>> controls;
-    private final Map<PortDescriptor.Category, Map<Integer, PortDescriptor>> ports;
+    private final Map<String, ControlDescriptor> controls;
+    private final Map<String, PortDescriptor> ports;
     private final Map<String, ReferenceDescriptor> refs;
 
     private List<Plugin> plugins;
@@ -110,8 +111,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         this.factory = task.getFactory();
         this.log = task.getLog();
         this.delegate = delegate;
-        controls = new EnumMap<>(ControlDescriptor.Category.class);
-        ports = new EnumMap<>(PortDescriptor.Category.class);
+        controls = new TreeMap<>();
+        ports = new TreeMap<>();
         refs = new TreeMap<>();
     }
 
@@ -210,23 +211,25 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     }
 
     private Map<String, ControlDescriptor> buildExternalControlMap() {
-        Map<String, ControlDescriptor> map = new LinkedHashMap<>();
-        for (Map<Integer, ControlDescriptor> cat : controls.values()) {
-            for (ControlDescriptor cd : cat.values()) {
-                map.put(cd.getID(), cd);
-            }
-        }
-        return map;
+        return controls.values().stream()
+                .sorted(Comparator.comparing(ControlDescriptor::getCategory)
+                        .thenComparingInt(ControlDescriptor::getIndex)
+                        .thenComparing(ControlDescriptor::getID))
+                .collect(Collectors.toMap(ControlDescriptor::getID,
+                        Function.identity(),
+                        (cd1, cd2) -> cd2,
+                        LinkedHashMap::new));
     }
 
     private Map<String, PortDescriptor> buildExternalPortMap() {
-        Map<String, PortDescriptor> map = new LinkedHashMap<>();
-        for (Map<Integer, PortDescriptor> cat : ports.values()) {
-            for (PortDescriptor pd : cat.values()) {
-                map.put(pd.getID(), pd);
-            }
-        }
-        return map;
+        return ports.values().stream()
+                .sorted(Comparator.comparing(PortDescriptor::getCategory)
+                        .thenComparingInt(PortDescriptor::getIndex)
+                        .thenComparing(PortDescriptor::getID))
+                .collect(Collectors.toMap(PortDescriptor::getID,
+                        Function.identity(),
+                        (pd1, pd2) -> pd2,
+                        LinkedHashMap::new));
     }
 
     private Map<String, ReferenceDescriptor> buildExternalRefsMap() {
@@ -290,7 +293,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param ctl control descriptor
      */
     public void addControl(ControlDescriptor ctl) {
-        controls.computeIfAbsent(ctl.getCategory(), c -> new TreeMap<>()).put(ctl.getIndex(), ctl);
+        controls.put(ctl.getID(), ctl);
     }
 
     /**
@@ -299,7 +302,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param port port descriptor
      */
     public void addPort(PortDescriptor port) {
-        ports.computeIfAbsent(port.getCategory(), c -> new TreeMap<>()).put(port.getIndex(), port);
+        ports.put(port.getID(), port);
     }
 
     /**
