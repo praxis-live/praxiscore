@@ -242,7 +242,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
 
     /**
      * Called during processing to generate the component info from the control
-     * and port maps. May be overridden to configure / extend.
+     * and port maps. May be overridden to configure / extend, although better
+     * to override {@link #buildBaseComponentInfo(org.praxislive.core.Info.ComponentInfoBuilder)},
+     * {@link #buildComponentInfo(java.util.Map, java.util.Map)} or
+     * {@link #buildPortInfo(org.praxislive.core.Info.ComponentInfoBuilder, java.util.Map)}.
      *
      * @param controls map of control IDs and descriptors
      * @param ports map of port IDs and descriptors
@@ -256,13 +259,25 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         buildPortInfo(cmp, ports);
         return cmp.build();
     }
-    
+
+    /**
+     * Build base component info. Called before control and port info is added.
+     * May be overridden to configure / extend.
+     *
+     * @param cmp component info builder
+     */
     protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
         cmp.merge(ComponentProtocol.API_INFO);
         cmp.property(ComponentInfo.KEY_DYNAMIC, true);
         cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.getComponentType());
     }
-    
+
+    /**
+     * Build control info. May be overridden to configure / extend.
+     *
+     * @param cmp component info builder
+     * @param controls map of control descriptors
+     */
     protected void buildControlInfo(Info.ComponentInfoBuilder cmp, Map<String, ControlDescriptor> controls) {
         for (var e : controls.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
@@ -270,7 +285,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             }
         }
     }
-    
+
+    /**
+     * Build port info. May be overridden to configure / extend.
+     *
+     * @param cmp component info builder
+     * @param ports map of port descriptors
+     */
     protected void buildPortInfo(Info.ComponentInfoBuilder cmp, Map<String, PortDescriptor> ports) {
         for (var e : ports.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
@@ -278,7 +299,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             }
         }
     }
-    
+
     private boolean excludeFromInfo(String id, ControlDescriptor desc) {
         return desc.getInfo() == null || id.startsWith("_");
     }
@@ -392,8 +413,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * Called during processing to analyse each discovered field. May be
      * overridden to extend. The default behaviour will first pass to available
      * plugins (see {@link Plugin}), then check for property, trigger, in,
-     * aux-in, out, aux-out and inject annotations in that order. First valid
-     * match wins.
+     * aux-in, out, aux-out, inject, proxy and persist annotations, in that
+     * order. First valid match wins.
      *
      * @param field discovered field
      */
@@ -448,7 +469,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         Persist persist = field.getAnnotation(Persist.class);
         if (persist != null && analysePersistField(persist, field)) {
             return;
-        } 
+        }
     }
 
     /**
@@ -625,9 +646,9 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 return false;
             }
         }
-        
-        if (ann.provider() != Ref.Provider.class ||
-                Ref.Provider.getDefault().isSupportedType(field.getType())) {
+
+        if (ann.provider() != Ref.Provider.class
+                || Ref.Provider.getDefault().isSupportedType(field.getType())) {
             InjectRefImpl.Descriptor idsc = InjectRefImpl.Descriptor.create(this, ann, field);
             if (idsc != null) {
                 addReference(idsc);
@@ -642,14 +663,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             addControl(pdsc);
             return true;
         }
-        
+
         log.log(LogLevel.WARNING, "No handler found for injected field " + field.getName());
         return false;
-        
+
     }
 
     private boolean analyseProxyField(Proxy ann, Field field) {
-        
+
         ProxyDescriptor desc = ProxyDescriptor.create(this, ann, field);
         if (desc != null) {
             addReference(desc);
@@ -657,11 +678,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         } else {
             return false;
         }
-        
+
     }
-    
+
     private boolean analysePersistField(Persist ann, Field field) {
-        
+
         PersistDescriptor desc = PersistDescriptor.create(this, ann, field);
         if (desc != null) {
             addReference(desc);
@@ -669,9 +690,9 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         } else {
             return false;
         }
-        
+
     }
-    
+
     private boolean analyseTriggerMethod(T ann, Method method) {
         TriggerControl.Descriptor tdsc
                 = TriggerControl.Descriptor.create(this, ann, method);
@@ -788,10 +809,16 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return syntheticIdx++;
     }
 
+    /**
+     * Return next index to use for internal descriptors. Increments and returns
+     * an int on each call, not based on registered descriptors.
+     *
+     * @return next index
+     */
     protected int getInternalIndex() {
         return internalIdx++;
     }
-    
+
     ArgumentInfo infoFromType(Type typeAnnotation) {
         Class<? extends Value> valueCls = typeAnnotation.value();
         PMap properties = createPropertyMap(typeAnnotation.properties());
@@ -819,16 +846,49 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return valueType.converter().apply(PString.of(defaultString)).orElse(PString.EMPTY);
     }
 
+    /**
+     * Plugin implementations should be registered via service loader mechanism
+     * to extend behaviour of CodeConnectors.
+     */
     public static interface Plugin {
 
+        /**
+         * Analyse the given field, configuring the CodeConnector as required.
+         * This function should return <code>true</code> if the plugin has taken
+         * "ownership" of the provided field and no further processing should be
+         * done. Default implementation always returns false.
+         *
+         * @param connector code connector
+         * @param field field to analyse
+         * @return true if processing should stop
+         */
         default boolean analyseField(CodeConnector<?> connector, Field field) {
             return false;
         }
 
+        /**
+         * Analyse the given method, configuring the CodeConnector as required.
+         * This function should return <code>true</code> if the plugin has taken
+         * "ownership" of the provided method and no further processing should
+         * be done. Default implementation always returns false.
+         *
+         * @param connector code connector
+         * @param method method to analyse
+         * @return true if processing should stop
+         */
         default boolean analyseMethod(CodeConnector<?> connector, Method method) {
             return false;
         }
 
+        /**
+         * Check whether the provided CodeConnector is supported (eg. right
+         * type). If this method returns <code>false</code> then this plugin
+         * will not be used for processing any fields and methods by the
+         * connector. Default implementation always returns <code>true</code>.
+         *
+         * @param connector code connector to verify
+         * @return true if connector is supported
+         */
         default boolean isSupportedConnector(CodeConnector<?> connector) {
             return true;
         }
