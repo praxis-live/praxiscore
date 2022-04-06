@@ -26,6 +26,8 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -123,9 +125,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     protected void process() {
         plugins = ALL_PLUGINS.stream().filter(p -> p.isSupportedConnector(this))
                 .collect(Collectors.toList());
-        Class<? extends CodeDelegate> cls = delegate.getClass();
-        analyseFields(cls.getDeclaredFields());
-        analyseMethods(cls.getDeclaredMethods());
+        analyseFields(extractFieldsToBase(delegate, factory.baseClass()));
+        analyseMethods(extractMethodsToBase(delegate, factory.baseClass()));
         addDefaultControls();
         addDefaultPorts();
         buildExternalData();
@@ -214,7 +215,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return controls.values().stream()
                 .sorted(Comparator.comparing(ControlDescriptor::getCategory)
                         .thenComparingInt(ControlDescriptor::getIndex)
-                        .thenComparing(ControlDescriptor::getID))
+                        .thenComparing(ControlDescriptor::getID, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toMap(ControlDescriptor::getID,
                         Function.identity(),
                         (cd1, cd2) -> cd2,
@@ -225,7 +226,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return ports.values().stream()
                 .sorted(Comparator.comparing(PortDescriptor::getCategory)
                         .thenComparingInt(PortDescriptor::getIndex)
-                        .thenComparing(PortDescriptor::getID))
+                        .thenComparing(PortDescriptor::getID, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toMap(PortDescriptor::getID,
                         Function.identity(),
                         (pd1, pd2) -> pd2,
@@ -846,6 +847,32 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return valueType.converter().apply(PString.of(defaultString)).orElse(PString.EMPTY);
     }
 
+    private Field[] extractFieldsToBase(D delegate, Class<?> base) {
+        Class<?> cls = delegate.getClass();
+        if (cls.getSuperclass().equals(base)) {
+            return cls.getDeclaredFields();
+        }
+        List<Field> fields = new ArrayList<>();
+        while (cls != null && !cls.equals(base)) {
+            fields.addAll(0, Arrays.asList(cls.getDeclaredFields()));
+            cls = cls.getSuperclass();
+        }
+        return fields.toArray(Field[]::new);
+    }
+    
+    private Method[] extractMethodsToBase(D delegate, Class<?> base) {
+        Class<?> cls = delegate.getClass();
+        if (cls.getSuperclass().equals(base)) {
+            return cls.getDeclaredMethods();
+        }
+        List<Method> fields = new ArrayList<>();
+        while (cls != null && !cls.equals(base)) {
+            fields.addAll(0, Arrays.asList(cls.getDeclaredMethods()));
+            cls = cls.getSuperclass();
+        }
+        return fields.toArray(Method[]::new);
+    }
+    
     /**
      * Plugin implementations should be registered via service loader mechanism
      * to extend behaviour of CodeConnectors.
