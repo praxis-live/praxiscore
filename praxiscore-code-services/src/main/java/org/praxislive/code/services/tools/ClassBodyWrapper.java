@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Neil C Smith
+ * Copyright 2022 Neil C Smith
  *
  * Forked from Janino - An embedded Java[TM] compiler
  *
@@ -27,9 +27,11 @@
  */
 package org.praxislive.code.services.tools;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -92,11 +94,35 @@ public class ClassBodyWrapper {
     public String wrap(String source) {
         StringBuilder sb = new StringBuilder();
 
-        Map<Boolean, List<String>> partitionedSource = source.lines()
-                .collect(Collectors.partitioningBy(IMPORT_STATEMENT_PATTERN.asPredicate()));
+        Map<LineCategory, List<String>> partitionedSource = source.lines()
+                .collect(Collectors.groupingBy(ClassBodyWrapper::categorize,
+                        () -> new EnumMap<>(LineCategory.class),
+                        Collectors.toList()));
 
-        List<String> sourceImports = partitionedSource.get(true);
-        List<String> sourceBody = partitionedSource.get(false);
+        List<String> sourceExtends = partitionedSource.getOrDefault(
+                LineCategory.EXTENDS, List.of());
+        String superclass;
+        if (sourceExtends.isEmpty()) {
+            if (extendedType != null) {
+                superclass = extendedType.getCanonicalName();
+            } else {
+                superclass = null;
+            }
+        } else {
+            if (sourceExtends.size() > 1) {
+                throw new IllegalArgumentException("Multiple extends declarations found");
+            }
+            Matcher matcher = EXTENDS_STATEMENT_PATTERN.matcher(sourceExtends.get(0));
+            if (!matcher.lookingAt()) {
+                throw new IllegalStateException();
+            }
+            superclass = matcher.group(1);
+        }
+        
+        List<String> sourceImports = partitionedSource.getOrDefault(
+                LineCategory.IMPORT, List.of());
+        List<String> sourceBody = partitionedSource.getOrDefault(
+                LineCategory.BODY, List.of());
 
         // Break the class name up into package name and simple class name.
         String packageName; // null means default package.
@@ -122,8 +148,8 @@ public class ClassBodyWrapper {
 
         sb.append("public class ").append(simpleClassName);
 
-        if (extendedType != null) {
-            sb.append(" extends ").append(extendedType.getCanonicalName());
+        if (superclass != null) {
+            sb.append(" extends ").append(superclass);
         }
 
         if (!implementedTypes.isEmpty()) {
@@ -148,13 +174,35 @@ public class ClassBodyWrapper {
     }
 
     private static final Pattern IMPORT_STATEMENT_PATTERN = Pattern.compile(
-            "\\bimport\\s+"
+            "\\s*import\\s+"
             + "("
             + "(?:static\\s+)?"
-            + "[\\p{javaLowerCase}\\p{javaUpperCase}_\\$][\\p{javaLowerCase}\\p{javaUpperCase}\\d_\\$]*"
-            + "(?:\\.[\\p{javaLowerCase}\\p{javaUpperCase}_\\$][\\p{javaLowerCase}\\p{javaUpperCase}\\d_\\$]*)*"
+            + "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*"
+            + "(?:\\.\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*)*"
             + "(?:\\.\\*)?"
             + ");"
     );
 
+    private static final Pattern EXTENDS_STATEMENT_PATTERN = Pattern.compile(
+            "\\s*extends\\s+"
+            + "("
+            + "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*"
+            + "(?:\\.\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*)*"
+            + "(?:\\.\\*)?"
+            + ");"
+    );
+
+    private static enum LineCategory {
+        BODY, IMPORT, EXTENDS
+    };
+
+    private static LineCategory categorize(String line) {
+        if (IMPORT_STATEMENT_PATTERN.matcher(line).lookingAt()) {
+            return LineCategory.IMPORT;
+        } else if (EXTENDS_STATEMENT_PATTERN.matcher(line).lookingAt()) {
+            return LineCategory.EXTENDS;
+        } else {
+            return LineCategory.BODY;
+        }
+    }
 }
