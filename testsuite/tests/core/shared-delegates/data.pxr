@@ -1,0 +1,118 @@
+@ /data root:data {
+  #%praxis.version 5.5.0-SNAPSHOT
+  .shared-code "SHARED.TestDelegate \{package SHARED;
+
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+import static org.praxislive.code.userapi.Constants.*;           
+
+public class TestDelegate extends org.praxislive.core.code.CoreCodeDelegate \{
+
+    @Out(1) Output out;
+    
+    @In(1) void in(String input) \{
+        String value = input + suffix();
+//        log(INFO, \"Value is : \" + value);
+        out.send(value);
+    \}
+    
+    protected String suffix() \{
+        return \"\";
+    \}
+    
+\}                    
+          \}"
+  @ ./exit core:custom {
+    #%graph.x 866
+    #%graph.y 147
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 48
+    #%graph.y 108
+  }
+  @ ./shared1 core:custom {
+    #%graph.x 279
+    #%graph.y 147
+    .code "extends SHARED.TestDelegate;
+
+
+    
+    
+"
+  }
+  @ ./shared2 core:custom {
+    #%graph.x 461
+    #%graph.y 147
+    .code "extends SHARED.TestDelegate;
+
+
+    @P(1) String suffix;
+    
+    @Override
+    protected String suffix() \{
+        return suffix;
+    \}
+    
+"
+    .suffix " World!"
+  }
+  @ ./message core:variable {
+    #%graph.x 176
+    #%graph.y 265
+    .value Hello
+  }
+  @ ./test core:custom {
+    #%graph.x 672
+    #%graph.y 121
+    .code "
+
+    @P(1) @Config.Preferred String expected;
+
+    @Out(1) Output testOK;
+    @Out(2) Output testError;
+
+    @In(1)
+    void testValue(String value) \{
+        if (value.equals(expected)) \{
+            testOK.send();
+        \} else \{
+            log(ERROR, \"<FAIL> Expected : \" + expected + \", received : \" + value);
+            testError.send();
+        \}
+    \}
+
+"
+    .expected "Hello World!"
+  }
+  ~ ./start-trigger!out ./message!trigger
+  ~ ./shared2!out ./test!test-value
+  ~ ./test!test-ok ./exit!exit-ok
+  ~ ./test!test-error ./exit!exit-fail
+  ~ ./shared1!out ./shared2!in
+  ~ ./message!out ./shared1!in
+}
