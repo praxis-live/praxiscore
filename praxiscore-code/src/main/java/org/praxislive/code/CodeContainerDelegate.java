@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,12 +28,18 @@ import java.lang.annotation.Target;
 import java.util.stream.Stream;
 
 /**
- *
+ * Base class for user rewritable container code.
  */
 public class CodeContainerDelegate extends CodeDelegate {
-    
-    public void init() {}
-    
+
+    public void init() {
+    }
+
+    /**
+     * Stream of child IDs.
+     *
+     * @return stream of child IDs
+     */
     public final Stream<String> children() {
         var ctxt = getContext();
         if (ctxt instanceof CodeContainer.Context) {
@@ -42,9 +48,14 @@ public class CodeContainerDelegate extends CodeDelegate {
             return Stream.empty();
         }
     }
-    
+
+    /**
+     * Annotation to be used on the {@link #init()} method of the delegate to
+     * control addition of child port proxying capability.
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    public static @interface ProxyPorts {}
+    public static @interface ProxyPorts {
+    }
 
 }

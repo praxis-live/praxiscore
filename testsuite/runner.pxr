@@ -44,11 +44,11 @@ public class Utils \{
         Callable<String> task = () -> \{
             try (var in = new BufferedReader(new InputStreamReader(process.getInputStream()))) \{
                 String ret = in.lines().collect(Collectors.joining(System.lineSeparator()));
-//                int exit = process.waitFor();
-//                if (exit != 0) \{
-//                    ret = ret + System.lineSeparator()
-//                            + \"<FAIL> Test process output : \" + exit;
-//                \}
+                int exit = process.waitFor();
+                if (exit != 0) \{
+                    ret = ret + System.lineSeparator()
+                            + \"<FAIL> Test process output : \" + exit;
+                \}
                 return ret;
             \}
         \};

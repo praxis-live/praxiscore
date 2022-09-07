@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -49,7 +49,18 @@ import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PMap;
 
 /**
+ * A CodeContainer is a Container instance that is rewritable at runtime. The
+ * CodeContainer itself remains constant, but passes most responsibility to a
+ * {@link CodeContainer.Context} wrapping a {@link CodeContainerDelegate} (user
+ * code). This component handles switching from one context to the next. A
+ * CodeComponent cannot be created directly - see {@link CodeFactory}.
+ * <p>
+ * The CodeContainer supports a property for proxying ports of child components
+ * on to the parent. This is automatically added when the
+ * {@link CodeContainerDelegate.ProxyPorts} annotation is used on the
+ * <code>init()</code> method of the delegate.
  *
+ * @param <D> wrapped delegate base type
  */
 public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponent<D>
         implements Container {
@@ -262,11 +273,15 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     }
 
-
+    /**
+     * CodeContext subclass for CodeContainers.
+     *
+     * @param <D> wrapped delegate base type
+     */
     public static class Context<D extends CodeContainerDelegate> extends CodeContext<D> {
 
         private final boolean hasPortProxies;
-        
+
         public Context(CodeContainer.Connector<D> connector) {
             super(connector);
             hasPortProxies = connector.hasPortProxies;
@@ -288,13 +303,16 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         public CodeContainer<D> getComponent() {
             return (CodeContainer<D>) super.getComponent();
         }
-        
-        
-        
+
     }
 
+    /**
+     * CodeConnector subclass for CodeContainers.
+     *
+     * @param <D> wrapped delegate base type
+     */
     public static class Connector<D extends CodeContainerDelegate> extends CodeConnector<D> {
-        
+
         private boolean hasPortProxies;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
@@ -335,7 +353,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         }
 
     }
-    
+
     private static class ContainerImpl extends AbstractContainer.Delegate {
 
         private final CodeContainer<?> wrapper;
@@ -411,7 +429,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         private final ControlInfo info;
 
         private Control control;
-        
+
         PortProxiesControlDescriptor(String id, int index) {
             super(id, Category.Internal, index);
             info = Info.control().property()
@@ -431,7 +449,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         @Override
         public ControlInfo getInfo() {
             return info;
-        }        
+        }
 
     }
 

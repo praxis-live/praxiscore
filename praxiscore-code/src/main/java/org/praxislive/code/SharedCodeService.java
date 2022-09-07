@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,7 +34,11 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 
 /**
- *
+ * A {@link Service} for handling shared code updates and creating dependent
+ * {@link CodeContext}. Must be running in the same process as the components
+ * due to task and result references. Should make use of a
+ * {@link CodeCompilerService} implementation for compiling source code (which
+ * does support other processes).
  */
 public class SharedCodeService implements Service {
 
@@ -58,12 +62,23 @@ public class SharedCodeService implements Service {
         throw new IllegalArgumentException();
     }
 
+    /**
+     * Task containing new shared code and dependents to be updated, for sending
+     * to the SharedCodeService.
+     */
     public static class Task {
 
         private final PMap sources;
         private final Map<ControlAddress, DependentTask<?>> dependents;
         private final LogLevel logLevel;
 
+        /**
+         * Create a Task.
+         *
+         * @param sources new shared code sources
+         * @param dependents map of dependent tasks by address
+         * @param logLevel logging level
+         */
         public Task(PMap sources,
                 Map<ControlAddress, DependentTask<?>> dependents,
                 LogLevel logLevel) {
@@ -72,32 +87,60 @@ public class SharedCodeService implements Service {
             this.logLevel = logLevel;
         }
 
+        /**
+         * Get the shared code sources.
+         *
+         * @return sources
+         */
         public PMap getSources() {
             return sources;
         }
 
+        /**
+         * Get the map of dependents.
+         *
+         * @return dependents
+         */
         public Map<ControlAddress, DependentTask<?>> getDependents() {
             return dependents;
         }
 
+        /**
+         * Get the logging level.
+         *
+         * @return logging level
+         */
         public LogLevel getLogLevel() {
             return logLevel;
         }
 
     }
 
+    /**
+     * Result with shared classes, dependent code contexts, and log.
+     */
     public static class Result {
 
         private final ClassLoader sharedClasses;
         private final Map<ControlAddress, DependentResult<CodeDelegate>> dependents;
         private final LogBuilder log;
 
+        /**
+         * Create an empty Result.
+         */
         public Result() {
             this.sharedClasses = null;
             this.dependents = Map.of();
             this.log = new LogBuilder(LogLevel.ERROR);
         }
-        
+
+        /**
+         * Create a Result.
+         *
+         * @param sharedClasses new shared classes classloader
+         * @param dependents map of dependent results
+         * @param log log
+         */
         public Result(ClassLoader sharedClasses,
                 Map<ControlAddress, DependentResult<CodeDelegate>> dependents,
                 LogBuilder log) {
@@ -106,26 +149,54 @@ public class SharedCodeService implements Service {
             this.log = Objects.requireNonNull(log);
         }
 
+        /**
+         * Get the shared classes classloader.
+         *
+         * @return shared classes
+         */
         public ClassLoader getSharedClasses() {
             return sharedClasses;
         }
 
+        /**
+         * Get the map if dependent results.
+         *
+         * @return dependents
+         */
         public Map<ControlAddress, DependentResult<CodeDelegate>> getDependents() {
             return dependents;
         }
 
+        /**
+         * Get the log
+         *
+         * @return log
+         */
         public LogBuilder getLog() {
             return log;
         }
-        
+
     }
 
+    /**
+     * A dependent task for recompiling a {@link CodeDelegate} against the new
+     * shared code classes.
+     *
+     * @param <D> base delegate type
+     */
     public static class DependentTask<D extends CodeDelegate> {
-        
+
         private final CodeFactory<D> factory;
         private final String existingSource;
         private final Class<D> existingClass;
 
+        /**
+         * Create a DependentTask.
+         *
+         * @param factory code factory for delegate
+         * @param existingSource existing source to recompile
+         * @param existingClass existing class
+         */
         public DependentTask(CodeFactory<D> factory,
                 String existingSource,
                 Class<D> existingClass) {
@@ -134,35 +205,72 @@ public class SharedCodeService implements Service {
             this.existingClass = Objects.requireNonNull(existingClass);
         }
 
+        /**
+         * Get code factory.
+         *
+         * @return code factory
+         */
         public CodeFactory<D> getFactory() {
             return factory;
         }
-        
+
+        /**
+         * Get the existing source.
+         *
+         * @return existing source
+         */
         public String getExistingSource() {
             return existingSource;
         }
 
+        /**
+         * Get the existing class.
+         *
+         * @return existing class
+         */
         public Class<D> getExistingClass() {
             return existingClass;
         }
-        
+
     }
 
+    /**
+     * A dependent result with new code context linked to new shared code
+     * classes.
+     *
+     * @param <D> base delegate type
+     */
     public static class DependentResult<D extends CodeDelegate> {
-        
+
         private final CodeContext<D> context;
         private final Class<D> existing;
 
+        /**
+         * Create a DependentResult.
+         *
+         * @param context code context
+         * @param existing the existing (previous) class
+         */
         public DependentResult(CodeContext<D> context,
                 Class<D> existing) {
             this.context = Objects.requireNonNull(context);
             this.existing = Objects.requireNonNull(existing);
         }
 
+        /**
+         * Get the code context.
+         *
+         * @return code context
+         */
         public CodeContext<D> getContext() {
             return context;
         }
 
+        /**
+         * Get the existing (previous) class. Used for validation.
+         *
+         * @return existing (previous) class
+         */
         public Class<? extends D> getExisting() {
             return existing;
         }
