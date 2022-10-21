@@ -21,11 +21,13 @@
  */
 package org.praxislive.core.types;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BinaryOperator;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 
@@ -39,17 +41,38 @@ public final class PMap extends Value {
      */
     public final static PMap EMPTY = new PMap(List.of(), Map.of());
 
+    /**
+     * An operator for use with
+     * {@link #merge(org.praxislive.core.types.PMap, org.praxislive.core.types.PMap, java.util.function.BinaryOperator)}
+     * that only adds mappings where the key is not present in the base map.
+     */
+    public final static BinaryOperator<Value> IF_ABSENT = (Value oldValue, Value newValue)
+            -> oldValue == null ? newValue : oldValue;
+
+    /**
+     * An operator for use with
+     * {@link #merge(org.praxislive.core.types.PMap, org.praxislive.core.types.PMap, java.util.function.BinaryOperator)}
+     * that will replace mapped values in the base map, unless the new value is
+     * empty in which case the mapping is removed.
+     */
+    public final static BinaryOperator<Value> REPLACE = (Value oldValue, Value newValue)
+            -> newValue == null || newValue.isEmpty() ? null : newValue;
+
     private final List<String> keys;
     private final Map<String, Value> map;
     private volatile String str;
 
-    private PMap(List<String> keys, Map<String, Value> map) {
+    private PMap(Map<String, Value> map) {
+        this(map.keySet(), map, null);
+    }
+
+    private PMap(Collection<String> keys, Map<String, Value> map) {
         this(keys, map, null);
     }
 
-    private PMap(List<String> keys, Map<String, Value> map, String str) {
-        this.keys = keys;
-        this.map = map;
+    private PMap(Collection<String> keys, Map<String, Value> map, String str) {
+        this.keys = List.copyOf(keys);
+        this.map = Map.copyOf(map);
         this.str = str;
     }
 
@@ -404,6 +427,41 @@ public final class PMap extends Value {
     }
 
     /**
+     * Create a new PMap by merging the additional map into the base map,
+     * according to the result of the provided operator. The operator will be
+     * called for all values in the additional map, even if no mapping exists in
+     * the base map. The operator must be able to handle null input. The
+     * operator should return the resulting mapped value, or null to remove the
+     * mapping. See {@link #REPLACE} and {@link #IF_ABSENT} for operators that
+     * should cover most common usage.
+     *
+     * @param base base map
+     * @param additional additional map
+     * @param operator operator to compute result value
+     * @return new PMap
+     */
+    public static PMap merge(PMap base, PMap additional, BinaryOperator<Value> operator) {
+        Objects.requireNonNull(base);
+        if (additional.isEmpty()) {
+            return base;
+        }
+        Objects.requireNonNull(operator);
+        LinkedHashMap<String, Value> result = new LinkedHashMap<>();
+        base.keys.forEach(key -> result.put(key, base.map.get(key)));
+        additional.keys.forEach(key -> {
+            Value baseValue = result.get(key);
+            Value addValue = additional.get(key);
+            Value resultValue = operator.apply(baseValue, addValue);
+            if (resultValue == null) {
+                result.remove(key);
+            } else {
+                result.put(key, resultValue);
+            }
+        });
+        return new PMap(result);
+    }
+
+    /**
      * Create a PMap.Builder.
      *
      * @return new PMap.Builder
@@ -505,13 +563,11 @@ public final class PMap extends Value {
          * @return new PMap
          */
         public PMap build() {
-            return build(null);
+            return new PMap(data);
         }
 
         private PMap build(String str) {
-            List<String> keys = List.copyOf(data.keySet());
-            Map<String, Value> map = Map.copyOf(data);
-            return new PMap(keys, map, str);
+            return new PMap(data.keySet(), data, str);
         }
 
     }
