@@ -1,12 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.praxislive.core.types;
 
-import org.praxislive.core.types.PMap;
-import org.praxislive.core.Value;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -53,7 +46,7 @@ public class PMapTest {
 
     @Test
     public void testParse() throws Exception {
-        PMap m1 = PMap.builder(4)
+        PMap m1 = PMap.builder()
                 .put("key1", "value1")
                 .put("key2", 2)
                 .put("key3", true)
