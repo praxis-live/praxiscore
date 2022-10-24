@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,11 +37,10 @@ import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 
 /**
- * Abstract base class of all types used in messaging inside Praxis CORE.
- * 
+ * Abstract base class of all types used in messaging inside PraxisCORE.
+ *
  * All Value sub-types are guaranteed to be immutable.
  *
- * 
  */
 public abstract class Value {
 
@@ -85,11 +84,27 @@ public abstract class Value {
     public boolean isEmpty() {
         return (toString().length() == 0);
     }
-    
+
+    /**
+     * Indicates whether some other Value is equivalent to this one. Unlike
+     * {@link #equals(java.lang.Object)} this method is not symmetric - a value
+     * of a different type might be equivalent to this without the other type
+     * considering the reverse to be true.
+     * <P>
+     * The default implementation uses identity or String equality.
+     *
+     * @param value value to test for equivalence
+     * @return true if value is equivalent to this
+     */
     public boolean equivalent(Value value) {
         return this == value || this.toString().equals(value.toString());
     }
-    
+
+    /**
+     * Access the {@link Type} of this value.
+     *
+     * @return type
+     */
     @SuppressWarnings("unchecked")
     public Type<?> type() {
         Class<?> cls = getClass();
@@ -101,43 +116,68 @@ public abstract class Value {
             }
         }
         return type;
-    } 
-    
+    }
+
     /**
-     * Use this method to return an ArgumentInfo argument that can be used to refer
-     * to ANY Value subclass. Usually, you will want to get an ArgumentInfo object
-     * directly from a specific Value subclass.
+     * Use this method to return an ArgumentInfo argument that can be used to
+     * refer to ANY Value subclass. Usually, you will want to get an
+     * ArgumentInfo object directly from a specific Value subclass.
      *
      * @return ArgumentInfo info
      */
     public static ArgumentInfo info() {
         return ArgumentInfo.of(Value.class, null);
     }
-    
+
+    /**
+     * The type of a Value. Only registered types can be used in PraxisCORE.
+     * Type maps to the class or superclass of a Value, and provides additional
+     * features such as simple name and conversion.
+     *
+     * @param <T> value subclass
+     */
     public static class Type<T extends Value> {
-        
+
         private final Class<T> type;
         private final String name;
         private final Function<Value, Optional<T>> converter;
-        
+
         Type(Class<T> type, Function<Value, Optional<T>> converter) {
             this(type, type.getSimpleName(), converter);
         }
-        
+
         Type(Class<T> type, String name, Function<Value, Optional<T>> converter) {
             this.type = Objects.requireNonNull(type);
             this.name = Objects.requireNonNull(name);
             this.converter = Objects.requireNonNull(converter);
         }
-        
+
+        /**
+         * The class that this Type maps to. May be a superclass of the actual
+         * class of a Value.
+         *
+         * @return mapped class
+         */
         public Class<T> asClass() {
             return type;
         }
-        
+
+        /**
+         * Simple name for this Value type.
+         *
+         * @return type name
+         */
         public String name() {
             return name;
         }
-        
+
+        /**
+         * A convertor function that can convert a value to this type. May cast,
+         * parse or otherwise convert the value. An empty Optional is returned
+         * if the value does not support conversion to the required type.
+         *
+         * @return optional converted value
+         */
         public Function<Value, Optional<T>> converter() {
             return converter;
         }
@@ -164,12 +204,17 @@ public abstract class Value {
                 return false;
             }
             final Type<?> other = (Type<?>) obj;
-            if (!Objects.equals(this.type, other.type)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.type, other.type);
         }
-        
+
+        /**
+         * Return the Type mapping for the passed in Value class.
+         *
+         * @param <T> value type
+         * @param cls value class
+         * @return Type
+         * @throws IllegalArgumentException if the class is unregistered
+         */
         @SuppressWarnings("unchecked")
         public static <T extends Value> Type<T> of(Class<T> cls) {
             Type<T> type = (Type<T>) typesByClass.get(cls);
@@ -178,7 +223,14 @@ public abstract class Value {
             }
             return type;
         }
-        
+
+        /**
+         * Return the Type with the given name, or an empty optional if
+         * unregistered.
+         *
+         * @param name type name
+         * @return optional type or empty
+         */
         public static Optional<Type<? extends Value>> fromName(String name) {
             return Optional.ofNullable(typesByName.get(name));
         }
@@ -197,9 +249,9 @@ public abstract class Value {
         }
 
         static {
-            
+
             register(new Type<>(Value.class, v -> Optional.of(v)));
-            
+
             register(new Type<>(PArray.class, "Array", PArray::from));
             register(new Type<>(PBoolean.class, "Boolean", PBoolean::from));
             register(new Type<>(PBytes.class, "Bytes", PBytes::from));
@@ -209,16 +261,16 @@ public abstract class Value {
             register(new Type<>(PReference.class, "Reference", PReference::from));
             register(new Type<>(PResource.class, "Resource", PResource::from));
             register(new Type<>(PString.class, "String", PString::from));
-            
+
             register(new Type<>(ArgumentInfo.class, ArgumentInfo::from));
             register(new Type<>(ComponentInfo.class, ComponentInfo::from));
             register(new Type<>(ControlInfo.class, ControlInfo::from));
             register(new Type<>(PortInfo.class, PortInfo::from));
-            
+
             register(new Type<>(ComponentAddress.class, ComponentAddress::from));
             register(new Type<>(ControlAddress.class, ControlAddress::from));
             register(new Type<>(PortAddress.class, PortAddress::from));
-            
+
             register(new Type<>(ComponentType.class, ComponentType::from));
 
         }
