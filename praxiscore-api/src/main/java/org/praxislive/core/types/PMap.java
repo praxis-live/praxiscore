@@ -237,25 +237,6 @@ public final class PMap extends Value {
         return false;
     }
 
-    private static Value objToValue(Object obj) {
-        if (obj instanceof Value) {
-            return (Value) obj;
-        }
-        if (obj instanceof Boolean) {
-            return ((Boolean) obj) ? PBoolean.TRUE : PBoolean.FALSE;
-        }
-        if (obj instanceof Integer) {
-            return PNumber.of(((Integer) obj));
-        }
-        if (obj instanceof Number) {
-            return PNumber.of(((Number) obj).doubleValue());
-        }
-        if (obj == null) {
-            return PString.EMPTY;
-        }
-        return PString.of(obj);
-    }
-
     /**
      * Create a PMap with one mapping. Map values that are not {@link Value}
      * types will be converted automatically.
@@ -266,7 +247,7 @@ public final class PMap extends Value {
      */
     public static PMap of(String key, Object value) {
         Map<String, Value> map = Map.of(
-                key, objToValue(value)
+                key, Value.ofObject(value)
         );
         List<String> keys = List.of(key);
         return new PMap(keys, map);
@@ -285,8 +266,8 @@ public final class PMap extends Value {
     public static PMap of(String key1, Object value1,
             String key2, Object value2) {
         Map<String, Value> map = Map.of(
-                key1, objToValue(value1),
-                key2, objToValue(value2)
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2)
         );
         List<String> keys = List.of(key1, key2);
         return new PMap(keys, map);
@@ -308,9 +289,9 @@ public final class PMap extends Value {
             String key2, Object value2,
             String key3, Object value3) {
         Map<String, Value> map = Map.of(
-                key1, objToValue(value1),
-                key2, objToValue(value2),
-                key3, objToValue(value3)
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3)
         );
         List<String> keys = List.of(key1, key2, key3);
         return new PMap(keys, map);
@@ -335,10 +316,10 @@ public final class PMap extends Value {
             String key3, Object value3,
             String key4, Object value4) {
         Map<String, Value> map = Map.of(
-                key1, objToValue(value1),
-                key2, objToValue(value2),
-                key3, objToValue(value3),
-                key4, objToValue(value4)
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3),
+                key4, Value.ofObject(value4)
         );
         List<String> keys = List.of(key1, key2, key3, key4);
         return new PMap(keys, map);
@@ -366,11 +347,11 @@ public final class PMap extends Value {
             String key4, Object value4,
             String key5, Object value5) {
         Map<String, Value> map = Map.of(
-                key1, objToValue(value1),
-                key2, objToValue(value2),
-                key3, objToValue(value3),
-                key4, objToValue(value4),
-                key5, objToValue(value5)
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3),
+                key4, Value.ofObject(value4),
+                key5, Value.ofObject(value5)
         );
         List<String> keys = List.of(key1, key2, key3, key4, key5);
         return new PMap(keys, map);
@@ -554,7 +535,7 @@ public final class PMap extends Value {
          * @return this
          */
         public Builder put(String key, Object value) {
-            return put(key, objToValue(value));
+            return put(key, Value.ofObject(value));
         }
 
         /**

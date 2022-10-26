@@ -130,6 +130,38 @@ public abstract class Value {
     }
 
     /**
+     * Convert the provided Object into a Value. This is a lightweight
+     * conversion, primarily to map Java literals to the right Value type,
+     * rather than a general purpose mapping API.
+     * <p>
+     * Any instance of a Value subclass is returned as is. Booleans are
+     * converted to PBoolean. Numbers are converted to PNumber.
+     * <code>null</code> is converted to {@link PString#EMPTY}. All other types
+     * are converted to a PString of their String representation.
+     *
+     * @param obj object to convert
+     * @return value
+     */
+    public static Value ofObject(Object obj) {
+        if (obj instanceof Value) {
+            return (Value) obj;
+        }
+        if (obj instanceof Boolean) {
+            return ((Boolean) obj) ? PBoolean.TRUE : PBoolean.FALSE;
+        }
+        if (obj instanceof Integer) {
+            return PNumber.of(((Integer) obj));
+        }
+        if (obj instanceof Number) {
+            return PNumber.of(((Number) obj).doubleValue());
+        }
+        if (obj == null) {
+            return PString.EMPTY;
+        }
+        return PString.of(obj);
+    }
+
+    /**
      * The type of a Value. Only registered types can be used in PraxisCORE.
      * Type maps to the class or superclass of a Value, and provides additional
      * features such as simple name and conversion.
