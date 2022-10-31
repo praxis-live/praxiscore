@@ -21,7 +21,9 @@
  */
 package org.praxislive.core;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -109,7 +111,7 @@ public abstract class Value {
     public Type<?> type() {
         Class<?> cls = getClass();
         Type<?> type;
-        while ((type = Type.typesByClass.get(cls)) == null) {
+        while ((type = Type.TYPES_BY_CLASS.get(cls)) == null) {
             cls = cls.getSuperclass();
             if (cls == null) {
                 throw new IllegalStateException();
@@ -173,15 +175,21 @@ public abstract class Value {
         private final Class<T> type;
         private final String name;
         private final Function<Value, Optional<T>> converter;
+        private final T emptyValue;
 
         Type(Class<T> type, Function<Value, Optional<T>> converter) {
-            this(type, type.getSimpleName(), converter);
+            this(type, type.getSimpleName(), converter, null);
         }
 
         Type(Class<T> type, String name, Function<Value, Optional<T>> converter) {
+            this(type, name, converter, null);
+        }
+
+        Type(Class<T> type, String name, Function<Value, Optional<T>> converter, T emptyValue) {
             this.type = Objects.requireNonNull(type);
             this.name = Objects.requireNonNull(name);
             this.converter = Objects.requireNonNull(converter);
+            this.emptyValue = emptyValue;
         }
 
         /**
@@ -212,6 +220,16 @@ public abstract class Value {
          */
         public Function<Value, Optional<T>> converter() {
             return converter;
+        }
+
+        /**
+         * The empty value of this type, if this type supports empty values, as
+         * defined by {@link Value#isEmpty()}.
+         *
+         * @return optional of empty value
+         */
+        public Optional<T> emptyValue() {
+            return Optional.ofNullable(emptyValue);
         }
 
         @Override
@@ -249,7 +267,7 @@ public abstract class Value {
          */
         @SuppressWarnings("unchecked")
         public static <T extends Value> Type<T> of(Class<T> cls) {
-            Type<T> type = (Type<T>) typesByClass.get(cls);
+            Type<T> type = (Type<T>) TYPES_BY_CLASS.get(cls);
             if (type == null) {
                 throw new IllegalArgumentException("Unregistered Value type : " + cls.getName());
             }
@@ -264,46 +282,60 @@ public abstract class Value {
          * @return optional type or empty
          */
         public static Optional<Type<? extends Value>> fromName(String name) {
-            return Optional.ofNullable(typesByName.get(name));
+            return Optional.ofNullable(TYPES_BY_NAME.get(name));
         }
 
-        private final static Map<Class<? extends Value>, Type<? extends Value>> typesByClass
-                = new HashMap<>();
-        private final static Map<String, Type<? extends Value>> typesByName
-                = new HashMap<>();
-
-        private static <T extends Value> void register(Type<T> type) {
-            if (typesByClass.containsKey(type.asClass()) || typesByName.containsKey(type.name())) {
-                throw new IllegalStateException("Already registered type");
-            }
-            typesByClass.put(type.asClass(), type);
-            typesByName.put(type.name(), type);
+        /**
+         * List of all registered Value Types. The returned list is read-only.
+         *
+         * @return list of types
+         */
+        public static List<Type<?>> listAll() {
+            return TYPES;
         }
+
+        private final static List<Type<?>> TYPES;
+        private final static Map<Class<? extends Value>, Type<?>> TYPES_BY_CLASS;
+        private final static Map<String, Type<?>> TYPES_BY_NAME;
 
         static {
 
-            register(new Type<>(Value.class, v -> Optional.of(v)));
+            List<Type<?>> types = new ArrayList<>(18);
 
-            register(new Type<>(PArray.class, "Array", PArray::from));
-            register(new Type<>(PBoolean.class, "Boolean", PBoolean::from));
-            register(new Type<>(PBytes.class, "Bytes", PBytes::from));
-            register(new Type<>(PError.class, "Error", PError::from));
-            register(new Type<>(PMap.class, "Map", PMap::from));
-            register(new Type<>(PNumber.class, "Number", PNumber::from));
-            register(new Type<>(PReference.class, "Reference", PReference::from));
-            register(new Type<>(PResource.class, "Resource", PResource::from));
-            register(new Type<>(PString.class, "String", PString::from));
+            types.add(new Type<>(Value.class, v -> Optional.of(v)));
 
-            register(new Type<>(ArgumentInfo.class, ArgumentInfo::from));
-            register(new Type<>(ComponentInfo.class, ComponentInfo::from));
-            register(new Type<>(ControlInfo.class, ControlInfo::from));
-            register(new Type<>(PortInfo.class, PortInfo::from));
+            types.add(new Type<>(PArray.class, "Array", PArray::from, PArray.EMPTY));
+            types.add(new Type<>(PBoolean.class, "Boolean", PBoolean::from));
+            types.add(new Type<>(PBytes.class, "Bytes", PBytes::from, PBytes.EMPTY));
+            types.add(new Type<>(PError.class, "Error", PError::from));
+            types.add(new Type<>(PMap.class, "Map", PMap::from, PMap.EMPTY));
+            types.add(new Type<>(PNumber.class, "Number", PNumber::from));
+            types.add(new Type<>(PReference.class, "Reference", PReference::from));
+            types.add(new Type<>(PResource.class, "Resource", PResource::from));
+            types.add(new Type<>(PString.class, "String", PString::from, PString.EMPTY));
 
-            register(new Type<>(ComponentAddress.class, ComponentAddress::from));
-            register(new Type<>(ControlAddress.class, ControlAddress::from));
-            register(new Type<>(PortAddress.class, PortAddress::from));
+            types.add(new Type<>(ArgumentInfo.class, ArgumentInfo::from));
+            types.add(new Type<>(ComponentInfo.class, ComponentInfo::from));
+            types.add(new Type<>(ControlInfo.class, ControlInfo::from));
+            types.add(new Type<>(PortInfo.class, PortInfo::from));
 
-            register(new Type<>(ComponentType.class, ComponentType::from));
+            types.add(new Type<>(ComponentAddress.class, ComponentAddress::from));
+            types.add(new Type<>(ControlAddress.class, ControlAddress::from));
+            types.add(new Type<>(PortAddress.class, PortAddress::from));
+
+            types.add(new Type<>(ComponentType.class, ComponentType::from));
+
+            Map<Class<? extends Value>, Type<?>> typesByClass = new HashMap<>();
+            Map<String, Type<?>> typesByName = new HashMap<>();
+
+            for (Type<?> type : types) {
+                typesByClass.put(type.asClass(), type);
+                typesByName.put(type.name(), type);
+            }
+
+            TYPES = List.copyOf(types);
+            TYPES_BY_CLASS = Map.copyOf(typesByClass);
+            TYPES_BY_NAME = Map.copyOf(typesByName);
 
         }
     }
