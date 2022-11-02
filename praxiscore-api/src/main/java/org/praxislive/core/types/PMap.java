@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,43 +21,79 @@
  */
 package org.praxislive.core.types;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BinaryOperator;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 
 /**
- *
+ * An ordered map of Strings to Values.
  */
 public final class PMap extends Value {
 
-//    public final static PMap EMPTY = new PMap(Collections.<String, Value>emptyMap(), "");
-    public final static PMap EMPTY = new PMap(PArray.EMPTY, "");
-    private final static int BUILDER_INIT_CAPACITY = 8;
-//    private Map<String, Value> map;
-    private final PArray array;
-    private final String string;
+    /**
+     * An empty PMap.
+     */
+    public final static PMap EMPTY = new PMap(List.of(), Map.of());
 
-//    private PMap(Map<String, Value> map, String str) {
-//        this.map = map;
-//        this.str = str;
-//    }
-    private PMap(PArray array, String string) {
-        this.array = array;
-        this.string = string;
+    /**
+     * An operator for use with
+     * {@link #merge(org.praxislive.core.types.PMap, org.praxislive.core.types.PMap, java.util.function.BinaryOperator)}
+     * that only adds mappings where the key is not present in the base map.
+     */
+    public final static BinaryOperator<Value> IF_ABSENT = (Value oldValue, Value newValue)
+            -> oldValue == null ? newValue : oldValue;
+
+    /**
+     * An operator for use with
+     * {@link #merge(org.praxislive.core.types.PMap, org.praxislive.core.types.PMap, java.util.function.BinaryOperator)}
+     * that will replace mapped values in the base map, unless the new value is
+     * empty in which case the mapping is removed.
+     */
+    public final static BinaryOperator<Value> REPLACE = (Value oldValue, Value newValue)
+            -> newValue == null || newValue.isEmpty() ? null : newValue;
+
+    private final List<String> keys;
+    private final Map<String, Value> map;
+    private volatile String str;
+
+    private PMap(Map<String, Value> map) {
+        this(map.keySet(), map, null);
     }
 
+    private PMap(Collection<String> keys, Map<String, Value> map) {
+        this(keys, map, null);
+    }
+
+    private PMap(Collection<String> keys, Map<String, Value> map, String str) {
+        this.keys = List.copyOf(keys);
+        this.map = Map.copyOf(map);
+        this.str = str;
+    }
+
+    /**
+     * Get the value for the given key, or null if the key does not exist.
+     *
+     * @param key map key
+     * @return mapped value or null
+     */
     public Value get(String key) {
-        int size = array.size();
-        for (int i = 0; i < size; i += 2) {
-            if (array.get(i).toString().equals(key)) {
-                return array.get(i + 1);
-            }
-        }
-        return null;
+        return map.get(key);
     }
 
+    /**
+     * Get a boolean value from the map, returning a default value if the key is
+     * not mapped or mapped to a value that cannot be converted to a boolean.
+     *
+     * @param key map key
+     * @param def default if unmapped or invalid
+     * @return value or default
+     */
     public boolean getBoolean(String key, boolean def) {
         return Optional.ofNullable(get(key))
                 .flatMap(PBoolean::from)
@@ -65,6 +101,15 @@ public final class PMap extends Value {
                 .orElse(def);
     }
 
+    /**
+     * Get an integer value from the map, returning a default value if the key
+     * is not mapped or mapped to a value that cannot be converted to an
+     * integer.
+     *
+     * @param key map key
+     * @param def default if unmapped or invalid
+     * @return value or default
+     */
     public int getInt(String key, int def) {
         return Optional.ofNullable(get(key))
                 .flatMap(PNumber::from)
@@ -72,6 +117,14 @@ public final class PMap extends Value {
                 .orElse(def);
     }
 
+    /**
+     * Get a double value from the map, returning a default value if the key is
+     * not mapped or mapped to a value that cannot be converted to a double.
+     *
+     * @param key map key
+     * @param def default if unmapped or invalid
+     * @return value or default
+     */
     public double getDouble(String key, double def) {
         return Optional.ofNullable(get(key))
                 .flatMap(PNumber::from)
@@ -79,6 +132,14 @@ public final class PMap extends Value {
                 .orElse(def);
     }
 
+    /**
+     * Get a String value from the map, returning a default value if the key is
+     * not mapped.
+     *
+     * @param key map key
+     * @param def default if unmapped
+     * @return value or default
+     */
     public String getString(String key, String def) {
         Value val = get(key);
         if (val != null) {
@@ -87,35 +148,55 @@ public final class PMap extends Value {
         return def;
     }
 
+    /**
+     * Size of the map. This is the number of key-value pairs.
+     *
+     * @return size of the map
+     */
     public int size() {
-        return array.size() / 2;
-    }
-    
-    public List<String> keys() {
-        return List.of(getKeys());
+        return map.size();
     }
 
-    private String[] getKeys() {
-        int size = size();
-        String[] keys = new String[size];
-        for (int i = 0; i < size; i++) {
-            keys[i] = array.get(i * 2).toString();
-        }
+    /**
+     * List of map keys. This is returned as a List as the keys are ordered.
+     *
+     * @return map keys
+     */
+    public List<String> keys() {
         return keys;
     }
 
     @Override
     public String toString() {
-        if (string == null) {
-            return array.toString();
-        } else {
-            return string;
+        if (str == null) {
+            if (!keys.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (String key : keys) {
+                    if (sb.length() > 0) {
+                        sb.append(' ');
+                    }
+                    sb.append(Utils.escape(key));
+                    sb.append(" ");
+                    Value value = map.get(key);
+                    if (value instanceof PArray || value instanceof PMap) {
+                        sb.append('{')
+                                .append(value.toString())
+                                .append('}');
+                    } else {
+                        sb.append(Utils.escape(String.valueOf(value)));
+                    }
+                }
+                str = sb.toString();
+            } else {
+                str = "";
+            }
         }
+        return str;
     }
 
     @Override
     public boolean isEmpty() {
-        return array.isEmpty();
+        return map.isEmpty();
     }
 
     @Override
@@ -125,16 +206,11 @@ public final class PMap extends Value {
         }
         try {
             PMap other = PMap.coerce(arg);
-            int size = size();
-            if (size != other.size()) {
+            if (!keys.equals(other.keys)) {
                 return false;
             }
-            size *= 2;
-            for (int i=0; i<size; i+=2) {
-                if (!array.get(i).toString().equals(other.array.get(i).toString())) {
-                    return false;
-                }
-                if (!Utils.equivalent(array.get(i+1), other.array.get(i+1))) {
+            for (String key : keys) {
+                if (!Utils.equivalent(map.get(key), other.map.get(key))) {
                     return false;
                 }
             }
@@ -143,12 +219,10 @@ public final class PMap extends Value {
             return false;
         }
     }
-    
-    
 
     @Override
     public int hashCode() {
-        return array.hashCode(); // should we cache?
+        return Objects.hash(keys, map);
     }
 
     @Override
@@ -157,72 +231,141 @@ public final class PMap extends Value {
             return true;
         }
         if (obj instanceof PMap) {
-            if (this.array.equals(((PMap) obj).array)) {
-                return true;
-            }
+            PMap other = (PMap) obj;
+            return keys.equals(other.keys) && map.equals(other.map);
         }
         return false;
     }
 
-    private static Value objToValue(Object obj) {
-        if (obj instanceof Value) {
-            return (Value) obj;
-        }
-        if (obj instanceof Boolean) {
-            return ((Boolean) obj) ? PBoolean.TRUE : PBoolean.FALSE;
-        }
-        if (obj instanceof Integer) {
-            return PNumber.of(((Integer) obj));
-        }
-        if (obj instanceof Number) {
-            return PNumber.of(((Number) obj).doubleValue());
-        }
-        if (obj == null) {
-            return PString.EMPTY;
-        }
-        return PString.of(obj);
-    }
-
+    /**
+     * Create a PMap with one mapping. Map values that are not {@link Value}
+     * types will be converted automatically.
+     *
+     * @param key map key
+     * @param value mapped value
+     * @return new PMap
+     */
     public static PMap of(String key, Object value) {
-        if (key == null) {
-            throw new NullPointerException();
-        }
-        PArray array = PArray.of(PString.of(key), objToValue(value));
-        return new PMap(array, null);
+        Map<String, Value> map = Map.of(
+                key, Value.ofObject(value)
+        );
+        List<String> keys = List.of(key);
+        return new PMap(keys, map);
     }
 
+    /**
+     * Create a PMap with two mappings. Map values that are not {@link Value}
+     * types will be converted automatically.
+     *
+     * @param key1 first map key
+     * @param value1 first mapped value
+     * @param key2 second map key
+     * @param value2 second mapped value
+     * @return new PMap
+     */
     public static PMap of(String key1, Object value1,
             String key2, Object value2) {
-        if (key1 == null || key2 == null) {
-            throw new NullPointerException();
-        }
-        if (key1.equals(key2)) {
-            throw new IllegalArgumentException("Duplicate keys");
-        }
-        PArray array = PArray.of(
-                PString.of(key1), objToValue(value1),
-                PString.of(key2), objToValue(value2));
-        return new PMap(array, null);
+        Map<String, Value> map = Map.of(
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2)
+        );
+        List<String> keys = List.of(key1, key2);
+        return new PMap(keys, map);
     }
 
+    /**
+     * Create a PMap with three mappings. Map values that are not {@link Value}
+     * types will be converted automatically.
+     *
+     * @param key1 first map key
+     * @param value1 first mapped value
+     * @param key2 second map key
+     * @param value2 second mapped value
+     * @param key3 third map key
+     * @param value3 third mapped value
+     * @return new PMap
+     */
     public static PMap of(String key1, Object value1,
             String key2, Object value2,
             String key3, Object value3) {
-        if (key1 == null || key2 == null || key3 == null) {
-            throw new NullPointerException();
-        }
-        if (key1.equals(key2) || key2.equals(key3) || key3.equals(key1)) {
-            throw new IllegalArgumentException("Duplicate keys");
-        }
-        PArray array = PArray.of(
-                PString.of(key1), objToValue(value1),
-                PString.of(key2), objToValue(value2),
-                PString.of(key3), objToValue(value3));
-        return new PMap(array, null);
+        Map<String, Value> map = Map.of(
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3)
+        );
+        List<String> keys = List.of(key1, key2, key3);
+        return new PMap(keys, map);
     }
 
-    public static PMap parse(String str) throws ValueFormatException {
-        PArray arr = PArray.parse(str);
+    /**
+     * Create a PMap with four mappings. Map values that are not {@link Value}
+     * types will be converted automatically.
+     *
+     * @param key1 first map key
+     * @param value1 first mapped value
+     * @param key2 second map key
+     * @param value2 second mapped value
+     * @param key3 third map key
+     * @param value3 third mapped value
+     * @param key4 fourth map key
+     * @param value4 fourth mapped value
+     * @return new PMap
+     */
+    public static PMap of(String key1, Object value1,
+            String key2, Object value2,
+            String key3, Object value3,
+            String key4, Object value4) {
+        Map<String, Value> map = Map.of(
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3),
+                key4, Value.ofObject(value4)
+        );
+        List<String> keys = List.of(key1, key2, key3, key4);
+        return new PMap(keys, map);
+    }
+
+    /**
+     * Create a PMap with five mappings. Map values that are not {@link Value}
+     * types will be converted automatically.
+     *
+     * @param key1 first map key
+     * @param value1 first mapped value
+     * @param key2 second map key
+     * @param value2 second mapped value
+     * @param key3 third map key
+     * @param value3 third mapped value
+     * @param key4 fourth map key
+     * @param value4 fourth mapped value
+     * @param key5 fifth map key
+     * @param value5 fifth mapped value
+     * @return new PMap
+     */
+    public static PMap of(String key1, Object value1,
+            String key2, Object value2,
+            String key3, Object value3,
+            String key4, Object value4,
+            String key5, Object value5) {
+        Map<String, Value> map = Map.of(
+                key1, Value.ofObject(value1),
+                key2, Value.ofObject(value2),
+                key3, Value.ofObject(value3),
+                key4, Value.ofObject(value4),
+                key5, Value.ofObject(value5)
+        );
+        List<String> keys = List.of(key1, key2, key3, key4, key5);
+        return new PMap(keys, map);
+    }
+
+    /**
+     * Parse the given text into a PMap.
+     *
+     * @param text text to parse
+     * @return parsed PArray
+     * @throws ValueFormatException
+     */
+    public static PMap parse(String text) throws ValueFormatException {
+        PArray arr = PArray.parse(text);
         if (arr.isEmpty()) {
             return PMap.EMPTY;
         }
@@ -230,24 +373,13 @@ public final class PMap extends Value {
         if (size % 2 != 0) {
             throw new ValueFormatException("Uneven number of tokens passed to PMap.valueOf()");
         }
-//        switch (size) {
-//            case 2:
-//                return PMap.create(arr.get(0).toString(), arr.get(1));
-//            case 4:
-//                return PMap.create(arr.get(0).toString(), arr.get(1),
-//                        arr.get(2).toString(), arr.get(3));
-//            case 6:
-//                return PMap.create(arr.get(0).toString(), arr.get(1),
-//                        arr.get(2).toString(), arr.get(3),
-//                        arr.get(4).toString(), arr.get(5));
-//        }
-        PMap.Builder builder = builder(size / 2);
+        PMap.Builder builder = builder();
         for (int i = 0; i < size; i += 2) {
-            builder.putImpl(
-                    PString.of(arr.get(i)),
+            builder.put(
+                    arr.get(i).toString(),
                     arr.get(i + 1));
         }
-        return builder.build(str);
+        return builder.build(text);
     }
 
     private static PMap coerce(Value arg) throws ValueFormatException {
@@ -257,101 +389,167 @@ public final class PMap extends Value {
             return parse(arg.toString());
         }
     }
-    
-    public static Optional<PMap> from(Value arg) {
+
+    /**
+     * Cast or convert the provided value into a PMap, wrapped in an Optional.
+     * If the value is already a PMap, the Optional will wrap the existing
+     * value. If the value is not a PMap and cannot be converted into one, an
+     * empty Optional is returned.
+     *
+     * @param value value
+     * @return optional PArray
+     */
+    public static Optional<PMap> from(Value value) {
         try {
-            return Optional.of(coerce(arg));
+            return Optional.of(coerce(value));
         } catch (ValueFormatException ex) {
             return Optional.empty();
         }
     }
 
-    public static Builder builder() {
-        return builder(BUILDER_INIT_CAPACITY);
+    /**
+     * Create a new PMap by merging the additional map into the base map,
+     * according to the result of the provided operator. The operator will be
+     * called for all values in the additional map, even if no mapping exists in
+     * the base map. The operator must be able to handle null input. The
+     * operator should return the resulting mapped value, or null to remove the
+     * mapping. See {@link #REPLACE} and {@link #IF_ABSENT} for operators that
+     * should cover most common usage.
+     *
+     * @param base base map
+     * @param additional additional map
+     * @param operator operator to compute result value
+     * @return new PMap
+     */
+    public static PMap merge(PMap base, PMap additional, BinaryOperator<Value> operator) {
+        Objects.requireNonNull(base);
+        if (additional.isEmpty()) {
+            return base;
+        }
+        Objects.requireNonNull(operator);
+        LinkedHashMap<String, Value> result = new LinkedHashMap<>();
+        base.keys.forEach(key -> result.put(key, base.map.get(key)));
+        additional.keys.forEach(key -> {
+            Value baseValue = result.get(key);
+            Value addValue = additional.get(key);
+            Value resultValue = operator.apply(baseValue, addValue);
+            if (resultValue == null) {
+                result.remove(key);
+            } else {
+                result.put(key, resultValue);
+            }
+        });
+        return new PMap(result);
     }
 
+    /**
+     * Create a PMap.Builder.
+     *
+     * @return new PMap.Builder
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    @Deprecated
     public static Builder builder(int initialCapacity) {
         return new Builder(initialCapacity * 2);
     }
 
+    /**
+     * A PMap builder.
+     */
     public static class Builder {
 
-        private List<Value> storage;
+        private final LinkedHashMap<String, Value> data;
+
+        private Builder() {
+            data = new LinkedHashMap<>();
+        }
 
         private Builder(int capacity) {
-            storage = new ArrayList<>(capacity);
+            data = new LinkedHashMap<>(capacity);
         }
 
-//        @Deprecated
-//        public Builder put(PString key, Value value) {
-//            put(key, value instanceof Value ? (Value) value : PString.valueOf(value));
-//            return this;
-//        }
-        
-//        @Deprecated
-//        public Builder put(String key, Value value) {
-//            put(PString.valueOf(key), value);
-//            return this;
-//        }
-        
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
         public Builder put(String key, Value value) {
-            putImpl(PString.of(key), value);
+            data.put(key, value);
             return this;
         }
 
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
         public Builder put(String key, boolean value) {
-            putImpl(PString.of(key), PBoolean.of(value));
-            return this;
+            return put(key, PBoolean.of(value));
         }
 
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
         public Builder put(String key, int value) {
-            putImpl(PString.of(key), PNumber.of(value));
-            return this;
+            return put(key, PNumber.of(value));
         }
 
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
         public Builder put(String key, double value) {
-            putImpl(PString.of(key), PNumber.of(value));
-            return this;
+            return put(key, PNumber.of(value));
         }
 
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
         public Builder put(String key, String value) {
-            putImpl(PString.of(key), PString.of(value));
-            return this;
-        }
-        
-        public Builder put(String key, Object value) {
-            putImpl(PString.of(key), objToValue(value));
-            return this;
+            return put(key, PString.of(value));
         }
 
+        /**
+         * Add a mapping for the given key and value.
+         *
+         * @param key map key
+         * @param value mapped value
+         * @return this
+         */
+        public Builder put(String key, Object value) {
+            return put(key, Value.ofObject(value));
+        }
+
+        /**
+         * Build the PMap.
+         *
+         * @return new PMap
+         */
         public PMap build() {
-            PArray array = PArray.of(storage);
-            return new PMap(array, null);
+            return new PMap(data);
         }
 
         private PMap build(String str) {
-            PArray array = PArray.of(storage);
-            return new PMap(array, str);
+            return new PMap(data.keySet(), data, str);
         }
 
-        private void putImpl(PString key, Value value) {
-            int idx = indexOfKey(key);
-            if (idx < 0) {
-                storage.add(key);
-                storage.add(value);
-            } else {
-                storage.set(idx, key);
-                storage.set(idx + 1, value);
-            }
-        }
-
-        private int indexOfKey(PString key) {
-            for (int i = 0, size = storage.size(); i < size; i += 2) {
-                if (storage.get(i).equals(key)) {
-                    return i;
-                }
-            }
-            return -1;
-        }
     }
 }

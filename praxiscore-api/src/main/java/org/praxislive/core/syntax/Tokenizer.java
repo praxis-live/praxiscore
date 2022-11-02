@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,14 +21,13 @@
  */
 package org.praxislive.core.syntax;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
  * Class to split a CharSequence into Tokens.
- *
- *
- * 
  */
 public class Tokenizer implements Iterable<Token> {
 
@@ -36,27 +35,56 @@ public class Tokenizer implements Iterable<Token> {
 
     /**
      * Create a Tokenizer for the specified text.
+     *
      * @param text
      */
     public Tokenizer(CharSequence text) {
         this.text = text;
     }
 
-//    public Tokenizer(String text) {
-//        this.text = text;
-//    }
+    @Override
     public Iterator<Token> iterator() {
-        return new TokenIterator();
+        return new TokenIterator(text);
     }
 
-    private class TokenIterator implements Iterator<Token> {
+    /**
+     * Convenience method to parse text into tokens. This method will throw an
+     * exception if the text is invalid. If you need a partial token sequence,
+     * use the iterator directly.
+     *
+     * @param text text to parse
+     * @return list of tokens
+     * @throws InvalidSyntaxException if the text is invalid
+     */
+    public static List<Token> parse(CharSequence text) {
+        try {
+            List<Token> list = new ArrayList<>();
+            Iterator<Token> itr = new TokenIterator(text);
+            while (itr.hasNext()) {
+                list.add(itr.next());
+            }
+            return list;
+        } catch (Exception ex) {
+            throw new InvalidSyntaxException(ex);
+        }
+    }
 
+    private static class TokenIterator implements Iterator<Token> {
+
+        private final CharSequence text;
+        private final int length;
+        private final StringBuilder buf; // a reusable char buffer
         private int index = 0;
         private Token next = null;
         private Token previous = null;
-        private final int length = text.length();
-        private StringBuilder buf = new StringBuilder(); // a reusable char buffer
 
+        public TokenIterator(CharSequence text) {
+            this.text = text;
+            this.length = text.length();
+            this.buf = new StringBuilder();
+        }
+
+        @Override
         public Token next() {
             if (!hasNext()) {
                 throw new NoSuchElementException();
@@ -66,10 +94,12 @@ public class Tokenizer implements Iterable<Token> {
             return previous;
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException("Tokens cannot be removed");
         }
 
+        @Override
         public boolean hasNext() {
             if (next != null) {
                 return true;
@@ -81,7 +111,7 @@ public class Tokenizer implements Iterable<Token> {
                     switch (ch) {
                         case '\r':
                         case '\n':
-                        case ';' :
+                        case ';':
                             next = parseEOL();
                             break;
                         case '"':
@@ -116,13 +146,11 @@ public class Tokenizer implements Iterable<Token> {
                             }
                     }
 
-
                 }
 
             } catch (Exception exception) {
                 throw new RuntimeException(exception);
             }
-
 
             if (next != null) {
                 return true;
@@ -132,7 +160,6 @@ public class Tokenizer implements Iterable<Token> {
             } else {
                 return false;
             }
-
 
         }
 
