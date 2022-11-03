@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -531,8 +532,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     /**
-     * Invoke the provided task if the context is active, and after updated the
-     * time to the specified time. After task execution, flush will be called.
+     * Invoke the provided task, if the context is active, and after updating
+     * the clock to the specified time (if later). Any exception will be caught
+     * and logged, and the context will be flushed.
      *
      * @param time new clock time
      * @param task runnable task to execute
@@ -546,6 +548,35 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 log.log(LogLevel.ERROR, ex);
             }
             flush();
+        }
+    }
+
+    /**
+     * Invoke the provided task and return the result, if the context is active,
+     * and after updating the clock to the specified time (if later). Any
+     * exception will be logged and rethrown, and the context flushed. Throws an
+     * {@link IllegalStateException} if {@link #checkActive()} returns
+     * <code>false</code>.
+     *
+     * @param <V> the result type of method call
+     * @param time new clock time
+     * @param task runnable task to execute
+     * @return result
+     * @throws Exception if unable to compute a result
+     */
+    public <V> V invokeCallable(long time, Callable<V> task) throws Exception {
+        if (checkActive()) {
+            update(time);
+            try {
+                return task.call();
+            } catch (Exception ex) {
+                log.log(LogLevel.ERROR, ex);
+                throw ex;
+            } finally {
+                flush();
+            }
+        } else {
+            throw new IllegalStateException("Component not active");
         }
     }
 
