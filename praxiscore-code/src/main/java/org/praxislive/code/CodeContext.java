@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -66,11 +67,13 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final Driver driver;
     private final boolean requireClock;
     private final List<ClockListener> clockListeners;
+    private final ResponseHandler responseHandler;
 
     private ExecutionContext execCtxt;
     private ExecutionContext.State execState = ExecutionContext.State.NEW;
     private CodeComponent<D> cmp;
     private long time;
+    private ControlAddress responseAddress;
 
     /**
      * Create a CodeContext by processing the provided {@link CodeConnector}
@@ -104,6 +107,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
             delegate = connector.getDelegate();
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
+            this.responseHandler = Objects.requireNonNull((ResponseHandler) controls.get(ResponseHandler.ID));
         } catch (Exception e) {
 //            Logger.getLogger(CodeContext.class.getName()).log(Level.FINE, "", e);
             throw e;
@@ -188,7 +192,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 execCtxt.removeClockListener(driver);
             }
             execCtxt = ctxt;
+            responseAddress = null;
             if (ctxt != null) {
+                responseAddress = ControlAddress.of(cmp.getAddress(), ResponseHandler.ID);
                 ctxt.addStateListener(driver);
                 if (requireClock) {
                     ctxt.addClockListener(driver);
@@ -639,7 +645,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
     /**
      * Process and send messages from an external log builder.
      *
-     * @param log externl log builder
+     * @param log external log builder
      */
     protected void log(LogBuilder log) {
         if (log.isEmpty()) {
@@ -651,11 +657,30 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private void log(List<Value> args) {
         PacketRouter router = cmp.getPacketRouter();
         ControlAddress to = cmp.getLogToAddress();
-        ControlAddress from = cmp.getLogFromAddress();
+        ControlAddress from = responseAddress;
         if (router == null || to == null) {
             return;
         }
-        router.route(Call.create(to, from, time, args));
+        router.route(Call.createQuiet(to, from, time, args));
+    }
+
+    final void tell(ControlAddress destination, Value value) {
+        Call call = Call.createQuiet(destination, responseAddress, getTime(), value);
+        getComponent().getPacketRouter().route(call);
+    }
+
+    final void tellIn(double seconds, ControlAddress destination, Value value) {
+        long timeCode = getTime() + ((long) (seconds * 1_000_000_000));
+        Call call = Call.createQuiet(destination, responseAddress, timeCode, value);
+        getComponent().getPacketRouter().route(call);
+    }
+
+    final Async<Call> ask(ControlAddress destination, List<Value> args) {
+        Call call = Call.create(destination, responseAddress, time, args);
+        getComponent().getPacketRouter().route(call);
+        Async<Call> async = new Async<>();
+        responseHandler.register(call.matchID(), async);
+        return async;
     }
 
     /**

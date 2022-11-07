@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,9 @@
  */
 package org.praxislive.code;
 
+import java.util.List;
 import java.util.Optional;
+import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -41,10 +43,10 @@ import org.praxislive.core.types.PString;
 public abstract class CodeDelegate {
 
     private CodeContext<? extends CodeDelegate> context;
-    
-        /**
+
+    /**
      * Send a log message.
-     * 
+     *
      * @param level
      * @param msg
      */
@@ -54,7 +56,7 @@ public abstract class CodeDelegate {
 
     /**
      * Send a log message with associated Exception type.
-     * 
+     *
      * @param level
      * @param ex
      */
@@ -64,7 +66,7 @@ public abstract class CodeDelegate {
 
     /**
      * Send a log message with associated Exception.
-     * 
+     *
      * @param level
      * @param ex
      * @param msg
@@ -75,7 +77,7 @@ public abstract class CodeDelegate {
 
     /**
      * Send a log message with associated Exception type.
-     * 
+     *
      * @param level
      * @param type
      * @param msg
@@ -86,7 +88,7 @@ public abstract class CodeDelegate {
 
     /**
      * Check whether the messages at the given log level are being sent.
-     * 
+     *
      * @param level
      * @return
      */
@@ -95,9 +97,9 @@ public abstract class CodeDelegate {
     }
 
     /**
-     * Send a value to a port on another component. The other component must have
-     * the same parent.
-     * 
+     * Send a value to a port on another component. The other component must
+     * have the same parent.
+     *
      * @param componentID ID of the other component
      * @param portID ID of the port on the other component
      * @param value
@@ -107,9 +109,9 @@ public abstract class CodeDelegate {
     }
 
     /**
-     * Send a value to a port on another component. The other component must have
-     * the same parent.
-     * 
+     * Send a value to a port on another component. The other component must
+     * have the same parent.
+     *
      * @param componentID ID of the other component
      * @param portID ID of the port on the other component
      * @param value
@@ -128,9 +130,9 @@ public abstract class CodeDelegate {
     }
 
     /**
-     * Send a value to a port on another component. The other component must have
-     * the same parent.
-     * 
+     * Send a value to a port on another component. The other component must
+     * have the same parent.
+     *
      * @param componentID ID of the other component
      * @param portID ID of the port on the other component
      * @param value
@@ -165,10 +167,10 @@ public abstract class CodeDelegate {
             return null;
         }
     }
-    
+
     /**
      * Send a message to a Control.
-     * 
+     *
      * @param destination address of control
      * @param value message value
      */
@@ -178,7 +180,7 @@ public abstract class CodeDelegate {
 
     /**
      * Send a message to a Control.
-     * 
+     *
      * @param destination address of control
      * @param value message value
      */
@@ -188,19 +190,18 @@ public abstract class CodeDelegate {
 
     /**
      * Send a message to a Control.
-     * 
+     *
      * @param destination address of control
      * @param value message value
      */
     public final void tell(ControlAddress destination, Value value) {
-        Call call = Call.createQuiet(destination, self("_log"), getContext().getTime(), value);
-        getContext().getComponent().getPacketRouter().route(call);
+        getContext().tell(destination, value);
     }
-    
+
     /**
      * Send a message to a Control in the given number of seconds or fractions
      * of second from now.
-     * 
+     *
      * @param seconds from now
      * @param destination address of control
      * @param value message value
@@ -212,7 +213,7 @@ public abstract class CodeDelegate {
     /**
      * Send a message to a Control in the given number of seconds or fractions
      * of second from now.
-     * 
+     *
      * @param seconds from now
      * @param destination address of control
      * @param value message value
@@ -224,20 +225,47 @@ public abstract class CodeDelegate {
     /**
      * Send a message to a Control in the given number of seconds or fractions
      * of second from now.
-     * 
+     *
      * @param seconds from now
      * @param destination address of control
      * @param value message value
      */
     public final void tellIn(double seconds, ControlAddress destination, Value value) {
-        long time = getContext().getTime() + ((long) (seconds * 1_000_000_000));
-        Call call = Call.createQuiet(destination, self("_log"), time, value);
-        getContext().getComponent().getPacketRouter().route(call);
+        getContext().tellIn(seconds, destination, value);
+    }
+
+    /**
+     * Call a Control. The returned {@link Async} result will be completed by
+     * the response {@link Call} if successful, or the resulting error. Use
+     * {@link Call#args} to extract the result.
+     *
+     * @param destination address of control
+     * @param args call arguments
+     * @return async response
+     */
+    public final Async<Call> ask(ControlAddress destination, List<Value> args) {
+        return getContext().ask(destination, args);
+    }
+
+    /**
+     * Create an immutable List of Values suitable for use as Control call
+     * arguments. Objects are converted to Value using
+     * {@link Value#ofObject(java.lang.Object)}.
+     *
+     * @param values argument values
+     * @return argument list
+     */
+    public final List<Value> args(Object... values) {
+        Value[] converted = new Value[values.length];
+        for (int i = 0; i < values.length; i++) {
+            converted[i] = Value.ofObject(values[i]);
+        }
+        return List.of(converted);
     }
 
     /**
      * Get this component's address.
-     * 
+     *
      * @return address of self
      */
     public final ComponentAddress self() {
@@ -246,27 +274,26 @@ public abstract class CodeDelegate {
 
     /**
      * Get the address of a control on this component.
-     * 
+     *
      * @param control id of control
      * @return address of control
      */
     public final ControlAddress self(String control) {
         return ControlAddress.of(self(), control);
     }
-    
-    
-    
+
     /**
      * Return a Lookup for finding instances of features.
-     * 
+     *
      * @return Lookup context
      */
     public Lookup getLookup() {
         return getContext().getLookup();
     }
-    
+
     /**
      * Search for an instance of the given type.
+     *
      * @param <T>
      * @param type class to search for
      * @return Optional wrapping the result if found, or empty if not
@@ -276,9 +303,9 @@ public abstract class CodeDelegate {
     }
 
     /**
-     * The current clocktime in nanoseconds. May only be used relatively to itself, 
-     * and may be negative.
-     * 
+     * The current clocktime in nanoseconds. May only be used relatively to
+     * itself, and may be negative.
+     *
      * @return
      */
     public final long time() {
@@ -287,7 +314,7 @@ public abstract class CodeDelegate {
 
     /**
      * The current time in milliseconds since the root was started.
-     * 
+     *
      * @return
      */
     public final long millis() {

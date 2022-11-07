@@ -345,7 +345,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     protected void addDefaultControls() {
         addControl(createInfoControl(getInternalIndex()));
         addControl(createCodeControl(getInternalIndex()));
-        addControl(new LogControl.Descriptor(getInternalIndex()));
+        addControl(new ResponseHandler(getInternalIndex()));
     }
 
     /**
@@ -738,8 +738,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     }
 
     private boolean analyseFunctionMethod(FN ann, Method method) {
-        FunctionControl.Descriptor desc
-                = FunctionControl.Descriptor.create(this, ann, method);
+        FunctionDescriptor desc
+                = FunctionDescriptor.create(this, ann, method);
         if (desc != null) {
             addControl(desc);
             return true;
