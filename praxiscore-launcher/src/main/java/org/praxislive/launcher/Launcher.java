@@ -41,6 +41,8 @@ import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.LogService;
+import org.praxislive.core.services.SystemManagerService;
 import org.praxislive.hub.net.NetworkCoreFactory;
 import picocli.CommandLine;
 
@@ -258,13 +260,17 @@ public class Launcher {
             }
 
             final var main = new MainThreadImpl();
-            
+
             int exitValue = 0;
 
             do {
                 var coreBuilder = NetworkCoreFactory.builder()
                         .childLauncher(new ChildLauncherImpl(context))
-                        .exposeServices(List.of(CodeCompilerService.class));
+                        .exposeServices(List.of(
+                                CodeCompilerService.class,
+                                LogService.class,
+                                SystemManagerService.class
+                        ));
 
                 if (requireServer) {
                     coreBuilder.enableServer();
@@ -306,7 +312,7 @@ public class Launcher {
                     out(LISTENING_STATUS + port);
                 }
                 main.run(hub);
-                
+
                 exitValue = hub.exitValue();
 
             } while (requireServer);
