@@ -1,0 +1,75 @@
+@ /data1 root:data {
+  #%praxis.version 5.5.0-SNAPSHOT
+  @ ./exit core:custom {
+    #%graph.x 355
+    #%graph.y 74
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./test1 core:custom {
+    #%graph.x 124
+    #%graph.y 74
+    .code "
+
+
+
+    String lowercase = \"hello world\";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Persist Async<Call> response;
+
+    @Override
+    public void update() \{
+        if (response != null && response.done()) \{
+            if (response.failed()) \{
+                log(ERROR, \"<FAIL> \" + response.error());
+                error.send();
+            \} else \{
+                String result = response.result().args().get(0).toString();
+                if (!result.equals(uppercase)) \{
+                    log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + result);
+                    error.send();
+                \} else \{
+                    log(INFO, \"Test 1 : OK\");
+                    ok.send();
+                \}
+            \}
+            response = null;
+        \}
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 1 : Calling /data2/functions.uppercase\");
+        response = ask(ControlAddress.of(\"/data2/functions.uppercase\"),
+                args(lowercase));
+    \}
+
+
+"
+  }
+  ~ ./test1!ok ./exit!exit-ok
+  ~ ./test1!error ./exit!exit-fail
+}

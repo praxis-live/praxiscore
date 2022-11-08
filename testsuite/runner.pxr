@@ -1,9 +1,8 @@
 @ /runner root:data {
-  #%praxis.version 5.4.0
+  #%praxis.version 5.5.0-SNAPSHOT
   .shared-code "SHARED.Utils \{package SHARED;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.stream.Collectors;
@@ -35,6 +34,19 @@ public class Utils \{
                     .resolve(launcherName);
             if (Files.exists(launcher)) \{
                 return launcher;
+            \}
+        \}
+        // try if running IDE from IDE
+        var nbDirs = System.getProperty(\"netbeans.dirs\");
+        if (nbDirs != null) \{
+            for (String path : nbDirs.split(\":\")) \{
+                Path launcher = Path.of(path).getParent()
+                        .resolve(\"praxiscore\")
+                        .resolve(\"bin\")
+                        .resolve(launcherName);
+                if (Files.exists(launcher)) \{
+                    return launcher;
+                \}
             \}
         \}
         throw new IllegalStateException(\"No launcher found\");
@@ -106,6 +118,7 @@ import SHARED.Utils;
 import java.nio.file.Files;
 
 
+
     final long TIMEOUT = Long.getLong(\"testsuite.timeout\", 20000);
     final String SEP = System.lineSeparator();
     
@@ -153,7 +166,7 @@ import java.nio.file.Files;
         if (result.isDone()) \{
             try \{
                 String output = result.get();
-                if (output.contains(\"<FAIL>\") || output.contains(\"<ERROR>\")) \{
+                if (output.contains(\"<FAIL>\") || output.contains(\"ERROR\")) \{
                     log(ERROR, output + SEP + \"TEST FAILED\" + SEP);
                     stop();
                     failed.send();

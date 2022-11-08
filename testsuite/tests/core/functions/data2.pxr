@@ -1,0 +1,25 @@
+@ /data2 root:data {
+  #%praxis.version 5.5.0-SNAPSHOT
+  @ ./functions core:custom {
+    #%graph.x 264
+    #%graph.y 184
+    .code "
+
+    
+    @FN String uppercase(String input) \{
+        return input.toUpperCase(Locale.ROOT);
+    \}
+    
+"
+  }
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 70
+    #%graph.y 59
+  }
+  @ ./send core:routing:send {
+    #%graph.x 455
+    #%graph.y 76
+    .address /data1/test1.test
+  }
+  ~ ./start-trigger!out ./send!in
+}

@@ -1,0 +1,41 @@
+hub {
+  enable-fileserver false
+  proxies {
+    data1 {
+      host localhost
+      port auto
+      id-pattern data1
+      type-pattern *
+      exec {
+        command default
+        java-options {
+          -Dpraxis.test.child=true
+        }
+      }
+    }
+    data2 {
+      host localhost
+      port auto
+      id-pattern data2
+      type-pattern *
+      exec {
+        command default
+        java-options {
+          -Dpraxis.test.child=true
+        }
+      }
+    }
+  }
+}
+compiler {
+  release 11
+}
+libraries {}
+
+# <<<BUILD>>>
+include [file "data1.pxr"]
+include [file "data2.pxr"]
+
+# <<<RUN>>>
+/data1.start
+/data2.start
