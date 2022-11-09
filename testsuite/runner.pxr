@@ -166,7 +166,7 @@ import java.nio.file.Files;
         if (result.isDone()) \{
             try \{
                 String output = result.get();
-                if (output.contains(\"<FAIL>\") || output.contains(\"ERROR\")) \{
+                if (output.contains(\"<FAIL>\") || output.contains(\"<ERROR>\")) \{
                     log(ERROR, output + SEP + \"TEST FAILED\" + SEP);
                     stop();
                     failed.send();

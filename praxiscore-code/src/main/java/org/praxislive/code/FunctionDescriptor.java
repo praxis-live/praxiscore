@@ -22,6 +22,7 @@
  */
 package org.praxislive.code;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.praxislive.code.userapi.FN;
@@ -161,22 +162,32 @@ class FunctionDescriptor extends ControlDescriptor {
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
                 var args = call.args();
-                if (args.size() != parameterMappers.size()) {
-                    throw new IllegalArgumentException("Invalid number of arguments");
+                int reqCount = parameterMappers.size();
+                if (args.size() < reqCount) {
+                    throw new IllegalArgumentException("Not enough arguments in call");
                 }
-                Object[] parameters = new Object[args.size()];
+                Object[] parameters = new Object[reqCount];
                 for (int i = 0; i < parameters.length; i++) {
                     parameters[i] = parameterMappers.get(i).fromValue(args.get(i));
                 }
-                Object response = context.invokeCallable(call.time(),
-                        () -> method.invoke(context.getDelegate(), parameters));
-                if (call.isReplyRequired()) {
-                    if (returnMapper != null) {
-                        @SuppressWarnings("unchecked")
-                        var mapper = (ValueMapper<Object>) returnMapper;
-                        router.route(call.reply(mapper.toValue(response)));
+                try {
+                    Object response = context.invokeCallable(call.time(),
+                            () -> method.invoke(context.getDelegate(), parameters));
+                    if (call.isReplyRequired()) {
+                        if (returnMapper != null) {
+                            @SuppressWarnings("unchecked")
+                            var mapper = (ValueMapper<Object>) returnMapper;
+                            router.route(call.reply(mapper.toValue(response)));
+                        } else {
+                            router.route(call.reply());
+                        }
+                    }
+                } catch (InvocationTargetException ex) {
+                    var cause = ex.getCause();
+                    if (cause instanceof Exception) {
+                        throw (Exception) cause;
                     } else {
-                        router.route(call.reply());
+                        throw ex;
                     }
                 }
             }

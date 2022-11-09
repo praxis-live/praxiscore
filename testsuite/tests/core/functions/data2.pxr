@@ -5,9 +5,16 @@
     #%graph.y 184
     .code "
 
+
     
     @FN String uppercase(String input) \{
         return input.toUpperCase(Locale.ROOT);
+    \}
+    
+    @FN void noOp() \{\}
+    
+    @FN String error() \{
+        throw new UnsupportedOperationException();
     \}
     
 "
