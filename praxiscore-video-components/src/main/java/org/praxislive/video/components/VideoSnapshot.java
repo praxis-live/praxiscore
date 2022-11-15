@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -80,7 +80,7 @@ public class VideoSnapshot extends VideoCodeDelegate {
     }
 
     void capture() {
-        double am = d(activeMix);
+        double am = D(activeMix);
         if (am > LOW) {
             if (am > HIGH) {
                 swapFgBg();
@@ -108,7 +108,7 @@ public class VideoSnapshot extends VideoCodeDelegate {
     }
     
     void render() {
-        double am = d(activeMix);
+        double am = D(activeMix);
         if (am > LOW) {
             if (activeMix.isAnimating()) {
                 blendMode(ADD, 1 - am);

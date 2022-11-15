@@ -62,7 +62,7 @@ import org.praxislive.core.services.SystemManagerService;
     void test() \{
         log(INFO, \"Test 1 : Calling /data2/functions.uppercase\");
         response = ask(ControlAddress.of(\"/data2/functions.uppercase\"),
-                args(lowercase));
+                List.of(V(lowercase)));
     \}
 
 
@@ -105,7 +105,7 @@ import org.praxislive.core.services.SystemManagerService;
     void test() \{
         log(INFO, \"Test 2 : Calling /data2/functions.uppercase with extra argument\");
         response = ask(ControlAddress.of(\"/data2/functions.uppercase\"),
-                args(lowercase, \"extra argument\"));
+                lowercase, \"extra argument\");
     \}
 
 
@@ -147,8 +147,7 @@ import org.praxislive.core.services.SystemManagerService;
     @T(1)
     void test() \{
         log(INFO, \"Test 3 : Calling /data2/functions.no-op\");
-        response = ask(ControlAddress.of(\"/data2/functions.no-op\"),
-                List.of());
+        response = ask(ControlAddress.of(\"/data2/functions.no-op\"));
     \}
 
 
@@ -158,7 +157,6 @@ import org.praxislive.core.services.SystemManagerService;
     #%graph.x 124
     #%graph.y 485
     .code "
-
 
     @Out(1) Output ok;
     @Out(2) Output error;
@@ -190,8 +188,7 @@ import org.praxislive.core.services.SystemManagerService;
     @T(1)
     void test() \{
         log(INFO, \"Test 4 : Calling /data2/functions.error\");
-        response = ask(ControlAddress.of(\"/data2/functions.error\"),
-                args(\"FOO\"));
+        response = ask(ControlAddress.of(\"/data2/functions.error\"), \"FOO\");
     \}
 
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -86,8 +86,8 @@ public class VideoCaptureComponent extends VideoCodeDelegate {
     public void init() {
         device.linkAs(Value::toString, capture::device);
         play.link(() -> {
-            capture.requestFrameSize(i(sourceWidth), i(sourceHeight))
-                    .requestFrameRate(d(sourceFps))
+            capture.requestFrameSize(I(sourceWidth), I(sourceHeight))
+                    .requestFrameRate(D(sourceFps))
                     .play();
         });
         stop.link(capture::stop);

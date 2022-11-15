@@ -24,6 +24,7 @@ package org.praxislive.code;
 import java.util.List;
 import java.util.Optional;
 import org.praxislive.code.userapi.Async;
+import org.praxislive.code.userapi.Property;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -246,21 +247,27 @@ public abstract class CodeDelegate {
     public final Async<Call> ask(ControlAddress destination, List<Value> args) {
         return getContext().ask(destination, args);
     }
-
+    
     /**
-     * Create an immutable List of Values suitable for use as Control call
-     * arguments. Objects are converted to Value using
-     * {@link Value#ofObject(java.lang.Object)}.
+     * Call a Control. The returned {@link Async} result will be completed by
+     * the response {@link Call} if successful, or the resulting error. Use
+     * {@link Call#args} to extract the result.
      *
-     * @param values argument values
-     * @return argument list
+     * @param destination address of control
+     * @param args call arguments
+     * @return async response
      */
-    public final List<Value> args(Object... values) {
-        Value[] converted = new Value[values.length];
-        for (int i = 0; i < values.length; i++) {
-            converted[i] = Value.ofObject(values[i]);
+    public final Async<Call> ask(ControlAddress destination, Object ... args) {
+        Value[] converted = new Value[args.length];
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            if (arg instanceof Property) {
+                converted[i] = ((Property) arg).get();
+            } else {
+                converted[i] = Value.ofObject(arg);
+            }
         }
-        return List.of(converted);
+        return ask(destination, List.of(converted));
     }
 
     /**

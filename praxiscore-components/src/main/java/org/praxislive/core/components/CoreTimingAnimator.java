@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -58,7 +58,7 @@ public class CoreTimingAnimator extends CoreCodeDelegate {
     @Override
     public void update() {
         if (value.isAnimating()) {
-            out.send(d(value));
+            out.send(D(value));
             active = true;
         } else if (active) {
             out.send(to);
@@ -72,7 +72,7 @@ public class CoreTimingAnimator extends CoreCodeDelegate {
     }
     
     void valueChanged() {
-        to = d(value);
+        to = D(value);
         active = false;
         out.send(to);
     }

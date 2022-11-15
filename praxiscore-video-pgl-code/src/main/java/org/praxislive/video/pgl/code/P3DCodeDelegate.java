@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -754,4 +754,58 @@ public class P3DCodeDelegate extends DefaultCodeDelegate {
         pg.filter(shader);
     }
 
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x) {
+        return super.noise(x);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x, double y) {
+        return super.noise(x, y);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x, double y, double z) {
+        return super.noise(x, y, z);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseDetail(int lod) {
+        super.noiseDetail(lod);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseDetail(int lod, double falloff) {
+        super.noiseDetail(lod, falloff);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseSeed(long what) {
+        super.noiseSeed(what);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, Object dst) {
+        super.arrayCopy(src, dst);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, Object dst, int length) {
+        super.arrayCopy(src, dst, length);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, int srcPosition, Object dst, int dstPosition, int length) {
+        super.arrayCopy(src, srcPosition, dst, dstPosition, length);
+    }
+    
 }
