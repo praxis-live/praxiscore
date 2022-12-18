@@ -26,13 +26,14 @@ import org.praxislive.core.types.PError;
 
 /**
  * A lightweight holder for a future value, the result of an asynchronous
- * operation such as an actor call.An Async can also reflect the failure of
- such an operation.<p>
+ * operation such as an actor call. An Async can also reflect the failure of
+ * such an operation.<p>
  * An Async can be explicitly completed, with a value or error. Completion can
  * only happen once.
  * <p>
  * <b>Async is not thread safe and is not designed for concurrent operation.</b>
  * Use from a single thread, or protect appropriately.
+ *
  * @param <T> result type
  */
 public final class Async<T> {
@@ -115,6 +116,32 @@ public final class Async<T> {
             this.error = Objects.requireNonNull(error);
             return true;
         }
+    }
+
+    /**
+     * A task intended to be run asynchronously and outside of the main
+     * component context. All data required to complete the task should be
+     * passed in as input data, and implementations should be careful not to use
+     * any other data from the component during execution.
+     *
+     * @param <T> type of the input data
+     * @param <R> type of the result
+     */
+    @FunctionalInterface
+    public static interface Task<T, R> {
+
+        /**
+         * Execute the task. This will run outside of the main component
+         * context. All data required to complete the task should be passed in
+         * as input. Implementations should not access (or capture) any other
+         * data from the component during execution.
+         *
+         * @param input input data for task
+         * @return result
+         * @throws Exception on task error
+         */
+        public R execute(T input) throws Exception;
+
     }
 
 }

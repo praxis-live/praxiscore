@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
@@ -42,7 +43,7 @@ class ResponseHandler extends ControlDescriptor implements Control {
     static final String ID = "_reply";
     private static final PError UNKNOWN_ERROR = PError.of("Unknown error");
 
-    private final Map<Integer, AsyncReference> resultMap;
+    private final Map<Integer, AsyncReference<?>> resultMap;
 
     private CodeContext<?> context;
 
@@ -64,16 +65,14 @@ class ResponseHandler extends ControlDescriptor implements Control {
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isReply()) {
-            var async = retrieveAsync(call.matchID());
-            if (async != null) {
-                async.complete(call);
+            var asyncRef = resultMap.remove(call.matchID());
+            if (asyncRef != null) {
+                asyncRef.complete(call);
             }
         } else if (call.isError()) {
             var error = extractError(call.args());
-            var async = retrieveAsync(call.matchID());
-            if (async != null) {
-                async.fail(error);
-            } else {
+            var asyncRef = resultMap.remove(call.matchID());
+            if (asyncRef == null || !asyncRef.completeWithError(error)) {
                 context.getLog().log(LogLevel.ERROR, error);
             }
         } else if (call.isReplyRequired()) {
@@ -103,22 +102,17 @@ class ResponseHandler extends ControlDescriptor implements Control {
         resultMap.clear();
     }
 
-    void register(int id, Async<Call> async) {
+    void register(Call call, Async<Call> async) {
+        register(call, async, Function.identity());
+    }
+    
+    <T> void register(Call call, Async<T> async, Function<Call, T> converter) {
         cleanResultMap();
-        resultMap.put(id, new AsyncReference(async));
+        resultMap.put(call.matchID(), new AsyncReference(async, converter));
     }
 
     private void cleanResultMap() {
         resultMap.entrySet().removeIf(e -> e.getValue().get() == null);
-    }
-
-    private Async<Call> retrieveAsync(int id) {
-        var ref = resultMap.remove(id);
-        if (ref != null) {
-            return ref.get();
-        } else {
-            return null;
-        }
     }
 
     private PError extractError(List<Value> args) {
@@ -130,10 +124,35 @@ class ResponseHandler extends ControlDescriptor implements Control {
         }
     }
 
-    private static class AsyncReference extends WeakReference<Async<Call>> {
+    private static class AsyncReference<T> extends WeakReference<Async<T>> {
 
-        AsyncReference(Async<Call> referent) {
+        private final Function<Call, T> converter;
+        
+        private AsyncReference(Async<T> referent, Function<Call, T> converter) {
             super(referent);
+            this.converter = converter;
+        }
+        
+        private void complete(Call call) {
+            Async<T> async = get();
+            if (async != null) {
+                try {
+                    T value = converter.apply(call);
+                    async.complete(value);
+                } catch (Exception ex) {
+                    async.fail(PError.of(ex));
+                }
+            }
+            
+        }
+        
+        private boolean completeWithError(PError error) {
+            Async<T> async = get();
+            if (async != null) {
+                return async.fail(error);
+            } else {
+                return false;
+            }
         }
 
     }

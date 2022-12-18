@@ -4,4 +4,4 @@ core/testcheck
 core/components
 core/basic-multiprocess
 core/shared-delegates
-core/functions
+core/async-functions

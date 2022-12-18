@@ -47,6 +47,10 @@ import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.TaskService;
+import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PReference;
 
 /**
  * A CodeContext wraps each {@link CodeDelegate}, managing state and the
@@ -679,7 +683,29 @@ public abstract class CodeContext<D extends CodeDelegate> {
         Call call = Call.create(destination, responseAddress, time, args);
         getComponent().getPacketRouter().route(call);
         Async<Call> async = new Async<>();
-        responseHandler.register(call.matchID(), async);
+        responseHandler.register(call, async);
+        return async;
+    }
+
+    final <T, R> Async<R> async(T input, Async.Task<T, R> task) {
+        Async<R> async = new Async<>();
+        try {
+            ControlAddress to = locateService(TaskService.class)
+                    .map(c -> ControlAddress.of(c, TaskService.SUBMIT))
+                    .orElseThrow(ServiceUnavailableException::new);
+            TaskService.Task wrapper = () -> PReference.of(task.execute(input));
+            Call call = Call.create(to, responseAddress, time, PReference.of(wrapper));
+            getComponent().getPacketRouter().route(call);
+            responseHandler.register(call, async, c -> {
+                @SuppressWarnings("unchecked")
+                R result = (R) PReference.from(c.args().get(0))
+                        .flatMap(ref -> ref.as(Object.class))
+                        .orElseThrow(IllegalStateException::new);
+                return result;
+            });
+        } catch (Exception ex) {
+            async.fail(PError.of(ex));
+        }
         return async;
     }
 

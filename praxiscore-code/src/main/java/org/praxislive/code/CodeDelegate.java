@@ -247,7 +247,7 @@ public abstract class CodeDelegate {
     public final Async<Call> ask(ControlAddress destination, List<Value> args) {
         return getContext().ask(destination, args);
     }
-    
+
     /**
      * Call a Control. The returned {@link Async} result will be completed by
      * the response {@link Call} if successful, or the resulting error. Use
@@ -257,7 +257,7 @@ public abstract class CodeDelegate {
      * @param args call arguments
      * @return async response
      */
-    public final Async<Call> ask(ControlAddress destination, Object ... args) {
+    public final Async<Call> ask(ControlAddress destination, Object... args) {
         Value[] converted = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
@@ -268,6 +268,26 @@ public abstract class CodeDelegate {
             }
         }
         return ask(destination, List.of(converted));
+    }
+
+    /**
+     * Run a task asynchronously and outside of the component context. All data
+     * required to complete the task should be passed in as input data. The task
+     * should not access any other data from the component during execution. If
+     * multiple inputs are required, consider
+     * {@link List#of(java.lang.Object...)}.
+     * <p>
+     * The returned {@link Async} will be completed by the task result, or the
+     * resulting error.
+     *
+     * @param <T> type of input
+     * @param <R> type of result
+     * @param input input data
+     * @param task async task
+     * @return async result
+     */
+    public final <T, R> Async<R> async(T input, Async.Task<T, R> task) {
+        return getContext().async(input, task);
     }
 
     /**

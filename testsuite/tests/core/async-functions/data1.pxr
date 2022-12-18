@@ -1,8 +1,8 @@
 @ /data1 root:data {
   #%praxis.version 5.5.0-SNAPSHOT
   @ ./exit core:custom {
-    #%graph.x 583
-    #%graph.y 100
+    #%graph.x 680
+    #%graph.y 659
     .code "import org.praxislive.core.services.Services;
 import org.praxislive.core.services.SystemManagerService;
 
@@ -28,6 +28,7 @@ import org.praxislive.core.services.SystemManagerService;
   @ ./test1 core:custom {
     #%graph.x 124
     #%graph.y 74
+    #%graph.comment Call uppercase function
     .code "
 
     String lowercase = \"hello world\";
@@ -70,7 +71,8 @@ import org.praxislive.core.services.SystemManagerService;
   }
   @ ./test2 core:custom {
     #%graph.x 124
-    #%graph.y 211
+    #%graph.y 231
+    #%graph.comment Call uppercase function with extra args
     .code "
 
     String lowercase = \"hello world\";
@@ -113,7 +115,8 @@ import org.praxislive.core.services.SystemManagerService;
   }
   @ ./test3 core:custom {
     #%graph.x 124
-    #%graph.y 348
+    #%graph.y 391
+    #%graph.comment Call no-op function
     .code "
 
     String lowercase = \"hello world\";
@@ -155,7 +158,8 @@ import org.praxislive.core.services.SystemManagerService;
   }
   @ ./test4 core:custom {
     #%graph.x 124
-    #%graph.y 485
+    #%graph.y 555
+    #%graph.comment Call error function
     .code "
 
     @Out(1) Output ok;
@@ -194,6 +198,48 @@ import org.praxislive.core.services.SystemManagerService;
 
 "
   }
+  @ ./test5 core:custom {
+    #%graph.x 433
+    #%graph.y 74
+    #%graph.comment Run async task
+    .code "
+
+    String lowercase = \"hello world\";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Persist Async<String> response;
+
+    @Override
+    public void update() \{
+        if (response != null && response.done()) \{
+            if (response.failed()) \{
+                log(ERROR, \"<FAIL> \" + response.error());
+                error.send();
+            \} else \{
+                String result = response.result();
+                if (!result.equals(uppercase)) \{
+                    log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + result);
+                    error.send();
+                \} else \{
+                    log(INFO, \"Test 5 : OK\");
+                    ok.send();
+                \}
+            \}
+            response = null;
+        \}
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 5 : Running async task\");
+        response = async(lowercase, s -> s.toUpperCase(Locale.ROOT));
+    \}
+
+"
+  }
   ~ ./test1!error ./exit!exit-fail
   ~ ./test2!error ./exit!exit-fail
   ~ ./test1!ok ./test2!test
@@ -201,5 +247,7 @@ import org.praxislive.core.services.SystemManagerService;
   ~ ./test3!ok ./test4!test
   ~ ./test3!error ./exit!exit-fail
   ~ ./test4!error ./exit!exit-fail
-  ~ ./test4!ok ./exit!exit-ok
+  ~ ./test4!ok ./test5!test
+  ~ ./test5!ok ./exit!exit-ok
+  ~ ./test5!error ./exit!exit-fail
 }
