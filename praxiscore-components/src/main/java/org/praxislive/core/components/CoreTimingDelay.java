@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -57,7 +57,7 @@ public class CoreTimingDelay extends CoreCodeDelegate {
     @Override
     public void update() {
         if (timer.isAnimating()) {
-            if (d(timer) > time) {
+            if (D(timer) > time) {
                 timer.set(0);
                 Value v = value.get();
                 value.set(PString.EMPTY);

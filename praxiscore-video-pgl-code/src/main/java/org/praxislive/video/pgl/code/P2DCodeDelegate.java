@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,7 +41,7 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public char key;
     public boolean keyPressed, mousePressed;
     public PGraphics2D g;
-    
+
     PGraphics2D pg;
 
     void configure(PApplet parent, PGraphics2D pg, int width, int height) {
@@ -60,13 +60,13 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     }
 
     public void init(){}
-    
+
     public void update(){}
-    
+
     public void setup(){}
-    
+
     public void draw(){}
-    
+
     @Override
     public <T> Optional<T> find(Class<T> type) {
         if (processing.core.PImage.class.isAssignableFrom(type)) {
@@ -129,7 +129,7 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public PShape createShape() {
         return pg.createShape();
     }
-    
+
     public PShape createShape(Constants.ShapeType type) {
         return pg.createShape(type);
     }
@@ -137,7 +137,7 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public PShape createShape(PShape source) {
         return pg.createShape(source);
     }
-    
+
     public void clip(double a, double b, double c, double d) {
         pg.clip(a, b, c, d);
     }
@@ -185,7 +185,7 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public void square(double x, double y, double extent) {
         pg.square(x, y, extent);
     }
-    
+
     public void rect(double a, double b, double c, double d) {
         pg.rect(a, b, c, d);
     }
@@ -289,7 +289,7 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
     public void shape(PShape shape, double a, double b, double c, double d) {
         pg.shape(shape, a, b, c, d);
     }
-    
+
     public double textAscent() {
         return pg.textAscent();
     }
@@ -542,4 +542,57 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
         pg.filter(shader);
     }
 
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x) {
+        return super.noise(x);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x, double y) {
+        return super.noise(x, y);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public double noise(double x, double y, double z) {
+        return super.noise(x, y, z);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseDetail(int lod) {
+        super.noiseDetail(lod);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseDetail(int lod, double falloff) {
+        super.noiseDetail(lod, falloff);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void noiseSeed(long what) {
+        super.noiseSeed(what);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, Object dst) {
+        super.arrayCopy(src, dst);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, Object dst, int length) {
+        super.arrayCopy(src, dst, length);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void arrayCopy(Object src, int srcPosition, Object dst, int dstPosition, int length) {
+        super.arrayCopy(src, srcPosition, dst, dstPosition, length);
+    }
 }

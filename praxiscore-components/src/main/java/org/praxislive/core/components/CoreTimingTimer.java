@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -59,7 +59,7 @@ public class CoreTimingTimer extends CoreCodeDelegate {
             out.send();
             return;
         }
-        double t = d(time);
+        double t = D(time);
         if (t >= period) {
             t %= period;
             time.set(t).to(100).in(100 - t);

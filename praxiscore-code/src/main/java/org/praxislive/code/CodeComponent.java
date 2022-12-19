@@ -55,7 +55,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     private PacketRouter router;
     private LogInfo logInfo;
     private ProxyContext proxyContext;
-    
+
     CodeComponent() {
 
     }
@@ -138,7 +138,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     CodeContext<D> getCodeContext() {
         return codeCtxt;
     }
-    
+
     ComponentAddress getAddress() {
         return address;
     }
@@ -158,7 +158,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
         return router;
     }
-    
+
     ProxyContext getProxyContext() {
         if (proxyContext == null) {
             ThreadContext threadCtxt = getLookup().find(ThreadContext.class)
@@ -175,13 +175,6 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         return logInfo.toAddress;
     }
 
-    ControlAddress getLogFromAddress() {
-        if (logInfo == null) {
-            initLogInfo();
-        }
-        return logInfo.fromAddress;
-    }
-
     private void initLogInfo() {
         ControlAddress toAddress = getLookup().find(Services.class)
                 .flatMap(srvs -> srvs.locate(LogService.class))
@@ -194,22 +187,18 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
             level = LogLevel.ERROR;
         }
 
-        ControlAddress fromAddress = ControlAddress.of(address, "_log");
-        logInfo = new LogInfo(level, toAddress, fromAddress);
+        logInfo = new LogInfo(level, toAddress);
     }
 
     private static class LogInfo {
 
         private final LogLevel level;
         private final ControlAddress toAddress;
-        private final ControlAddress fromAddress;
 
         private LogInfo(LogLevel level,
-                ControlAddress toAddress,
-                ControlAddress fromAddress) {
+                ControlAddress toAddress) {
             this.level = level;
             this.toAddress = toAddress;
-            this.fromAddress = fromAddress;
         }
     }
 

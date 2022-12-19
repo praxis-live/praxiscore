@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,17 +30,156 @@ import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
 /**
- * Default delegate API for use as trait by delegate subclasses. 
+ * Default delegate API for use as trait by delegate subclasses.
  */
 public interface DefaultDelegateAPI {
-    
+
+    /**
+     * Casting function to convert an object into a double value. If the value
+     * is a {@link PNumber} the value will be extracted directly. If the value
+     * is a {@link Property} the value will be extracted using
+     * {@link Property#getDouble()}. All other types will be converted into a
+     * Value (if necessary) and an attempt made to coerce into a PNumber.
+     * Otherwise zero is returned.
+     *
+     * @param value object value to convert
+     * @return value as double or zero
+     */
+    public default double D(Object value) {
+        return D(value, 0);
+    }
+
+    /**
+     * Casting function to convert an object into a double value. If the value
+     * is a {@link PNumber} the value will be extracted directly. If the value
+     * is a {@link Property} the value will be extracted using
+     * {@link Property#getDouble(double)}. All other types will be converted
+     * into a Value (if necessary) and an attempt made to coerce into a PNumber.
+     * Otherwise the provided default is returned.
+     *
+     * @param value object value to convert
+     * @param def default value
+     * @return value as double or default value
+     */
+    public default double D(Object value, double def) {
+        if (value instanceof PNumber) {
+            return ((PNumber) value).value();
+        } else if (value instanceof Property) {
+            return ((Property) value).getDouble(def);
+        } else {
+            return PNumber.from(Value.ofObject(value))
+                    .map(PNumber::value)
+                    .orElse(def);
+        }
+    }
+
+    /**
+     * Casting function to convert an object into an int value. If the value is
+     * a {@link PNumber} the value will be extracted directly. If the value is a
+     * {@link Property} the value will be extracted using
+     * {@link Property#getInt()}. All other types will be converted into a Value
+     * (if necessary) and an attempt made to coerce into a PNumber. Otherwise
+     * zero is returned.
+     *
+     * @param value object value to convert
+     * @return value as int or zero
+     */
+    public default int I(Object value) {
+        return I(value, 0);
+    }
+
+    /**
+     * Casting function to convert an object into an int value. If the value is
+     * a {@link PNumber} the value will be extracted directly. If the value is a
+     * {@link Property} the value will be extracted using
+     * {@link Property#getInt(int)}. All other types will be converted into a
+     * Value (if necessary) and an attempt made to coerce into a PNumber.
+     * Otherwise the provided default is returned.
+     *
+     * @param value object value to convert
+     * @param def default value
+     * @return value as int or default value
+     */
+    public default int I(Object value, int def) {
+        if (value instanceof PNumber) {
+            return ((PNumber) value).toIntValue();
+        } else if (value instanceof Property) {
+            return ((Property) value).getInt(def);
+        } else {
+            return PNumber.from(Value.ofObject(value))
+                    .map(PNumber::toIntValue)
+                    .orElse(def);
+        }
+    }
+
+    /**
+     * Casting function to convert an object into a boolean value. If the value
+     * is a {@link PBoolean} the value will be extracted directly. If the value
+     * is a {@link Property} the value will be extracted using
+     * {@link Property#getBoolean()}. All other types will be converted into a
+     * Value (if necessary) and an attempt made to coerce into a PBoolean.
+     * Otherwise false is returned.
+     *
+     * @param value object value to convert
+     * @return value as boolean or false
+     */
+    public default boolean B(Object value) {
+        if (value instanceof PBoolean) {
+            return ((PBoolean) value).value();
+        } else if (value instanceof Property) {
+            return ((Property) value).getBoolean();
+        } else {
+            return PBoolean.from(Value.ofObject(value))
+                    .map(PBoolean::value)
+                    .orElse(false);
+        }
+    }
+
+    /**
+     * Casting function to convert an object into a String value. If the value
+     * is a {@link Property} the value is extracted and converted to a String.
+     * Otherwise the value is converted to a String directly, which covers Value
+     * and non-Value types. Null values are returned as an empty String.
+     *
+     * @param value object value to convert
+     * @return value as String
+     */
+    public default String S(Object value) {
+        if (value instanceof Property) {
+            return ((Property) value).get().toString();
+        } else {
+            return value == null ? "" : value.toString();
+        }
+    }
+
+    /**
+     * Casting function to convert an object into an appropriate Value subtype.
+     * If the input is already a Value it is returned directly. If the input is
+     * a {@link Property} the value is extracted using {@link Property#get()}.
+     * Otherwise the input is converted using
+     * {@link Value#ofObject(java.lang.Object)}.
+     *
+     * @param value object value to convert
+     * @return value as Value subtype
+     */
+    public default Value V(Object value) {
+        if (value instanceof Value) {
+            return (Value) value;
+        } else if (value instanceof Property) {
+            return ((Property) value).get();
+        } else {
+            return Value.ofObject(value);
+        }
+    }
+
     /**
      * Extract a double from the Property's current Value, or zero if the value
      * cannot be coerced.
-     * 
+     *
      * @param p
      * @return
      */
+    @Deprecated
     public default double d(Property p) {
         return p.getDouble();
     }
@@ -48,10 +187,11 @@ public interface DefaultDelegateAPI {
     /**
      * Convert the provided Value into a double, or zero if the Value cannot be
      * coerced.
-     * 
+     *
      * @param v
      * @return
      */
+    @Deprecated
     public default double d(Value v) {
         if (v instanceof PNumber) {
             return ((PNumber) v).value();
@@ -62,10 +202,11 @@ public interface DefaultDelegateAPI {
 
     /**
      * Parse the provided String into a double, or zero if invalid.
-     * 
+     *
      * @param s
      * @return
      */
+    @Deprecated
     public default double d(String s) {
         return d(PString.of(s));
     }
@@ -73,10 +214,11 @@ public interface DefaultDelegateAPI {
     /**
      * Extract an int from the Property's current Value, or zero if the value
      * cannot be coerced.
-     * 
+     *
      * @param p
      * @return
      */
+    @Deprecated
     public default int i(Property p) {
         return p.getInt();
     }
@@ -84,10 +226,11 @@ public interface DefaultDelegateAPI {
     /**
      * Convert the provided Value into an int, or zero if the Value cannot be
      * coerced.
-     * 
+     *
      * @param v
      * @return
      */
+    @Deprecated
     public default int i(Value v) {
         if (v instanceof PNumber) {
             return ((PNumber) v).toIntValue();
@@ -98,10 +241,11 @@ public interface DefaultDelegateAPI {
 
     /**
      * Parse the provided String into an int, or zero if invalid.
-     * 
+     *
      * @param s
      * @return
      */
+    @Deprecated
     public default int i(String s) {
         return i(PString.of(s));
     }
@@ -109,21 +253,23 @@ public interface DefaultDelegateAPI {
     /**
      * Extract the Property's current value as a boolean. If the value cannot be
      * coerced, returns false.
-     * 
+     *
      * @param p
      * @return
      */
+    @Deprecated
     public default boolean b(Property p) {
         return p.getBoolean();
     }
 
     /**
-     * Convert the provided Value into a boolean according to the parsing rules of
-     * {@link PBoolean}. If the Value cannot be coerced, returns false.
-     * 
+     * Convert the provided Value into a boolean according to the parsing rules
+     * of {@link PBoolean}. If the Value cannot be coerced, returns false.
+     *
      * @param v
      * @return
      */
+    @Deprecated
     public default boolean b(Value v) {
         if (v instanceof PBoolean) {
             return ((PBoolean) v).value();
@@ -135,40 +281,44 @@ public interface DefaultDelegateAPI {
     /**
      * Parse the given String into a boolean according to the parsing rules of
      * {@link PBoolean}. If the String is invalid, returns false.
-     * 
+     *
      * @param s
      * @return
      */
+    @Deprecated
     public default boolean b(String s) {
         return b(PString.of(s));
     }
 
     /**
      * Extract the Property's current value into a String representation.
-     * 
+     *
      * @param p
      * @return
      */
+    @Deprecated
     public default String s(Property p) {
         return p.get().toString();
     }
 
     /**
      * Convert the provided Value into a String representation.
-     * 
+     *
      * @param v
      * @return
      */
+    @Deprecated
     public default String s(Value v) {
         return v.toString();
     }
 
     /**
-     * Attempt to extract a {@link PArray} from the given Property. An empty PArray
-     * will be returned if the property's value is not a PArray and cannot be coerced.
-     * 
-     * @see #array(org.praxislive.core.types.Value) 
-     * 
+     * Attempt to extract a {@link PArray} from the given Property. An empty
+     * PArray will be returned if the property's value is not a PArray and
+     * cannot be coerced.
+     *
+     * @see #array(org.praxislive.core.types.Value)
+     *
      * @param p
      * @return
      */
@@ -178,9 +328,9 @@ public interface DefaultDelegateAPI {
 
     /**
      * Convert the given Value into a {@link PArray}. If the Value is already a
-     * PArray it will be returned, otherwise an attempt will be made to coerce it.
-     * If the Value cannot be converted, an empty PArray will be returned.
-     * 
+     * PArray it will be returned, otherwise an attempt will be made to coerce
+     * it. If the Value cannot be converted, an empty PArray will be returned.
+     *
      * @param s
      * @return
      */
@@ -189,9 +339,9 @@ public interface DefaultDelegateAPI {
     }
 
     /**
-     * Parse the given String into a {@link PArray}. If the String is not a valid
-     * representation of an array, returns an empty PArray.
-     * 
+     * Parse the given String into a {@link PArray}. If the String is not a
+     * valid representation of an array, returns an empty PArray.
+     *
      * @param s
      * @return
      */
@@ -201,7 +351,7 @@ public interface DefaultDelegateAPI {
 
     /**
      * Return a random number between zero and max (exclusive)
-     * 
+     *
      * @param max the upper bound of the range
      * @return
      */
@@ -212,7 +362,7 @@ public interface DefaultDelegateAPI {
 
     /**
      * Return a random number between min (inclusive) and max (exclusive)
-     * 
+     *
      * @param min the lower bound of the range
      * @param max the upper bound of the range
      * @return
@@ -355,7 +505,7 @@ public interface DefaultDelegateAPI {
      * @param values value list - must not be empty
      * @return maximum value
      */
-    public default int max(int ... values) {
+    public default int max(int... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
@@ -395,7 +545,7 @@ public interface DefaultDelegateAPI {
      * @param values value list - must not be empty
      * @return maximum value
      */
-    public default double max(double ... values) {
+    public default double max(double... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
@@ -435,7 +585,7 @@ public interface DefaultDelegateAPI {
      * @param values value list - must not be empty
      * @return minimum value
      */
-    public default int min(int ... values) {
+    public default int min(int... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
@@ -475,7 +625,7 @@ public interface DefaultDelegateAPI {
      * @param values value list - must not be empty
      * @return minimum value
      */
-    public default double min(double ... values) {
+    public default double min(double... values) {
         if (values.length == 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
@@ -509,7 +659,7 @@ public interface DefaultDelegateAPI {
     public default double constrain(double amt, double low, double high) {
         return (amt < low) ? low : ((amt > high) ? high : amt);
     }
-    
+
     /**
      * Round a value to the nearest integer.
      *

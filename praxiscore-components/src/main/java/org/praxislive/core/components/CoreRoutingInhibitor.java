@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -58,7 +58,7 @@ public class CoreRoutingInhibitor extends CoreCodeDelegate {
     }
     
     @In(1) void in(Value arg) {
-        if (_timer.isAnimating() && d(_timer) < time) {
+        if (_timer.isAnimating() && D(_timer) < time) {
             return;
         }
         _timer.set(0).to(100).in(100);

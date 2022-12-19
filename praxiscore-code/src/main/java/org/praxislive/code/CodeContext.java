@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2022 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -45,6 +47,10 @@ import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.TaskService;
+import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PReference;
 
 /**
  * A CodeContext wraps each {@link CodeDelegate}, managing state and the
@@ -65,11 +71,13 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final Driver driver;
     private final boolean requireClock;
     private final List<ClockListener> clockListeners;
+    private final ResponseHandler responseHandler;
 
     private ExecutionContext execCtxt;
     private ExecutionContext.State execState = ExecutionContext.State.NEW;
     private CodeComponent<D> cmp;
     private long time;
+    private ControlAddress responseAddress;
 
     /**
      * Create a CodeContext by processing the provided {@link CodeConnector}
@@ -103,6 +111,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
             delegate = connector.getDelegate();
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
+            this.responseHandler = Objects.requireNonNull((ResponseHandler) controls.get(ResponseHandler.ID));
         } catch (Exception e) {
 //            Logger.getLogger(CodeContext.class.getName()).log(Level.FINE, "", e);
             throw e;
@@ -187,7 +196,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 execCtxt.removeClockListener(driver);
             }
             execCtxt = ctxt;
+            responseAddress = null;
             if (ctxt != null) {
+                responseAddress = ControlAddress.of(cmp.getAddress(), ResponseHandler.ID);
                 ctxt.addStateListener(driver);
                 if (requireClock) {
                     ctxt.addClockListener(driver);
@@ -531,8 +542,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     /**
-     * Invoke the provided task if the context is active, and after updated the
-     * time to the specified time. After task execution, flush will be called.
+     * Invoke the provided task, if the context is active, and after updating
+     * the clock to the specified time (if later). Any exception will be caught
+     * and logged, and the context will be flushed.
      *
      * @param time new clock time
      * @param task runnable task to execute
@@ -546,6 +558,35 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 log.log(LogLevel.ERROR, ex);
             }
             flush();
+        }
+    }
+
+    /**
+     * Invoke the provided task and return the result, if the context is active,
+     * and after updating the clock to the specified time (if later). Any
+     * exception will be logged and rethrown, and the context flushed. Throws an
+     * {@link IllegalStateException} if {@link #checkActive()} returns
+     * <code>false</code>.
+     *
+     * @param <V> the result type of method call
+     * @param time new clock time
+     * @param task runnable task to execute
+     * @return result
+     * @throws Exception if unable to compute a result
+     */
+    public <V> V invokeCallable(long time, Callable<V> task) throws Exception {
+        if (checkActive()) {
+            update(time);
+            try {
+                return task.call();
+            } catch (Exception ex) {
+                log.log(LogLevel.ERROR, ex);
+                throw ex;
+            } finally {
+                flush();
+            }
+        } else {
+            throw new IllegalStateException("Component not active");
         }
     }
 
@@ -608,7 +649,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
     /**
      * Process and send messages from an external log builder.
      *
-     * @param log externl log builder
+     * @param log external log builder
      */
     protected void log(LogBuilder log) {
         if (log.isEmpty()) {
@@ -620,11 +661,52 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private void log(List<Value> args) {
         PacketRouter router = cmp.getPacketRouter();
         ControlAddress to = cmp.getLogToAddress();
-        ControlAddress from = cmp.getLogFromAddress();
+        ControlAddress from = responseAddress;
         if (router == null || to == null) {
             return;
         }
-        router.route(Call.create(to, from, time, args));
+        router.route(Call.createQuiet(to, from, time, args));
+    }
+
+    final void tell(ControlAddress destination, Value value) {
+        Call call = Call.createQuiet(destination, responseAddress, getTime(), value);
+        getComponent().getPacketRouter().route(call);
+    }
+
+    final void tellIn(double seconds, ControlAddress destination, Value value) {
+        long timeCode = getTime() + ((long) (seconds * 1_000_000_000));
+        Call call = Call.createQuiet(destination, responseAddress, timeCode, value);
+        getComponent().getPacketRouter().route(call);
+    }
+
+    final Async<Call> ask(ControlAddress destination, List<Value> args) {
+        Call call = Call.create(destination, responseAddress, time, args);
+        getComponent().getPacketRouter().route(call);
+        Async<Call> async = new Async<>();
+        responseHandler.register(call, async);
+        return async;
+    }
+
+    final <T, R> Async<R> async(T input, Async.Task<T, R> task) {
+        Async<R> async = new Async<>();
+        try {
+            ControlAddress to = locateService(TaskService.class)
+                    .map(c -> ControlAddress.of(c, TaskService.SUBMIT))
+                    .orElseThrow(ServiceUnavailableException::new);
+            TaskService.Task wrapper = () -> PReference.of(task.execute(input));
+            Call call = Call.create(to, responseAddress, time, PReference.of(wrapper));
+            getComponent().getPacketRouter().route(call);
+            responseHandler.register(call, async, c -> {
+                @SuppressWarnings("unchecked")
+                R result = (R) PReference.from(c.args().get(0))
+                        .flatMap(ref -> ref.as(Object.class))
+                        .orElseThrow(IllegalStateException::new);
+                return result;
+            });
+        } catch (Exception ex) {
+            async.fail(PError.of(ex));
+        }
+        return async;
     }
 
     /**

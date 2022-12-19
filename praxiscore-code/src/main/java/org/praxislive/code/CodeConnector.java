@@ -41,6 +41,7 @@ import org.praxislive.code.userapi.AuxIn;
 import org.praxislive.code.userapi.AuxOut;
 import org.praxislive.code.userapi.Config;
 import org.praxislive.code.userapi.Data;
+import org.praxislive.code.userapi.FN;
 import org.praxislive.code.userapi.ID;
 import org.praxislive.code.userapi.In;
 import org.praxislive.code.userapi.Inject;
@@ -344,7 +345,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     protected void addDefaultControls() {
         addControl(createInfoControl(getInternalIndex()));
         addControl(createCodeControl(getInternalIndex()));
-        addControl(new LogControl.Descriptor(getInternalIndex()));
+        addControl(new ResponseHandler(getInternalIndex()));
     }
 
     /**
@@ -476,8 +477,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     /**
      * Called during processing to analyse each discovered method. May be
      * overridden to extend. The default behaviour will first pass to available
-     * plugins (see {@link Plugin}), then check for trigger, in and aux-in
-     * annotations in that order. First valid match wins.
+     * plugins (see {@link Plugin}), then check for trigger, in, aux-in and
+     * function annotations in that order. First valid match wins.
      *
      * @param method discovered method
      */
@@ -499,6 +500,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
         AuxIn aux = method.getAnnotation(AuxIn.class);
         if (aux != null && analyseAuxInputMethod(aux, method)) {
+            return;
+        }
+        FN fn = method.getAnnotation(FN.class);
+        if (fn != null && analyseFunctionMethod(fn, method)) {
             return;
         }
     }
@@ -732,6 +737,17 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
     }
 
+    private boolean analyseFunctionMethod(FN ann, Method method) {
+        FunctionDescriptor desc
+                = FunctionDescriptor.create(this, ann, method);
+        if (desc != null) {
+            addControl(desc);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /**
      * Find a suitable ID (control or port) for the provided field. Will first
      * look for {@link ID} annotation, and if not found convert the field name
@@ -859,7 +875,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
         return fields.toArray(Field[]::new);
     }
-    
+
     private Method[] extractMethodsToBase(D delegate, Class<?> base) {
         Class<?> cls = delegate.getClass();
         if (cls.getSuperclass().equals(base)) {
@@ -872,7 +888,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         }
         return fields.toArray(Method[]::new);
     }
-    
+
     /**
      * Plugin implementations should be registered via service loader mechanism
      * to extend behaviour of CodeConnectors.
