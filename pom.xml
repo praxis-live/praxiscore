@@ -4,7 +4,7 @@
     
   <groupId>org.praxislive</groupId>
   <artifactId>praxiscore</artifactId>
-  <version>5.5.0-SNAPSHOT</version>
+  <version>5.5.0</version>
   <packaging>pom</packaging>
     
   <name>PraxisCORE</name>
@@ -161,18 +161,17 @@
               </goals>
             </execution>
             <execution>
-              <id>aggregate-javadoc</id>
+              <id>attach-aggregate-javadoc</id>
               <goals>
-                <goal>aggregate</goal>
+                <goal>aggregate-jar</goal>
               </goals>
-              <configuration>
-                <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
-              </configuration>
               <inherited>false</inherited>
             </execution>
           </executions>
           <configuration>
+            <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
             <detectOfflineLinks>false</detectOfflineLinks>
+            <release>11</release>
             <additionalOptions>
               <additionalOption>-Xdoclint:none</additionalOption>
             </additionalOptions>
@@ -224,18 +223,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>attach-aggregate-javadoc</id>
-                <goals>
-                  <goal>aggregate-jar</goal>
-                </goals>
-                <configuration>
-                  <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
-                </configuration>
-                <inherited>false</inherited>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>
