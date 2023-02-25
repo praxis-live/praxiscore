@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -440,6 +440,27 @@ public abstract class AbstractRoot implements Root {
         }
 
     }
+    
+    private void shutdownQueues() {
+        for (Object obj = queue.poll(); obj != null; obj = queue.poll()) {
+            pending.add(obj);
+        }
+
+        pendingPackets.drainTo(pending);
+        
+        for (Object obj = pending.poll(); obj != null; obj = pending.poll()) {
+            if (obj instanceof Call) {
+                router.route(((Call) obj).error(PError.of("Root terminated")));
+            } else if (obj instanceof Runnable) {
+                try {
+                    ((Runnable) obj).run();
+                } catch (Throwable t) {
+                    LOG.log(Level.SEVERE, "Runnable task error", t);
+                }
+            }
+        }
+        
+    }
 
     private void processPacket(Packet packet) {
         if (packet instanceof Call) {
@@ -636,14 +657,20 @@ public abstract class AbstractRoot implements Root {
             State s = state.get();
             while (s != State.TERMINATED) {
                 if (state.compareAndSet(s, State.TERMINATED)) {
+                    lock.lock();
                     try {
-                        terminating();
-                    } catch (Throwable t) {
-                        LOG.log(Level.SEVERE, "Uncaught error in termination", t);
-                    }
-                    context.updateState(hub.getClock().getTime(), ExecutionContext.State.TERMINATED);
-                    if (ownsScheduler) {
-                        exec.shutdown();
+                        shutdownQueues();
+                        try {
+                            terminating();
+                        } catch (Throwable t) {
+                            LOG.log(Level.SEVERE, "Uncaught error in termination", t);
+                        }
+                        context.updateState(hub.getClock().getTime(), ExecutionContext.State.TERMINATED);
+                        if (ownsScheduler) {
+                            exec.shutdown();
+                        }
+                    } finally {
+                        lock.unlock();
                     }
                 } else {
                     s = state.get();

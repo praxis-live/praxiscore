@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,7 @@
  */
 package org.praxislive.base;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.PriorityQueue;
 import org.praxislive.core.Packet;
 
@@ -69,8 +69,8 @@ class PacketQueue {
         return null;
     }
     
-    void drainTo(List<Packet> list) {
-        list.addAll(q);
+    void drainTo(Collection<Object> queue) {
+        queue.addAll(q);
         q.clear();
     }
     
