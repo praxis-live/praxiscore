@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,6 +33,7 @@ import org.praxislive.core.ComponentType;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
 import org.praxislive.core.services.ComponentFactoryService;
+import org.praxislive.core.services.RootFactoryService;
 
 /**
  *
@@ -40,9 +41,11 @@ import org.praxislive.core.services.ComponentFactoryService;
 public class AbstractComponentFactory implements ComponentFactory {
 
     private final Map<ComponentType, MetaData> componentMap;
+    private final Map<ComponentType, RootMetaData> rootMap;
 
     protected AbstractComponentFactory() {
         componentMap = new LinkedHashMap<>();
+        rootMap = new LinkedHashMap<>(1);
     }
 
     @Override
@@ -52,7 +55,7 @@ public class AbstractComponentFactory implements ComponentFactory {
 
     @Override
     public Stream<ComponentType> rootTypes() {
-        return Stream.empty();
+        return rootMap.keySet().stream();
     }
 
     @Override
@@ -62,7 +65,7 @@ public class AbstractComponentFactory implements ComponentFactory {
 
     @Override
     public ComponentFactory.MetaData<? extends Root> getRootMetaData(ComponentType type) {
-        return null;
+        return rootMap.get(type);
     }
 
     @Override
@@ -70,12 +73,21 @@ public class AbstractComponentFactory implements ComponentFactory {
         return CodeComponentFactoryService.class;
     }
 
+    @Override
+    public Class<? extends RootFactoryService> getRootFactoryService() {
+        return CodeRootFactoryService.class;
+    }
+    
     protected void add(Data info) {
-        componentMap.put(info.factory.getComponentType(), info.toMetaData());
+        componentMap.put(info.factory.componentType(), info.toMetaData());
     }
     
     protected void add(CodeFactory<?> factory) {
-        add(data(factory));
+        componentMap.put(factory.componentType(), new MetaData(factory));
+    }
+    
+    protected void addRoot(CodeFactory<? extends CodeRootDelegate> factory) {
+        rootMap.put(factory.componentType(), new RootMetaData(factory));
     }
 
     protected Data data(CodeFactory<?> factory) {
@@ -100,6 +112,12 @@ public class AbstractComponentFactory implements ComponentFactory {
             this.replacement = replacement;
             this.lookup = lookup;
         }
+        
+        private MetaData(CodeFactory<?> codeFactory) {
+            this.lookup = Lookup.of(codeFactory);
+            this.replacement = null;
+            this.deprecated = false;
+        }
 
         @Override
         public boolean isDeprecated() {
@@ -118,6 +136,21 @@ public class AbstractComponentFactory implements ComponentFactory {
 
     }
 
+    private static class RootMetaData extends ComponentFactory.MetaData<Root> {
+
+        private final Lookup lookup;
+
+        private RootMetaData(CodeFactory<? extends CodeRootDelegate> codeFactory) {
+            this.lookup = Lookup.of(codeFactory);
+        }
+
+        @Override
+        public Lookup getLookup() {
+            return lookup;
+        }
+
+    }
+    
     public static class Data {
 
         private final CodeFactory<?> factory;

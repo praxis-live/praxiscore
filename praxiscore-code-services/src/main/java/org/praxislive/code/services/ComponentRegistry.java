@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,9 +23,8 @@ package org.praxislive.code.services;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.logging.Logger;
 import org.praxislive.code.CodeComponentFactoryService;
+import org.praxislive.code.CodeRootFactoryService;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 import org.praxislive.core.ComponentType;
@@ -36,17 +35,10 @@ import org.praxislive.core.Lookup;
  */
 class ComponentRegistry {
 
-    private final static Logger logger
-            = Logger.getLogger(ComponentRegistry.class.getName());
     private final Map<ComponentType, ComponentFactory> componentCache;
 
     private ComponentRegistry(Map<ComponentType, ComponentFactory> componentCache) {
         this.componentCache = componentCache;
-    }
-
-    ComponentType[] getComponentTypes() {
-        Set<ComponentType> keys = componentCache.keySet();
-        return keys.toArray(new ComponentType[keys.size()]);
     }
 
     ComponentFactory getComponentFactory(ComponentType type) {
@@ -63,6 +55,17 @@ class ComponentRegistry {
                         -> factory.getFactoryService() == CodeComponentFactoryService.class)
                 .forEachOrdered(factory -> {
                     factory.componentTypes().forEachOrdered(type -> {
+                        componentCache.put(type, factory);
+                    });
+                }
+                );
+        
+        Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
+                .map(ComponentFactoryProvider::getFactory)
+                .filter(factory
+                        -> factory.getRootFactoryService() == CodeRootFactoryService.class)
+                .forEachOrdered(factory -> {
+                    factory.rootTypes().forEachOrdered(type -> {
                         componentCache.put(type, factory);
                     });
                 }

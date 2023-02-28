@@ -14,36 +14,36 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.code.internal;
+package org.praxislive.code;
 
 import java.util.stream.Stream;
-import org.praxislive.code.CodeCompilerService;
-import org.praxislive.code.CodeComponentFactoryService;
-import org.praxislive.code.CodeContextFactoryService;
-import org.praxislive.code.CodeRootFactoryService;
-import org.praxislive.code.SharedCodeService;
-import org.praxislive.core.Protocol;
 
 /**
- *
- * 
+ * Base class for user rewritable Root container code.
  */
-public class CodeProtocolsProvider implements Protocol.TypeProvider {
+public class CodeRootContainerDelegate extends CodeRootDelegate {
 
     @Override
-    public Stream<Protocol.Type> types() {
-        return Stream.of(
-                new Protocol.Type<>(CodeCompilerService.class),
-                new Protocol.Type<>(CodeComponentFactoryService.class),
-                new Protocol.Type<>(CodeRootFactoryService.class),
-                new Protocol.Type<>(CodeContextFactoryService.class),
-                new Protocol.Type<>(SharedCodeService.class)
-        );
+    public void init() {
+    }
+
+    /**
+     * Stream of child IDs.
+     *
+     * @return stream of child IDs
+     */
+    public final Stream<String> children() {
+        var ctxt = getContext();
+        if (ctxt instanceof CodeRootContainer.Context) {
+            return ((CodeRootContainer.Context<?>) ctxt).getComponent().children();
+        } else {
+            return Stream.empty();
+        }
     }
     
 }

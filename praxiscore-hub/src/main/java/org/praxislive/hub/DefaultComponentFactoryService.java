@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -108,7 +108,7 @@ class DefaultComponentFactoryService extends AbstractRoot
                         .flatMap(srvs -> srvs.locate(factory.getFactoryService()))
                         .map(cmp -> ControlAddress.of(cmp, ComponentFactoryService.NEW_INSTANCE))
                         .orElseThrow(() -> new IllegalStateException("Alternative factory service not found"));
-                        
+
                 return Call.create(altFactory,
                         call.to(),
                         call.time(),
@@ -132,13 +132,25 @@ class DefaultComponentFactoryService extends AbstractRoot
         protected Call processInvoke(Call call) throws Exception {
             ComponentType type = ComponentType.from(call.args().get(0)).orElseThrow();
             ComponentFactory factory = registry.getRootComponentFactory(type);
-            Root root = factory.createRootComponent(type);
-            return call.reply(PReference.of(root));
+            if (factory.getRootFactoryService() != RootFactoryService.class) {
+                ControlAddress altFactory = getLookup().find(Services.class)
+                        .flatMap(srvs -> srvs.locate(factory.getRootFactoryService()))
+                        .map(cmp -> ControlAddress.of(cmp, RootFactoryService.NEW_ROOT_INSTANCE))
+                        .orElseThrow(() -> new IllegalStateException("Alternative factory service not found"));
+
+                return Call.create(altFactory,
+                        call.to(),
+                        call.time(),
+                        call.args());
+            } else {
+                Root root = factory.createRootComponent(type);
+                return call.reply(PReference.of(root));
+            }
         }
 
         @Override
         protected Call processResponse(Call call) throws Exception {
-            throw new UnsupportedOperationException("Not supported yet.");
+            return getActiveCall().reply(call.args());
         }
 
     }

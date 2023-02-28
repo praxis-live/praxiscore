@@ -14,33 +14,19 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.code;
 
-import java.util.stream.Stream;
-import org.praxislive.core.Protocol;
-import org.praxislive.core.services.ComponentFactoryService;
-
 /**
- *
- * 
+ * Base class for user rewritable Root code.
  */
-public class CodeComponentFactoryService extends ComponentFactoryService {
-    
-    
-    @Deprecated
-    public static class Provider implements Protocol.TypeProvider {
+public class CodeRootDelegate extends CodeDelegate {
 
-        @Override
-        public Stream<Type> types() {
-            return Stream.of(new Protocol.Type<>(CodeComponentFactoryService.class));
-        }
-        
+    public void init() {
     }
-    
+
 }
