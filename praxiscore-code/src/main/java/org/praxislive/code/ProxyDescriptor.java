@@ -22,14 +22,15 @@
 package org.praxislive.code;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import org.praxislive.code.userapi.Proxy;
 import org.praxislive.core.services.LogLevel;
 
-final class ProxyDescriptor extends ReferenceDescriptor {
+final class ProxyDescriptor extends ReferenceDescriptor implements ProxyContext.Handler {
 
     private final Field field;
     private final Object delegate;
-    
+
     private CodeContext<?> context;
 
     protected ProxyDescriptor(Field field, Object delegate) {
@@ -51,7 +52,7 @@ final class ProxyDescriptor extends ReferenceDescriptor {
         }
         try {
             var proxy = context.getComponent().getProxyContext()
-                    .wrap(field.getType(), field.getName(), delegate);
+                    .wrap(field.getType(), field.getName(), this, false);
             field.set(context.getDelegate(), proxy);
         } catch (Exception ex) {
             context.getLog().log(LogLevel.ERROR, ex);
@@ -65,8 +66,11 @@ final class ProxyDescriptor extends ReferenceDescriptor {
         }
         context = null;
     }
-    
-    
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        return method.invoke(delegate, args);
+    }
 
     static ProxyDescriptor create(CodeConnector<?> connector, Proxy ann, Field field) {
         if (!field.getType().isInterface()) {

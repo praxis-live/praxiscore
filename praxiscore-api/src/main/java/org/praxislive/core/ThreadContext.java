@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -20,6 +20,8 @@
  * have any questions.
  */
 package org.praxislive.core;
+
+import java.util.concurrent.Callable;
 
 /**
  * An optional context available from the {@link Root} lookup, providing the
@@ -57,5 +59,36 @@ public interface ThreadContext {
      * @param task task to be executed
      */
     public void invokeLater(Runnable task);
+
+    /**
+     * Check whether the ThreadContext implementation supports direct invocation
+     * using {@link #invoke(java.util.concurrent.Callable)}. The default
+     * implementation returns false.
+     *
+     * @return true if direct invocation is supported
+     */
+    public default boolean supportsDirectInvoke() {
+        return false;
+    }
+
+    /**
+     * Invoke the passed in task on the calling thread, taking any required
+     * locks or other resources. This method should be used with caution when
+     * absolutely necessary. Callers should check the method is supported via
+     * {@link #supportsDirectInvoke()}.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException},
+     * even when {@link #isInUpdate()} is true and it is therefore safe for the
+     * caller to directly execute the task.
+     *
+     * @param <T> generic type of task
+     * @param task task to invoke
+     * @return result of task
+     * @throws UnsupportedOperationException if direct invoke not supported
+     * @throws Exception from execution of underlying task
+     */
+    public default <T> T invoke(Callable<T> task) throws Exception {
+        throw new UnsupportedOperationException();
+    }
 
 }
