@@ -38,6 +38,7 @@ class CoreRootContainerCodeContext extends CodeRootContainer.Context<CoreRootCon
 
     @Override
     protected void starting(ExecutionContext source, boolean fullStart) {
+        super.starting(source, fullStart);
         try {
             getDelegate().init();
         } catch (Exception e) {
@@ -61,6 +62,7 @@ class CoreRootContainerCodeContext extends CodeRootContainer.Context<CoreRootCon
                 getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
             }
         }
+        super.stopping(source, fullStop);
     }
 
     @Override

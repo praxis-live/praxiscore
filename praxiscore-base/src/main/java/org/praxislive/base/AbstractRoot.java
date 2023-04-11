@@ -24,6 +24,7 @@ package org.praxislive.base;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -531,6 +532,21 @@ public abstract class AbstractRoot implements Root {
                 } else {
                     return false;
                 }
+            }
+        }
+
+        @Override
+        public boolean supportsDirectInvoke() {
+            return true;
+        }
+
+        @Override
+        public <T> T invoke(Callable<T> task) throws Exception {
+            lock.lock();
+            try {
+                return task.call();
+            } finally {
+                lock.unlock();
             }
         }
 

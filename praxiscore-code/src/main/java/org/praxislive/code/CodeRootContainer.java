@@ -107,7 +107,7 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
      */
     public static class Context<D extends CodeRootContainerDelegate> extends CodeRoot.Context<D> {
 
-        public Context(CodeConnector<D> connector) {
+        public Context(Connector<D> connector) {
             super(connector);
         }
 

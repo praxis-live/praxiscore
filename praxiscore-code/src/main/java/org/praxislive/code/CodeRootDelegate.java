@@ -21,12 +21,22 @@
  */
 package org.praxislive.code;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * Base class for user rewritable Root code.
  */
 public class CodeRootDelegate extends CodeDelegate {
 
     public void init() {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface Driver {
     }
 
 }

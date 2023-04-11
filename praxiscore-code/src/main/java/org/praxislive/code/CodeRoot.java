@@ -22,6 +22,8 @@
 package org.praxislive.code;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -29,6 +31,7 @@ import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
@@ -93,6 +96,38 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         return root.address();
     }
 
+    Control findControl(ControlAddress address) {
+        if (address.component().depth() == 1) {
+            return getControl(address.controlID());
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    Context<D> getCodeContext() {
+        return (Context<D>) super.getCodeContext();
+    }
+
+    @Override
+    void install(CodeContext<D> cc) {
+        if (cc instanceof Context) {
+            if (root.isRunning()) {
+                Context<?> existing = (Context<?>) getCodeContext();
+                Context<?> pending = (Context<?>) cc;
+                boolean compatible = (existing.driverDesc == null && pending.driverDesc == null)
+                        || (existing.driverDesc != null && pending.driverDesc != null
+                        && existing.driverDesc.isCompatible(pending.driverDesc));
+                if (!compatible) {
+                    throw new IllegalStateException("Stop root to change @Driver configuration");
+                }
+            }
+            super.install(cc);
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
     void processCall(Call call, PacketRouter router) {
         Control control = findControl(call.to());
         try {
@@ -110,14 +145,6 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
     }
 
-    Control findControl(ControlAddress address) {
-        if (address.component().depth() == 1) {
-            return getControl(address.controlID());
-        } else {
-            return null;
-        }
-    }
-
     /**
      * CodeContext subclass for CodeRoots.
      *
@@ -125,8 +152,11 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
      */
     public static class Context<D extends CodeRootDelegate> extends CodeContext<D> {
 
-        public Context(CodeConnector<D> connector) {
+        private DriverDescriptor driverDesc;
+
+        public Context(Connector<D> connector) {
             super(connector);
+            this.driverDesc = connector.driverDesc;
         }
 
         @Override
@@ -143,6 +173,20 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             return (CodeRoot<D>) super.getComponent();
         }
 
+        @Override
+        protected void starting(ExecutionContext source, boolean fullStart) {
+            if (fullStart && driverDesc != null) {
+                getComponent().root.installDelegate(driverDesc);
+            }
+        }
+
+        @Override
+        protected void stopping(ExecutionContext source, boolean fullStop) {
+            if (fullStop) {
+                getComponent().root.uninstallDelegate();
+            }
+        }
+
     }
 
     /**
@@ -151,6 +195,8 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
      * @param <D> wrapped delegate base type
      */
     public static class Connector<D extends CodeRootDelegate> extends CodeConnector<D> {
+
+        private DriverDescriptor driverDesc;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
             super(task, delegate);
@@ -180,11 +226,35 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             return false;
         }
 
+        @Override
+        protected void analyseField(Field field) {
+            CodeRootDelegate.Driver driver = field.getAnnotation(CodeRootDelegate.Driver.class);
+            if (driver != null && analyseDriverField(driver, field)) {
+                return;
+            }
+            super.analyseField(field);
+        }
+
+        private boolean analyseDriverField(CodeRootDelegate.Driver ann, Field field) {
+            if (driverDesc != null) {
+                getLog().log(LogLevel.ERROR, "Cannot specify more than one @Driver field");
+            } else {
+                driverDesc = DriverDescriptor.create(this, ann, field);
+                if (driverDesc != null) {
+                    addReference(driverDesc);
+                }
+            }
+
+            return true;
+        }
+
     }
 
     private static class RootImpl extends AbstractRoot {
 
         private final CodeRoot<?> wrapper;
+
+        private DelegateImpl rootDelegate;
 
         private RootImpl(CodeRoot<?> wrapper) {
             this.wrapper = wrapper;
@@ -195,6 +265,32 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             wrapper.processCall(call, router);
         }
 
+        private ComponentAddress address() {
+            return getAddress();
+        }
+
+        private void driverUpdate() {
+            if (rootDelegate != null) {
+                rootDelegate.handleUpdate(getRootHub().getClock().getTime());
+            }
+        }
+
+        private void installDelegate(DriverDescriptor driverDesc) {
+            rootDelegate = new DelegateImpl();
+            attachDelegate(rootDelegate);
+        }
+
+        private void uninstallDelegate() {
+            if (rootDelegate != null) {
+                detachDelegate(rootDelegate);
+                rootDelegate = null;
+            }
+        }
+
+        private boolean isRunning() {
+            return getState() == State.ACTIVE_RUNNING;
+        }
+
         private void start() {
             setRunning();
         }
@@ -203,12 +299,12 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             setIdle();
         }
 
-        private boolean isRunning() {
-            return getState() == State.ACTIVE_RUNNING;
-        }
+        private class DelegateImpl extends Delegate {
 
-        private ComponentAddress address() {
-            return getAddress();
+            private void handleUpdate(long time) {
+                doUpdate(time);
+            }
+
         }
 
     }
@@ -253,6 +349,94 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     return StartableProtocol.IS_RUNNING_INFO;
             }
             return null;
+        }
+
+    }
+
+    private static class DriverDescriptor extends ReferenceDescriptor implements ProxyContext.Handler {
+
+        private final Field field;
+        private final Object driver;
+
+        private CodeRoot.Context<?> context;
+        private DriverDescriptor next;
+
+        private DriverDescriptor(Field field, Object delegate) {
+            super(field.getName());
+            this.field = field;
+            this.driver = delegate;
+        }
+
+        @Override
+        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
+            this.context = (Context<?>) context;
+            if (previous instanceof DriverDescriptor) {
+                var prev = (DriverDescriptor) previous;
+                if (!field.getType().equals(prev.field.getType())) {
+                    prev.dispose();
+                }
+                prev.next = this;
+            } else if (previous != null) {
+                previous.dispose();
+            }
+            try {
+                var proxy = context.getComponent().getProxyContext()
+                        .wrap(field.getType(), field.getName(), this, true);
+                field.set(context.getDelegate(), proxy);
+            } catch (Exception ex) {
+                context.getLog().log(LogLevel.ERROR, ex);
+            }
+        }
+
+        @Override
+        public void dispose() {
+            if (context != null) {
+                context.getComponent().getProxyContext().clear(field.getType(), field.getName());
+            }
+            context = null;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            // update clock
+            context.getComponent().root.driverUpdate();
+            // update might replace us - pass down the chain!
+            var active = this;
+            if (next != null) {
+                active = next;
+                while (active.next != null) {
+                    active = active.next;
+                }
+            }
+            if (active.context != null && active.context.checkActive()) {
+                return method.invoke(active.driver, args);
+            } else {
+                throw new UnsupportedOperationException();
+            }
+        }
+
+        private boolean isCompatible(DriverDescriptor other) {
+            return other.field.getName().equals(field.getName())
+                    && other.field.getGenericType().equals(field.getGenericType());
+        }
+
+        private static DriverDescriptor create(CodeRoot.Connector<?> connector,
+                CodeRootDelegate.Driver ann, Field field) {
+            if (!field.getType().isInterface()) {
+                connector.getLog().log(LogLevel.ERROR,
+                        "@Driver annotated field " + field.getName() + " is not an interface type.");
+                return null;
+            }
+            try {
+                field.setAccessible(true);
+                Object driver = field.get(connector.getDelegate());
+                field.set(connector.getDelegate(), null);
+                return new DriverDescriptor(field, driver);
+            } catch (Exception ex) {
+                connector.getLog().log(LogLevel.ERROR, ex,
+                        "Cannot access @Driver annotated field " + field.getName());
+                return null;
+            }
         }
 
     }
