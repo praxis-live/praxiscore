@@ -24,6 +24,7 @@ package org.praxislive.code;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -300,6 +301,13 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         private class DelegateImpl extends Delegate {
+            
+            private DelegateImpl() {
+                super(delegateConfig()
+                        .pollInBackground()
+                        .forceUpdateAfter(1, TimeUnit.SECONDS)
+                );
+            }
 
             private void handleUpdate(long time) {
                 doUpdate(time);

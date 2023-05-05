@@ -381,7 +381,13 @@ public abstract class AbstractRoot implements Root {
             pollQueue();
         }
 
-        this.time = time;
+        if ((time - this.time) < 0) {
+            LOG.log(Level.WARNING, () -> "Update time is not monotonic : behind by " + (time - this.time));
+            this.time++;
+        } else {
+            this.time = time;
+        }
+
         context.updateClock(time);
         pendingPackets.setTime(time);
 
@@ -441,14 +447,14 @@ public abstract class AbstractRoot implements Root {
         }
 
     }
-    
+
     private void shutdownQueues() {
         for (Object obj = queue.poll(); obj != null; obj = queue.poll()) {
             pending.add(obj);
         }
 
         pendingPackets.drainTo(pending);
-        
+
         for (Object obj = pending.poll(); obj != null; obj = pending.poll()) {
             if (obj instanceof Call) {
                 router.route(((Call) obj).error(PError.of("Root terminated")));
@@ -460,7 +466,7 @@ public abstract class AbstractRoot implements Root {
                 }
             }
         }
-        
+
     }
 
     private void processPacket(Packet packet) {
@@ -553,6 +559,16 @@ public abstract class AbstractRoot implements Root {
     }
 
     /**
+     * Create a {@link DelegateConfiguration} object for passing up to the
+     * constructor when creating a {@link Delegate} subclass.
+     *
+     * @return delegate configuration
+     */
+    protected static DelegateConfiguration delegateConfig() {
+        return new DelegateConfiguration();
+    }
+
+    /**
      * Implementation of Root.Controller.
      */
     protected class Controller implements Root.Controller {
@@ -604,7 +620,7 @@ public abstract class AbstractRoot implements Root {
          */
         protected void onQueueReceipt() {
             Delegate del = delegate.get();
-            if (del != null) {
+            if (del != null && !del.backgroundPoll) {
                 del.onQueueReceipt();
             } else {
                 if (updateQueued.compareAndSet(false, true)) {
@@ -625,36 +641,26 @@ public abstract class AbstractRoot implements Root {
 
         private void doUpdate() {
             Delegate del = delegate.get();
-            if (del != null) {
-                // do clock check
-                if (Math.abs(hub.getClock().getTime() - time) > 10_000_000_000L) {
-                    LOG.log(Level.SEVERE, "Delegate not updating time");
-//                    detachDelegate(del);
+            if (del != null && !del.clockCheck()) {
+                return;
+            }
+            lock.lock();
+            try {
+                if (!update(hub.getClock().getTime(), true)) {
+                    updateTask.cancel(false);
+                    doTerminate();
                 }
-            } else {
-                if (lock.tryLock()) {
-                    try {
-                        if (!update(hub.getClock().getTime(), true)) {
-                            updateTask.cancel(false);
-                            doTerminate();
-                        }
-                    } catch (Throwable t) {
-                        LOG.log(Level.SEVERE, "Uncaught error", t);
-                    } finally {
-                        lock.unlock();
-                    }
-                } else {
-                    LOG.info("Lock already taken");
-                }
+            } catch (Throwable t) {
+                LOG.log(Level.SEVERE, "Uncaught error", t);
+            } finally {
+                lock.unlock();
             }
         }
 
         private void doPoll() {
             updateQueued.set(false);
             Delegate del = delegate.get();
-            if (del != null) {
-                // do nothing
-            } else {
+            if (del == null || del.backgroundPoll) {
                 if (lock.tryLock()) {
                     try {
                         pollQueue();
@@ -663,8 +669,6 @@ public abstract class AbstractRoot implements Root {
                     } finally {
                         lock.unlock();
                     }
-                } else {
-                    LOG.info("Lock already taken");
                 }
             }
         }
@@ -719,12 +723,31 @@ public abstract class AbstractRoot implements Root {
 
         private final ReentrantLock pollLock;
         private final Condition pollCondition;
+        private final boolean backgroundPoll;
+        private final long forceUpdateAfterNS;
+        private final long maxDriftNS;
 
         private Thread delegateThread;
 
+        /**
+         * Create a Delegate with the default configuration.
+         */
         protected Delegate() {
+            this(null);
+        }
+
+        /**
+         * Create a Delegate subclass with the provided configuration.
+         *
+         * @param config delegate configuration
+         *
+         */
+        protected Delegate(DelegateConfiguration config) {
             this.pollLock = new ReentrantLock();
             this.pollCondition = pollLock.newCondition();
+            this.backgroundPoll = config == null ? false : config.backgroundPoll;
+            this.forceUpdateAfterNS = config == null ? 0 : config.forceUpdateNanos;
+            this.maxDriftNS = TimeUnit.SECONDS.toNanos(1);
         }
 
         /**
@@ -737,23 +760,19 @@ public abstract class AbstractRoot implements Root {
          * detached
          */
         protected final boolean doUpdate(long time) {
-            if (delegate.get() == this) {
-                if (lock.tryLock()) {
-                    try {
-                        delegateThread = Thread.currentThread();
-                        return update(time, true);
-                    } catch (Throwable t) {
-                        LOG.log(Level.SEVERE, "Uncaught error", t);
-                    } finally {
-                        lock.unlock();
-                    }
-                } else {
-                    LOG.finest("Lock already taken");
+            lock.lock();
+            try {
+                if (delegate.get() != this) {
+                    LOG.info("Delegate invalid");
+                    return false;
                 }
+                delegateThread = Thread.currentThread();
+                return update(correctUpdateTime(time), true);
+            } catch (Throwable t) {
+                LOG.log(Level.SEVERE, "Uncaught error", t);
                 return true;
-            } else {
-                LOG.info("Delegate invalid");
-                return false;
+            } finally {
+                lock.unlock();
             }
         }
 
@@ -762,21 +781,17 @@ public abstract class AbstractRoot implements Root {
          * packets with a timecode before the current Root time.
          */
         protected final void doPollQueue() {
-            if (delegate.get() == this) {
-                if (lock.tryLock()) {
-                    try {
+            if (lock.tryLock()) {
+                try {
+                    if (delegate.get() == this) {
                         delegateThread = Thread.currentThread();
                         pollQueue();
-                    } catch (Throwable t) {
-                        LOG.log(Level.SEVERE, "Uncaught error", t);
-                    } finally {
-                        lock.unlock();
                     }
-                } else {
-                    LOG.finest("Lock already taken");
+                } catch (Throwable t) {
+                    LOG.log(Level.SEVERE, "Uncaught error", t);
+                } finally {
+                    lock.unlock();
                 }
-            } else {
-                LOG.info("Delegate invalid");
             }
         }
 
@@ -790,15 +805,17 @@ public abstract class AbstractRoot implements Root {
          * @throws InterruptedException
          */
         protected final void doTimedPoll(long time, TimeUnit unit) throws InterruptedException {
-            if (pollLock.tryLock()) {
+            if (time > 0) {
+                pollLock.lockInterruptibly();
                 try {
-                    if (pollCondition.await(time, unit)) {
-                        doPollQueue();
+                    if (queue.isEmpty()) {
+                        pollCondition.await(time, unit);
                     }
                 } finally {
                     pollLock.unlock();
                 }
             }
+            doPollQueue();
         }
 
         /**
@@ -846,6 +863,91 @@ public abstract class AbstractRoot implements Root {
          */
         protected boolean isRootThread() {
             return Thread.currentThread() == delegateThread;
+        }
+
+        /**
+         * Called on standard root thread, not delegate thread, to check
+         * delegate is being updated. If a force update time has been set and
+         * the root time is behind the hub clock time more than the threshold,
+         * returns true to trigger update on root thread.
+         *
+         * @return true to force update on root thread
+         */
+        private boolean clockCheck() {
+            long delta = hub.getClock().getTime() - time;
+            if (forceUpdateAfterNS > 0 && delta > forceUpdateAfterNS) {
+                return true;
+            }
+            if (Math.abs(delta) > 10_000_000_000L) {
+                LOG.log(Level.SEVERE, "Delegate not updating time");
+            }
+            return false;
+        }
+
+        private long correctUpdateTime(final long updateTime) {
+            long hubTime = hub.getClock().getTime();
+            long rootTime = AbstractRoot.this.time;
+            long correctedTime = updateTime;
+            long delta = updateTime - hubTime;
+            if (delta < -maxDriftNS) {
+                correctedTime = hubTime - maxDriftNS;
+            } else if (delta > maxDriftNS) {
+                correctedTime = hubTime + maxDriftNS;
+            }
+
+            delta = updateTime - rootTime;
+            if (delta < 0) {
+                correctedTime = rootTime + 1;
+            }
+            return correctedTime;
+        }
+
+    }
+
+    /**
+     * A configuration object used for customizing {@link Delegate} behaviour in
+     * a subclass. Create using {@link #delegateConfig()}.
+     */
+    protected static final class DelegateConfiguration {
+
+        private boolean backgroundPoll;
+        private long forceUpdateNanos;
+
+        private DelegateConfiguration() {
+            this.backgroundPoll = false;
+            this.forceUpdateNanos = 0;
+        }
+
+        /**
+         * Whether to poll for incoming calls in another thread in-between calls
+         * to update. Default is disabled.
+         * <p>
+         * Background polling will use the original root thread or executor.
+         *
+         * @return this for chaining
+         */
+        public DelegateConfiguration pollInBackground() {
+            backgroundPoll = true;
+            return this;
+        }
+
+        /**
+         * Whether to force an update on another thread if the delegate hasn't
+         * called update in the given time period. Default is disabled.
+         * <p>
+         * Forced updates will use the original root thread or executor.
+         *
+         * @param time maximum time period before update will be forced
+         * @param unit unit of time argument
+         * @return this for chaining
+         */
+        public DelegateConfiguration forceUpdateAfter(long time, TimeUnit unit) {
+            long ns = unit.toNanos(time);
+            if (ns < 1) {
+                throw new IllegalArgumentException();
+            }
+            forceUpdateNanos = ns;
+            return this;
         }
 
     }
