@@ -54,11 +54,16 @@ import org.praxislive.core.types.PError;
  * @param <D> wrapped delegate type
  */
 public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> implements Root {
+    
+    private static final String SHARED_CODE = "shared-code";
 
     private final RootImpl root;
     private final Control startControl;
     private final Control stopControl;
     private final Control isRunningControl;
+    private final SharedCodeProperty sharedCode;
+    
+    private Lookup lookup;
 
     CodeRoot() {
         root = new RootImpl(this);
@@ -73,6 +78,13 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         isRunningControl = (call, router) -> {
             router.route(call.reply(PBoolean.of(root.isRunning())));
         };
+        sharedCode = new SharedCodeProperty(this, log -> {
+            Context<?> ctxt = getCodeContext();
+            if (ctxt != null) {
+                ctxt.log(log);
+                ctxt.flush();
+            }
+        });
     }
 
     @Override
@@ -84,12 +96,21 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
     @Override
     public Lookup getLookup() {
-        return root.getLookup();
+        if (lookup == null) {
+            lookup = Lookup.of(root.getLookup(), sharedCode.getSharedCodeContext());
+        }
+        return lookup;
     }
 
     @Override
     public void parentNotify(Container parent) throws VetoException {
         throw new VetoException();
+    }
+
+    @Override
+    public void hierarchyChanged() {
+        lookup = null;
+        super.hierarchyChanged();
     }
 
     @Override
@@ -205,7 +226,10 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
         @Override
         protected void addDefaultControls() {
-            super.addDefaultControls();
+            addControl(createInfoControl(getInternalIndex()));
+            addControl(new RootControlDescriptor(SHARED_CODE, getInternalIndex()));
+            addControl(createCodeControl(getInternalIndex()));
+            addControl(new ResponseHandler(getInternalIndex()));
             addControl(new RootControlDescriptor(StartableProtocol.START, getInternalIndex()));
             addControl(new RootControlDescriptor(StartableProtocol.STOP, getInternalIndex()));
             addControl(new RootControlDescriptor(StartableProtocol.IS_RUNNING, getInternalIndex()));
@@ -301,7 +325,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         private class DelegateImpl extends Delegate {
-            
+
             private DelegateImpl() {
                 super(delegateConfig()
                         .pollInBackground()
@@ -342,6 +366,8 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     return root.stopControl;
                 case StartableProtocol.IS_RUNNING:
                     return root.isRunningControl;
+                case SHARED_CODE:
+                    return root.sharedCode;
             }
             return null;
         }
@@ -355,6 +381,8 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     return StartableProtocol.STOP_INFO;
                 case StartableProtocol.IS_RUNNING:
                     return StartableProtocol.IS_RUNNING_INFO;
+                case SHARED_CODE:
+                    return SharedCodeProperty.INFO;
             }
             return null;
         }
