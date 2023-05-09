@@ -1,0 +1,107 @@
+@ /custom1 root:custom {
+  #%praxis.version 5.6.0-SNAPSHOT
+  .shared-code "SHARED.Types \{package SHARED;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import org.praxislive.code.userapi.Ref;
+
+public class Types extends Ref.Provider \{
+
+    public static final String THREAD_NAME = \"CUSTOM1\";
+    
+    public Types() \{
+        provide(ScheduledExecutorService.class,
+                () -> Executors.newSingleThreadScheduledExecutor(
+                        r -> new Thread(r, THREAD_NAME)
+                ),
+                ScheduledExecutorService::shutdown);
+    \}
+    
+\}\}"
+  .code "import SHARED.Types;
+import java.util.concurrent.*;
+
+
+    
+    @Inject(provider = Types.class)
+    ScheduledExecutorService exec;
+
+    @Persist Future<?> controller;
+    @Driver Runnable task = this::run;
+    
+    @P(1) @ReadOnly String threadName;
+    
+    @Override
+    public void starting() \{
+        controller = exec.scheduleAtFixedRate(task, 10, 10, TimeUnit.MILLISECONDS);
+    \}
+
+    @Override
+    public void stopping() \{
+        controller.cancel(true);
+        threadName = \"\";
+    \}
+
+    @Override
+    public void update() \{
+        threadName = Thread.currentThread().getName();
+    \}
+    
+    
+    
+    private void run() \{
+        if (Types.THREAD_NAME.equals(threadName)) \{
+            tell(ControlAddress.of(\"/custom1/join.in-1\"), \"\");
+        \} else \{
+            tell(ControlAddress.of(\"/custom1/exit.exit-fail\"), \"\");
+        \}
+    \}
+    
+    
+    
+"
+  @ ./exit core:custom {
+    #%graph.x 491
+    #%graph.y 50
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./gate core:routing:gate {
+    #%graph.x 202
+    #%graph.y 50
+    .active true
+    .pattern [array 0 0 1]
+  }
+  @ ./join core:routing:join {
+    #%graph.x 349
+    #%graph.y 50
+  }
+  @ ./timer core:timing:timer {
+    #%graph.x 50
+    #%graph.y 50
+    .period 0.05
+  }
+  ~ ./timer!out ./gate!in
+  ~ ./gate!out ./join!in-2
+  ~ ./join!out ./exit!exit-ok
+}
