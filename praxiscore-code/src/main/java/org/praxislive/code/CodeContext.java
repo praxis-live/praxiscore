@@ -224,13 +224,14 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (execState == source.getState()) {
             return;
         }
+        if (source.getState() == ExecutionContext.State.IDLE) {
+            stopping(source, full);
+        }
         reset(full);
         update(source.getTime());
         execState = source.getState();
         if (execState == ExecutionContext.State.ACTIVE) {
             starting(source, full);
-        } else {
-            stopping(source, full);
         }
         flush();
     }

@@ -1,3 +1,24 @@
+/*
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+ * 
+ * Copyright 2023 Neil C Smith.
+ * 
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 3 only, as
+ * published by the Free Software Foundation.
+ * 
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * version 3 for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License version 3
+ * along with this work; if not, see http://www.gnu.org/licenses/
+ * 
+ * 
+ * Please visit https://www.praxislive.org if you need additional information or
+ * have any questions.
+ */
 package org.praxislive.base;
 
 import java.util.Queue;
@@ -55,10 +76,10 @@ public class AbstractRootTest {
         hub.ctrl.start(Thread::new);
         hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
                 ControlAddress.of("/hub.world"),
-                hub.getClock().getTime() + TimeUnit.SECONDS.toNanos(1)));
+                hub.getClock().getTime() + TimeUnit.MILLISECONDS.toNanos(100)));
         try {
             Call reply = (Call) responseQueue.poll(2, TimeUnit.SECONDS);
-            assertSame("OK", reply.args().get(0).toString());
+            assertEquals("OK", reply.args().get(0).toString());
         } catch (Exception ex) {
             fail();
         }
@@ -78,10 +99,10 @@ public class AbstractRootTest {
         hub.ctrl.start(Thread::new);
         hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
                 ControlAddress.of("/hub.world"),
-                hub.getClock().getTime() + TimeUnit.SECONDS.toNanos(1)));
+                hub.getClock().getTime() + TimeUnit.MILLISECONDS.toNanos(100)));
         try {
             Call reply = (Call) responseQueue.poll(2, TimeUnit.SECONDS);
-            assertSame("OK", reply.args().get(0).toString());
+            assertEquals("OK", reply.args().get(0).toString());
         } catch (Exception ex) {
             fail();
         }
@@ -93,8 +114,31 @@ public class AbstractRootTest {
         }
     }
 
+    @Test
+    public void testCallResponseAfterShutdown() {
+        RootImpl root = new RootImpl();
+        LinkedBlockingQueue<Packet> responseQueue = new LinkedBlockingQueue<>();
+        RootHubImpl hub = new RootHubImpl(root, responseQueue);
+        hub.ctrl.start(Thread::new);
+        hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
+                ControlAddress.of("/hub.world"),
+                hub.getClock().getTime() + TimeUnit.SECONDS.toNanos(1)));
+        hub.ctrl.shutdown();
+        try {
+            Call reply = (Call) responseQueue.poll(2, TimeUnit.SECONDS);
+            assertTrue(reply.isError());
+        } catch (Exception ex) {
+            fail();
+        }
+        try {
+            assertTrue(root.latch.await(10, TimeUnit.SECONDS));
+        } catch (InterruptedException ex) {
+            fail();
+        }
+    }
+
     public class RootImpl extends AbstractRoot {
-        
+
         CountDownLatch latch = new CountDownLatch(1);
 
         @Override
@@ -112,7 +156,7 @@ public class AbstractRootTest {
             System.out.println("Terminate called");
             latch.countDown();
         }
-        
+
     }
 
     public class DelegatingRootImpl extends AbstractRoot {

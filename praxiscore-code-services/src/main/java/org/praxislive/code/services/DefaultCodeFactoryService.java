@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,6 +42,7 @@ import org.praxislive.code.CodeContext;
 import org.praxislive.code.CodeContextFactoryService;
 import org.praxislive.code.CodeDelegate;
 import org.praxislive.code.CodeFactory;
+import org.praxislive.code.CodeRootFactoryService;
 import org.praxislive.code.SharedCodeService;
 import org.praxislive.code.services.tools.ClassBodyWrapper;
 import org.praxislive.core.Call;
@@ -80,6 +81,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
     public DefaultCodeFactoryService() {
         controls = Map.of(
                 CodeComponentFactoryService.NEW_INSTANCE, new NewInstanceControl(),
+                CodeRootFactoryService.NEW_ROOT_INSTANCE, new NewRootInstanceControl(),
                 CodeContextFactoryService.NEW_CONTEXT, new NewContextControl(),
                 SharedCodeService.NEW_SHARED, new NewSharedControl()
         );
@@ -90,6 +92,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
     @Override
     public List<Class<? extends Service>> services() {
         return List.of(CodeComponentFactoryService.class,
+                CodeRootFactoryService.class,
                 CodeContextFactoryService.class,
                 SharedCodeService.class);
     }
@@ -189,8 +192,8 @@ public class DefaultCodeFactoryService extends AbstractRoot
         @Override
         protected Call processInvoke(Call call) throws Exception {
             var codeFactory = findCodeFactory();
-            var src = codeFactory.getSourceTemplate();
-            var cls = codeFactory.getDefaultDelegateClass().orElse(null);
+            var src = codeFactory.sourceTemplate();
+            var cls = codeFactory.defaultDelegateClass();
             if (cls != null) {
                 return call.reply(PReference.of(createComponent(codeFactory, cls)));
             } else {
@@ -243,6 +246,50 @@ public class DefaultCodeFactoryService extends AbstractRoot
         }
 
     }
+    
+    private class NewRootInstanceControl extends AbstractAsyncControl {
+
+        @Override
+        protected Call processInvoke(Call call) throws Exception {
+            var codeFactory = findCodeFactory();
+            var cls = codeFactory.defaultDelegateClass();
+            return call.reply(PReference.of(createComponent(codeFactory, cls)));
+
+        }
+
+        @Override
+        protected Call processResponse(Call call) throws Exception {
+            try {
+                PMap data = PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
+                CodeFactory<CodeDelegate> codeFactory = findCodeFactory();
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(data, null);
+                CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
+                CodeComponent<CodeDelegate> cmp = codeFactory.task().createComponent(delegate);
+                return getActiveCall().reply(PReference.of(cmp));
+            } catch (Throwable throwable) {
+                if (throwable instanceof Exception) {
+                    throw (Exception) throwable;
+                } else {
+                    throw new Exception(throwable);
+                }
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private CodeFactory<CodeDelegate> findCodeFactory() throws Exception {
+            ComponentType type = ComponentType.from(getActiveCall().args().get(0)).orElseThrow();
+            ComponentFactory cmpFactory = registry.getComponentFactory(type);
+            return cmpFactory.getRootMetaData(type).getLookup()
+                    .find(CodeFactory.class).orElse(null);
+        }
+
+        private CodeComponent<CodeDelegate> createComponent(
+                CodeFactory<CodeDelegate> codeFactory,
+                Class<? extends CodeDelegate> delegateClass) throws Exception {
+            return codeFactory.task().createComponent(delegateClass.getDeclaredConstructor().newInstance());
+        }
+
+    }
 
     private class NewContextControl extends AbstractAsyncControl {
 
@@ -257,8 +304,8 @@ public class DefaultCodeFactoryService extends AbstractRoot
             String src = task.getCode();
             Class<? extends CodeDelegate> cls;
             if (src.isBlank()) {
-                src = factory.getSourceTemplate();
-                cls = factory.getDefaultDelegateClass().orElse(null);
+                src = factory.sourceTemplate();
+                cls = factory.defaultDelegateClass();
             } else {
                 // @TODO weak code cache for user code
                 cls = null;

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -209,13 +209,12 @@ class CodeProperty<D extends CodeDelegate>
         private ControlInfo createInfo(CodeFactory<D> factory) {
             return ControlInfo.createPropertyInfo(
                     ArgumentInfo.of(PString.class,
-                            PMap.builder(5)
-                                    .put(PString.KEY_MIME_TYPE, MIME_TYPE)
-                                    .put(ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate())
-                                    .put(ClassBodyContext.KEY, factory.getClassBodyContextName())
-                                    .put(CodeFactory.BASE_CLASS_KEY, factory.baseClass().getName())
-                                    .put(CodeFactory.BASE_IMPORTS_KEY, factory.baseImports().stream().map(PString::of).collect(PArray.collector()))
-                                    .build()
+                            PMap.of(PString.KEY_MIME_TYPE, MIME_TYPE,
+                                    ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
+                                    ClassBodyContext.KEY, factory.getClassBodyContextName(),
+                                    CodeFactory.BASE_CLASS_KEY, factory.baseClass().getName(),
+                                    CodeFactory.BASE_IMPORTS_KEY,
+                                    factory.baseImports().stream().map(PString::of).collect(PArray.collector()))
                     ),
                     PString.EMPTY,
                     PMap.EMPTY);

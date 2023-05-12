@@ -14,36 +14,43 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- * 
+ *
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.code.internal;
+package org.praxislive.core.components;
 
-import java.util.stream.Stream;
-import org.praxislive.code.CodeCompilerService;
-import org.praxislive.code.CodeComponentFactoryService;
-import org.praxislive.code.CodeContextFactoryService;
-import org.praxislive.code.CodeRootFactoryService;
-import org.praxislive.code.SharedCodeService;
-import org.praxislive.core.Protocol;
+import org.praxislive.code.GenerateTemplate;
+
+import org.praxislive.core.code.CoreRootContainerDelegate;
+
+// default imports
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+
+import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
  * 
  */
-public class CodeProtocolsProvider implements Protocol.TypeProvider {
+@GenerateTemplate(CoreRootCustom.TEMPLATE_PATH)
+public class CoreRootCustom extends CoreRootContainerDelegate {
+    
+    final static String TEMPLATE_PATH = "resources/root_custom.pxj";
 
+    // PXJ-BEGIN:body
+    
     @Override
-    public Stream<Protocol.Type> types() {
-        return Stream.of(
-                new Protocol.Type<>(CodeCompilerService.class),
-                new Protocol.Type<>(CodeComponentFactoryService.class),
-                new Protocol.Type<>(CodeRootFactoryService.class),
-                new Protocol.Type<>(CodeContextFactoryService.class),
-                new Protocol.Type<>(SharedCodeService.class)
-        );
+    public void init() {
+
     }
+    
+    // PXJ-END:body
     
 }

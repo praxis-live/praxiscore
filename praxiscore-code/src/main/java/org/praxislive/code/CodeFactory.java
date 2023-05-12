@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -120,7 +120,17 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return component type
      */
+    @Deprecated
     public final ComponentType getComponentType() {
+        return type;
+    }
+
+    /**
+     * Get the component type.
+     *
+     * @return component type
+     */
+    public final ComponentType componentType() {
         return type;
     }
 
@@ -141,7 +151,7 @@ public class CodeFactory<D extends CodeDelegate> {
 
         });
     }
-    
+
     final String getClassBodyContextName() {
         return lookup.find(ClassBodyContext.class)
                 .map(cbc -> cbc.getClass().getName())
@@ -153,7 +163,17 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return source template
      */
+    @Deprecated
     public final String getSourceTemplate() {
+        return template;
+    }
+
+    /**
+     * The source template corresponding to the default delegate class.
+     *
+     * @return source template
+     */
+    public final String sourceTemplate() {
         return template;
     }
 
@@ -162,8 +182,18 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return optional precompiled default delegate
      */
+    @Deprecated
     public final Optional<Class<? extends D>> getDefaultDelegateClass() {
         return Optional.ofNullable(defaultDelegateClass);
+    }
+
+    /**
+     * Query the default delegate class.
+     *
+     * @return default delegate class
+     */
+    public final Class<? extends D> defaultDelegateClass() {
+        return defaultDelegateClass;
     }
 
     /**
@@ -236,6 +266,48 @@ public class CodeFactory<D extends CodeDelegate> {
             List<String> baseImports,
             BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator) {
         return new Base<>(baseClass, baseImports, CodeContainer::new, contextCreator, Lookup.EMPTY);
+    }
+
+    /**
+     * Create a root component {@link CodeFactory.Base} for the given base
+     * delegate class, from which can be created individual CodeFactory
+     * instances. The base class and default imports will be used to wrap user
+     * sources passed across to the compiler. The context creator function is
+     * used to wrap the compiled delegate in a {@link CodeContext}, and will
+     * usually correspond to <code>(task, delegate) -> new XXXCodeContext(new
+     * XXXCodeConnector(task, delegate))</code>
+     *
+     * @param <B> base delegate type
+     * @param baseClass base delegate superclass
+     * @param baseImports default base imports
+     * @param contextCreator create context for delegate
+     * @return code factory base
+     */
+    public static <B extends CodeRootDelegate> Base<B> rootBase(Class<B> baseClass,
+            List<String> baseImports,
+            BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator) {
+        return new Base<>(baseClass, baseImports, CodeRoot::new, contextCreator, Lookup.EMPTY);
+    }
+
+    /**
+     * Create a root container {@link CodeFactory.Base} for the given base
+     * delegate class, from which can be created individual CodeFactory
+     * instances. The base class and default imports will be used to wrap user
+     * sources passed across to the compiler. The context creator function is
+     * used to wrap the compiled delegate in a {@link CodeContext}, and will
+     * usually correspond to <code>(task, delegate) -> new XXXCodeContext(new
+     * XXXCodeConnector(task, delegate))</code>
+     *
+     * @param <B> base delegate type
+     * @param baseClass base delegate superclass
+     * @param baseImports default base imports
+     * @param contextCreator create context for delegate
+     * @return code factory base
+     */
+    public static <B extends CodeRootContainerDelegate> Base<B> rootContainerBase(Class<B> baseClass,
+            List<String> baseImports,
+            BiFunction<CodeFactory.Task<B>, B, CodeContext<B>> contextCreator) {
+        return new Base<>(baseClass, baseImports, CodeRootContainer::new, contextCreator, Lookup.EMPTY);
     }
 
     /**

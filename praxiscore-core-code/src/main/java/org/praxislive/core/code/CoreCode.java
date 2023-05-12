@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,6 +42,11 @@ public class CoreCode {
             = CodeFactory.containerBase(CoreContainerDelegate.class,
                     DEFAULT_IMPORTS,
                     (task, delegate) -> new CoreContainerCodeContext(new CoreContainerCodeConnector(task, delegate)));
+    
+    private final static CodeFactory.Base<CoreRootContainerDelegate> ROOT_CONTAINER_BASE
+            = CodeFactory.rootContainerBase(CoreRootContainerDelegate.class,
+                    DEFAULT_IMPORTS,
+                    (task, delegate) -> new CoreRootContainerCodeContext(new CoreRootContainerCodeConnector(task, delegate)));
 
     private CoreCode() {
     }
@@ -62,6 +67,15 @@ public class CoreCode {
      */
     public static CodeFactory.Base<CoreContainerDelegate> containerBase() {
         return CONTAINER_BASE;
+    }
+    
+    /**
+     * Access {@link CodeFactory.Base} for {@link CoreRootContainerDelegate}.
+     *
+     * @return code factory base for CoreRootContainerDelegate.
+     */
+    public static CodeFactory.Base<CoreRootContainerDelegate> rootContainerBase() {
+        return ROOT_CONTAINER_BASE;
     }
 
 }

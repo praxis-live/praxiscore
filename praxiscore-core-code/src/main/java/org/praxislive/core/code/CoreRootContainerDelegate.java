@@ -21,30 +21,24 @@
  */
 package org.praxislive.core.code;
 
-import org.praxislive.code.DefaultCodeDelegate;
+import org.praxislive.code.CodeRootContainerDelegate;
+import org.praxislive.code.DefaultDelegateAPI;
 
 /**
  *
  *
  */
-public class CoreCodeDelegate extends DefaultCodeDelegate {
+public class CoreRootContainerDelegate extends CodeRootContainerDelegate
+        implements DefaultDelegateAPI {
 
     /**
      * Hook called whenever the delegate needs to be initialized. Will be called
-     * when the root is started, on adding a component to a running root, and
-     * any time the code is updated. Because this code is called in a running
-     * root, the code should be suitable for real-time usage.
-     * <p>
-     * Implementation detail : this method calls the deprecated setup() by
-     * default().
+     * when the root is started, and any time the code is updated. Because this
+     * code is called in a running root, the code should be suitable for
+     * real-time usage.
      */
-    @SuppressWarnings("deprecation")
+    @Override
     public void init() {
-        setup();
-    }
-
-    @Deprecated
-    public void setup() {
     }
 
     /**

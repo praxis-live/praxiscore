@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -66,7 +66,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     }
 
     @Override
-    public final void parentNotify(Container parent) throws VetoException {
+    public void parentNotify(Container parent) throws VetoException {
         if (parent == null) {
             if (this.parent != null) {
                 this.parent = null;
@@ -88,16 +88,11 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
 
     @Override
     public void hierarchyChanged() {
-        if (parent != null) {
-            address = parent.getAddress(this);
-        } else {
-            address = null;
-        }
         execCtxt = null;
         router = null;
         logInfo = null;
         codeCtxt.handleHierarchyChanged();
-        if (address == null) {
+        if (getAddress() == null) {
             codeCtxt.handleDispose();
         }
     }
@@ -140,6 +135,11 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     }
 
     ComponentAddress getAddress() {
+        if (parent == null) {
+            address = null;
+        } else if (address == null) {
+            address = parent.getAddress(this);
+        }
         return address;
     }
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -85,7 +85,11 @@ public class CoreComponents implements ComponentFactoryProvider {
             add(CoreCode.containerBase().create(
                     "core:container", CoreContainer.class,
                     source(CoreContainer.TEMPLATE_PATH)));
-
+            
+            // ROOT
+            addRoot(CoreCode.rootContainerBase().create(
+                    "root:custom", CoreRootCustom.class,
+                    source(CoreRootCustom.TEMPLATE_PATH)));
         }
 
         private void add(String type, Class<? extends CoreCodeDelegate> cls, String path) {
