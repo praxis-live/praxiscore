@@ -189,6 +189,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     protected void stopping() {
         lookup = null;
         player.terminate();
+        player = null;
         interrupt();
     }
 

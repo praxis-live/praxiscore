@@ -15,7 +15,7 @@
       <dependency>
         <groupId>org.lwjgl</groupId>
         <artifactId>lwjgl-bom</artifactId>
-        <version>3.2.3</version>
+        <version>3.3.2</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
