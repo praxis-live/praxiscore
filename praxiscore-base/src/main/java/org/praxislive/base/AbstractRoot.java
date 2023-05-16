@@ -382,7 +382,7 @@ public abstract class AbstractRoot implements Root {
         }
 
         if ((time - this.time) < 0) {
-            LOG.log(Level.WARNING, () -> "Update time is not monotonic : behind by " + (time - this.time));
+            LOG.log(Level.FINE, () -> "Update time is not monotonic : behind by " + (time - this.time));
             this.time++;
         } else {
             this.time = time;
