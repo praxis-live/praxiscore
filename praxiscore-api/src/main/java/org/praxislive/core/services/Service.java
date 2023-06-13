@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,12 +21,14 @@
  */
 package org.praxislive.core.services;
 
+import org.praxislive.core.RootHub;
 import org.praxislive.core.Protocol;
 
 /**
- *
- * 
+ * An extension of {@link Protocol} for various system services. Component
+ * addresses of services can be queried via the {@link Services} implementation
+ * in {@link RootHub#getLookup()}.
  */
 public interface Service extends Protocol {
-    
+
 }
