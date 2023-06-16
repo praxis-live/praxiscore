@@ -52,6 +52,22 @@ public interface Protocol {
     public Stream<String> controls();
 
     /**
+     * The names of additional controls that a component advertising this
+     * protocol might provide. These controls are optional. Any caller should
+     * check whether the component info contains the control, or otherwise
+     * prepare for the control not to be available.
+     * <p>
+     * Implementation note : the protocol implementation should support querying
+     * the control info via {@link #getControlInfo(java.lang.String)}. The
+     * default implementation returns an empty stream.
+     *
+     * @return stream of optional control names
+     */
+    public default Stream<String> optionalControls() {
+        return Stream.empty();
+    }
+
+    /**
      * Query the ControlInfo for the provided control name on this protocol. The
      * component implementing this protocol will generally use the control info
      * provided here inside its component info. In exceptional circumstances,
