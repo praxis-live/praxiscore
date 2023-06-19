@@ -29,6 +29,7 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Container;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
+import org.praxislive.core.Lookup;
 import org.praxislive.core.Protocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
@@ -72,6 +73,11 @@ public class ContainerProtocol implements Protocol {
      * Name of the connections control.
      */
     public final static String CONNECTIONS = "connections";
+
+    /**
+     * Name of the supported-types control.
+     */
+    public final static String SUPPORTED_TYPES = "supported-types";
 
     private final static ArgumentInfo STRING = PString.info();
 
@@ -140,8 +146,23 @@ public class ContainerProtocol implements Protocol {
                     PMap.EMPTY);
 
     /**
+     * Info for the (optional) supported-types control. It is a read-only
+     * property that returns a PArray consisting of all supported
+     * {@link ComponentType} that can be passed to add-child.
+     * <p>
+     * A {@link SupportedTypes} implementation may be registered in the
+     * container's {@link Lookup} to facilitate implementation of this control
+     * by child containers.
+     */
+    public final static ControlInfo SUPPORTED_TYPES_INFO
+            = Info.control(c -> c.readOnlyProperty().output(PArray.class));
+
+    /**
      * A component info for this protocol. Can be used with
      * {@link Info.ComponentInfoBuilder#merge(org.praxislive.core.ComponentInfo)}.
+     * <p>
+     * This does not contain info for optional controls (ie. supported-types)
+     * which must be added additionally if required.
      */
     public static final ComponentInfo API_INFO = Info.component(cmp -> cmp
             .protocol(ContainerProtocol.class)
@@ -160,6 +181,11 @@ public class ContainerProtocol implements Protocol {
     }
 
     @Override
+    public Stream<String> optionalControls() {
+        return Stream.of(SUPPORTED_TYPES);
+    }
+
+    @Override
     public ControlInfo getControlInfo(String control) {
         switch (control) {
             case ADD_CHILD:
@@ -174,7 +200,10 @@ public class ContainerProtocol implements Protocol {
                 return DISCONNECT_INFO;
             case CONNECTIONS:
                 return CONNECTIONS_INFO;
+            case SUPPORTED_TYPES:
+                return SUPPORTED_TYPES_INFO;
         }
         throw new IllegalArgumentException();
     }
+
 }
