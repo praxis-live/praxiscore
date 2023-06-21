@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -45,6 +45,7 @@ import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Call;
 import org.praxislive.core.Clock;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Value;
@@ -101,9 +102,9 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     public DefaultAudioRoot() {
         sharedCode = new SharedCodeProperty(this, this::handleLog);
         registerControl("shared-code", sharedCode);
-        
+
         extractLibraryInfo();
-        
+
         // permanent
         sampleRate = new CheckedIntProperty(MIN_SAMPLERATE, MAX_SAMPLERATE, DEFAULT_SAMPLERATE);
         registerControl("sample-rate", sampleRate);
@@ -123,6 +124,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         baseInfo = Info.component(cmp -> cmp
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
+                .control(ContainerProtocol.SUPPORTED_TYPES, ContainerProtocol.SUPPORTED_TYPES_INFO)
                 .merge(StartableProtocol.API_INFO)
                 .control("shared-code", SharedCodeProperty.INFO)
                 .control("sample-rate", c -> c.property()
@@ -151,6 +153,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                                 .toArray(String[]::new))
                 ))
                 .property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
+                .property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("root:audio"))
         );
         info = baseInfo;
 
@@ -301,8 +304,8 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         }
         LOG.log(System.Logger.Level.TRACE,
                 "Found audio library {0}\n{1}", new Object[]{
-            libInfo.provider.getLibraryName(), libInfo.provider.getLibraryDescription()
-        });
+                    libInfo.provider.getLibraryName(), libInfo.provider.getLibraryDescription()
+                });
 
         Device device = findDevice(libInfo, usingDefault, false);
         if (device != null) {
@@ -489,14 +492,14 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 .ifPresent(logger -> {
                     var to = ControlAddress.of(logger, LogService.LOG);
                     var from = ControlAddress.of(getAddress(), "_log");
-                    var call =  Call.createQuiet(to,
+                    var call = Call.createQuiet(to,
                             from,
                             getExecutionContext().getTime(),
                             log.toList());
                     getRouter().route(call);
                 });
     }
-    
+
     private class AudioDelegate extends Delegate
             implements PipesAudioClient.Listener {
 

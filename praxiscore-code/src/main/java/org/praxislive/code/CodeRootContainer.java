@@ -23,6 +23,7 @@ package org.praxislive.code;
 
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
+import org.praxislive.base.FilteredTypes;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -48,9 +49,13 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         implements Container {
 
     private final ContainerImpl container;
+    private final FilteredTypes filteredTypes;
+
+    private Lookup lookup;
 
     CodeRootContainer() {
         container = new ContainerImpl(this);
+        filteredTypes = FilteredTypes.create(this, type -> type.toString().startsWith("core:"));
     }
 
     @Override
@@ -69,7 +74,17 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     }
 
     @Override
+    public Lookup getLookup() {
+        if (lookup == null) {
+            lookup = Lookup.of(super.getLookup(), filteredTypes);
+        }
+        return lookup;
+    }
+
+    @Override
     public void hierarchyChanged() {
+        lookup = null;
+        filteredTypes.reset();
         super.hierarchyChanged();
         container.hierarchyChanged();
     }
@@ -153,6 +168,8 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
                     ContainerProtocol.DISCONNECT_INFO, getInternalIndex()));
             addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECTIONS,
                     ContainerProtocol.CONNECTIONS_INFO, getInternalIndex()));
+            addControl(new ContainerControlDescriptor(ContainerProtocol.SUPPORTED_TYPES,
+                    ContainerProtocol.SUPPORTED_TYPES_INFO, getInternalIndex()));
         }
 
         @Override

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,6 +44,8 @@ import org.praxislive.core.types.PError;
 public abstract class AbstractRootContainer extends AbstractRoot implements Container {
 
     private final ContainerImpl delegate;
+
+    private Lookup lookup;
 
     protected AbstractRootContainer() {
         delegate = new ContainerImpl(this);
@@ -97,6 +99,14 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
     @Override
     public Port getPort(String id) {
         return delegate.getPort(id);
+    }
+
+    @Override
+    public Lookup getLookup() {
+        if (lookup == null) {
+            lookup = Lookup.of(super.getLookup(), FilteredTypes.create(this));
+        }
+        return lookup;
     }
 
     @Override
@@ -166,9 +176,9 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
     }
 
     private static class ContainerImpl extends AbstractContainer.Delegate {
-        
+
         private final AbstractRootContainer wrapper;
-        
+
         private ContainerImpl(AbstractRootContainer wrapper) {
             this.wrapper = wrapper;
         }
@@ -192,8 +202,6 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
         }
-        
-        
 
     }
 

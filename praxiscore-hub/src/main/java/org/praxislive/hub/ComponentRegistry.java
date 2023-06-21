@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 import org.praxislive.core.ComponentType;
@@ -63,6 +64,20 @@ class ComponentRegistry {
 
     ComponentFactory getRootComponentFactory(ComponentType type) {
         return rootCache.get(type);
+    }
+
+    org.praxislive.core.ComponentRegistry.Result createRegistryResult() {
+        Map<ComponentType, Lookup> components = componentCache.entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey(),
+                        e -> Lookup.of(e.getValue().componentData(e.getKey()), e.getValue()),
+                        (v1, v2) -> v2,
+                        LinkedHashMap::new));
+        Map<ComponentType, Lookup> roots = rootCache.entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey(),
+                        e -> Lookup.of(e.getValue().rootData(e.getKey()), e.getValue()),
+                        (v1, v2) -> v2,
+                        LinkedHashMap::new));
+        return new org.praxislive.core.ComponentRegistry.Result(components, roots);
     }
 
     static ComponentRegistry getInstance() {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,6 +44,7 @@ import org.praxislive.core.PortListener;
 import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
+import org.praxislive.core.protocols.SupportedTypes;
 import org.praxislive.core.services.ComponentFactoryService;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PReference;
@@ -73,6 +74,11 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         registerControl(ContainerProtocol.CONNECT, new ConnectControl());
         registerControl(ContainerProtocol.DISCONNECT, new DisconnectControl());
         registerControl(ContainerProtocol.CONNECTIONS, new ConnectionsControl());
+        registerControl(ContainerProtocol.SUPPORTED_TYPES, (call, router) -> {
+            router.route(call.reply(getLookup().find(SupportedTypes.class)
+                    .map(types -> types.query().typesAsArray())
+                    .orElse(PArray.EMPTY)));
+        });
     }
 
     @Override

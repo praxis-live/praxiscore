@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -70,8 +70,11 @@ public final class Hub {
         List<Root> exts = new ArrayList<>();
         extractExtensions(builder, exts);
         core = coreFactory.createCoreRoot(new Accessor(), exts);
-        builder.lookupContent.add(0, new ServicesImpl());
-        Lookup lkp = Lookup.of(builder.lookupContent.toArray());
+        List<Object> lookupContent = new ArrayList<>();
+        lookupContent.add(new ServicesImpl());
+        lookupContent.add(new ComponentRegistryImpl());
+        lookupContent.addAll(builder.lookupContent);
+        Lookup lkp = Lookup.of(lookupContent.toArray());
         lkp = coreFactory.extendLookup(lkp);
         lookup = lkp;
         roots = new ConcurrentHashMap<>();
@@ -81,12 +84,12 @@ public final class Hub {
     }
 
     private void extractExtensions(Builder builder, List<Root> exts) {
-            exts.add(new DefaultComponentFactoryService());
-            exts.add(new ScriptServiceImpl());
-            exts.add(new DefaultTaskService());
-            exts.addAll(builder.extensions);
+        exts.add(new DefaultComponentFactoryService());
+        exts.add(new ScriptServiceImpl());
+        exts.add(new DefaultTaskService());
+        exts.addAll(builder.extensions);
     }
-    
+
     public synchronized void start() throws Exception {
         if (coreThread != null) {
             throw new IllegalStateException();
@@ -96,7 +99,7 @@ public final class Hub {
         coreController = core.initialize(coreID, rootHub);
         roots.put(coreID, coreController);
         coreController.start(r -> {
-            coreThread =  new Thread(r, "PRAXIS_CORE_THREAD");
+            coreThread = new Thread(r, "PRAXIS_CORE_THREAD");
             return coreThread;
         });
         assert coreThread.isAlive();
@@ -109,18 +112,18 @@ public final class Hub {
     public void await() throws InterruptedException {
         coreThread.join();
     }
-    
+
     public void await(long time, TimeUnit unit) throws InterruptedException, TimeoutException {
         coreThread.join(unit.toMillis(time));
         if (coreThread.isAlive()) {
             throw new TimeoutException();
         }
     }
-    
+
     public boolean isAlive() {
         return coreThread.isAlive();
     }
-    
+
     public int exitValue() {
         if (core instanceof BasicCoreRoot) {
             return ((BasicCoreRoot) core).exitValue();
@@ -154,11 +157,11 @@ public final class Hub {
     private String[] getRootIDs() {
         return rootIDs.toArray(String[]::new);
     }
-    
+
     private RootHub getRootHub() {
         return rootHub;
     }
-    
+
     private void registerService(Class<? extends Service> service,
             ComponentAddress provider) {
         if (service == null || provider == null) {
@@ -174,11 +177,11 @@ public final class Hub {
             services.put(service, nprovs);
         }
     }
-            
+
     private Set<Class<? extends Service>> getServices() {
         return Collections.unmodifiableSet(services.keySet());
     }
-    
+
     public static Builder builder() {
         return new Builder();
     }
@@ -240,6 +243,21 @@ public final class Hub {
 
     }
 
+    private class ComponentRegistryImpl implements org.praxislive.core.ComponentRegistry {
+
+        private final Result result;
+
+        private ComponentRegistryImpl() {
+            result = ComponentRegistry.getInstance().createRegistryResult();
+        }
+
+        @Override
+        public Result query() {
+            return result;
+        }
+
+    }
+
     public final class Accessor {
 
         public boolean registerRootController(String id, Root.Controller controller) {
@@ -259,24 +277,24 @@ public final class Hub {
         }
 
         public void registerService(Class<? extends Service> service,
-            ComponentAddress provider) {
+                ComponentAddress provider) {
             Hub.this.registerService(service, provider);
         }
-        
+
         public Set<Class<? extends Service>> getServices() {
             return Hub.this.getServices();
         }
-        
+
         public RootHub getRootHub() {
             return Hub.this.getRootHub();
         }
-        
+
     }
 
     public static abstract class CoreRootFactory {
 
         public abstract Root createCoreRoot(Accessor accessor, List<Root> extensions);
-        
+
         public Lookup extendLookup(Lookup lookup) {
             return lookup;
         }
@@ -295,30 +313,30 @@ public final class Hub {
             coreRootFactory = BasicCoreRoot.factory();
             extensions.addAll(findDefaultExtensions());
         }
-       
+
         private List<Root> findDefaultExtensions() {
             return Lookup.SYSTEM.findAll(RootHub.ExtensionProvider.class)
                     .flatMap(ep -> ep.getExtensions().stream())
                     .collect(Collectors.toList());
         }
-        
+
         public Builder setCoreRootFactory(CoreRootFactory coreRootFactory) {
             this.coreRootFactory = Objects.requireNonNull(coreRootFactory);
             return this;
         }
-        
+
         public Builder addExtension(Root extension) {
             extensions.add(Objects.requireNonNull(extension));
             return this;
         }
-        
+
         public Builder extendLookup(Object obj) {
             lookupContent.add(Objects.requireNonNull(obj));
             return this;
         }
-        
+
         public Hub build() {
-            
+
             Hub hub = new Hub(this);
             return hub;
         }
