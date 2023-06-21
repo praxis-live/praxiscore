@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,16 +30,27 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 
 /**
- *
+ * A {@link Service} for creating new root instances. The implementation of this
+ * service will discover all available {@link ComponentFactory} and either
+ * create an instance of the component via
+ * {@link ComponentFactory#createRoot(org.praxislive.core.ComponentType)} or
+ * delegate creation to the correct {@link ComponentFactory#rootRedirect()}.
  */
 public class RootFactoryService implements Service {
 
+    /**
+     * Control ID of the new root instance control.
+     */
     public final static String NEW_ROOT_INSTANCE = "new-root-instance";
-    public final static ControlInfo NEW_ROOT_INSTANCE_INFO =
-            ControlInfo.createFunctionInfo(
-            List.of(ComponentType.info()),
-            List.of(PReference.info(Root.class)),
-            PMap.EMPTY);
+    
+    /**
+     * ControlInfo of the new root instance control.
+     */
+    public final static ControlInfo NEW_ROOT_INSTANCE_INFO
+            = ControlInfo.createFunctionInfo(
+                    List.of(ComponentType.info()),
+                    List.of(PReference.info(Root.class)),
+                    PMap.EMPTY);
 
     @Override
     public Stream<String> controls() {
@@ -54,5 +65,3 @@ public class RootFactoryService implements Service {
         throw new IllegalArgumentException();
     }
 }
-
-

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,11 +30,23 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PReference;
 
 /**
- *
+ * A {@link Service} for creating new component instances. The implementation of
+ * this service will discover all available {@link ComponentFactory} and either
+ * create an instance of the component via
+ * {@link ComponentFactory#createComponent(org.praxislive.core.ComponentType)}
+ * or delegate creation to the correct
+ * {@link ComponentFactory#componentRedirect()}.
  */
 public class ComponentFactoryService implements Service {
 
+    /**
+     * Control ID of the new instance control.
+     */
     public final static String NEW_INSTANCE = "new-instance";
+
+    /**
+     * ControlInfo for the new instance control.
+     */
     public final static ControlInfo NEW_INSTANCE_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(ComponentType.info()),

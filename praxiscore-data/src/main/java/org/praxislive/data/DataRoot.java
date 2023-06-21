@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,6 +26,7 @@ import org.praxislive.base.BindingContextControl;
 import org.praxislive.code.SharedCodeProperty;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
@@ -48,8 +49,10 @@ public class DataRoot extends AbstractRootContainer {
         INFO = Info.component(cmp -> cmp
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
+                .control(ContainerProtocol.SUPPORTED_TYPES, ContainerProtocol.SUPPORTED_TYPES_INFO)
                 .merge(StartableProtocol.API_INFO)
                 .control("shared-code", SharedCodeProperty.INFO)
+                .property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("root:data"))
         );
     }
 

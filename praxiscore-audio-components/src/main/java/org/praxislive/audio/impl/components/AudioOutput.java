@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,7 @@ import org.praxislive.audio.DefaultAudioInputPort;
 import org.praxislive.base.AbstractComponent;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
@@ -108,13 +109,14 @@ public class AudioOutput extends AbstractComponent {
         }
         info = null;
     }
-    
-     @Override
+
+    @Override
     public ComponentInfo getInfo() {
         if (info == null) {
             info = Info.component(cmp -> {
                 cmp.merge(ComponentProtocol.API_INFO);
                 cmp.property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE);
+                cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("audio:output"));
                 cmp.control("channels", c -> c.property().input(a -> a
                         .number().min(1).max(MAX_CHANNELS)
                         .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)

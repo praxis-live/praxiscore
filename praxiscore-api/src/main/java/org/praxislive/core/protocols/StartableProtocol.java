@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,29 +30,62 @@ import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PMap;
 
 /**
- *
+ * Protocol for a component that can be started and stopped.
  */
 public class StartableProtocol implements Protocol {
 
+    @Deprecated
     public final static StartableProtocol INSTANCE = new StartableProtocol();
 
+    /**
+     * Name of the start control.
+     */
     public final static String START = "start";
-    public final static String STOP = "stop";
-    public final static String IS_RUNNING = "is-running";
-    public final static ControlInfo START_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
-    public final static ControlInfo STOP_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
-    public final static ControlInfo IS_RUNNING_INFO =
-            ControlInfo.createReadOnlyPropertyInfo(
-                PBoolean.info(),
-                null);;
 
+    /**
+     * Name of the stop control.
+     */
+    public final static String STOP = "stop";
+
+    /**
+     * Name of the is-running control.
+     */
+    public final static String IS_RUNNING = "is-running";
+
+    /**
+     * Info for the start control. It is an action control that should "start"
+     * the component. It may respond with an error if for some reason the
+     * component cannot be started.
+     */
+    public final static ControlInfo START_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
+
+    /**
+     * Info for the stop control. It is an action control that should "stop" the
+     * component. It may respond with an error if for some reason the component
+     * cannot be stopped.
+     */
+    public final static ControlInfo STOP_INFO = ControlInfo.createActionInfo(PMap.EMPTY);
+
+    /**
+     * Info for the is-running control. It is a read-only boolean property that
+     * responds whether the component is currently running / started.
+     */
+    public final static ControlInfo IS_RUNNING_INFO
+            = ControlInfo.createReadOnlyPropertyInfo(
+                    PBoolean.info(),
+                    null);
+    ;
+
+    /**
+     * A component info for this protocol. Can be used with
+     * {@link Info.ComponentInfoBuilder#merge(org.praxislive.core.ComponentInfo)}.
+     */
     public static final ComponentInfo API_INFO = Info.component(cmp -> cmp
             .protocol(StartableProtocol.class)
             .control(START, START_INFO)
             .control(STOP, STOP_INFO)
             .control(IS_RUNNING, IS_RUNNING_INFO)
     );
- 
 
     @Override
     public Stream<String> controls() {
@@ -61,17 +94,14 @@ public class StartableProtocol implements Protocol {
 
     @Override
     public ControlInfo getControlInfo(String control) {
-        if (START.equals(control)) {
-            return START_INFO;
-        }
-        if (STOP.equals(control)) {
-            return STOP_INFO;
-        }
-        if (IS_RUNNING.equals(control)) {
-            return IS_RUNNING_INFO;
+        switch (control) {
+            case START:
+                return START_INFO;
+            case STOP:
+                return STOP_INFO;
+            case IS_RUNNING:
+                return IS_RUNNING_INFO;
         }
         throw new IllegalArgumentException();
     }
 }
-
-
