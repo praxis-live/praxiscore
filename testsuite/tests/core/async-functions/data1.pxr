@@ -1,5 +1,5 @@
 @ /data1 root:data {
-  #%praxis.version 5.5.0-SNAPSHOT
+  #%praxis.version 5.7.0-SNAPSHOT
   @ ./exit core:custom {
     #%graph.x 680
     #%graph.y 659
@@ -240,6 +240,43 @@ import org.praxislive.core.services.SystemManagerService;
 
 "
   }
+  @ ./test6 core:custom {
+    #%graph.x 433
+    #%graph.y 231
+    #%graph.comment Run async task w/ Async.Queue
+    .code "
+    String lowercase = \"hello world\";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Inject Async.Queue<String> queue;
+
+    @Override
+    public void init() \{
+        queue.onDone(res -> \{
+            if (!res.equals(uppercase)) \{
+                log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + res);
+                error.send();
+            \} else \{
+                log(INFO, \"Test 6 : OK\");
+                ok.send();
+            \}
+        \}, err -> \{
+            log(ERROR, \"<FAIL> \" + err);
+            error.send();
+        \});
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 6 : Running async task w/ Async.Queue\");
+        queue.add(async(lowercase, s -> s.toUpperCase(Locale.ROOT)));
+    \}
+
+"
+  }
   ~ ./test1!error ./exit!exit-fail
   ~ ./test2!error ./exit!exit-fail
   ~ ./test1!ok ./test2!test
@@ -248,6 +285,8 @@ import org.praxislive.core.services.SystemManagerService;
   ~ ./test3!error ./exit!exit-fail
   ~ ./test4!error ./exit!exit-fail
   ~ ./test4!ok ./test5!test
-  ~ ./test5!ok ./exit!exit-ok
   ~ ./test5!error ./exit!exit-fail
+  ~ ./test5!ok ./test6!test
+  ~ ./test6!ok ./exit!exit-ok
+  ~ ./test6!error ./exit!exit-fail
 }

@@ -1,5 +1,5 @@
 @ /data2 root:data {
-  #%praxis.version 5.5.0-SNAPSHOT
+  #%praxis.version 5.7.0-SNAPSHOT
   @ ./functions core:custom {
     #%graph.x 264
     #%graph.y 184

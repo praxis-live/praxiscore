@@ -424,6 +424,16 @@ public abstract class Ref<T> {
             provide(List.class, ArrayList::new);
             provide(Map.class, LinkedHashMap::new);
             provide(Set.class, LinkedHashSet::new);
+            register(Async.Queue.class, (ref) -> {
+                ref.init(Async.Queue::new);
+                ref.onReset(q -> {
+                    q.onDone(null);
+                    q.limit(Integer.MAX_VALUE);
+                });
+                ref.onDispose(q -> {
+                    q.clear();
+                });
+            });
         }
 
     }
