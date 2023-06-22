@@ -1,29 +1,29 @@
-
 package org.praxislive.code.userapi;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.util.stream.Stream;
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.praxislive.core.DataObject;
 import org.praxislive.core.types.PBytes;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 /**
  *
- * 
+ *
  */
 public class StructTest {
-    
+
     private PBytes data1, data2;
     private final String TEST_STRING = "This is our\nTEST STRING";
-    
+
     public StructTest() {
     }
-    
-    @Before
+
+    @BeforeEach
     public void setUp() throws Exception {
         PBytes.OutputStream pbos = new PBytes.OutputStream();
         DataOutputStream dos = new DataOutputStream(pbos);
@@ -34,8 +34,7 @@ public class StructTest {
         dos.writeDouble(50);
         dos.writeDouble(60);
         data1 = pbos.toBytes();
-        
-        
+
         pbos = new PBytes.OutputStream();
         dos = new DataOutputStream(pbos);
         dos.writeUTF(TEST_STRING);
@@ -60,7 +59,7 @@ public class StructTest {
         struct1.vec2.z = 60;
         PBytes bytes = Stream.of(struct1).collect(PBytes.collector());
         assertEquals(bytes, data1);
-        
+
         UnsizedStructImpl struct2 = new UnsizedStructImpl();
         struct2.sdo.string = TEST_STRING;
         struct2.vec.x = 40;
@@ -68,14 +67,14 @@ public class StructTest {
         struct2.vec.z = 60;
         bytes = Stream.of(struct2).collect(PBytes.collector());
         assertEquals(bytes, data2);
-        
-        double[] data = new double[]{10,20,30,40,50,60};
+
+        double[] data = new double[]{10, 20, 30, 40, 50, 60};
         Struct struct3 = new Struct() {
             double[] d = register(data);
         };
         bytes = Stream.of(struct3).collect(PBytes.collector());
         assertEquals(bytes, data1);
-        
+
     }
 
     /**
@@ -89,40 +88,42 @@ public class StructTest {
         data1.forEachIn(struct1, s -> {
             assertEquals(0, count[0]);
             count[0]++;
-            assertEquals(new PVector(10,20,30), s.vec1);
-            assertEquals(new PVector(40,50,60), s.vec2);
+            assertEquals(new PVector(10, 20, 30), s.vec1);
+            assertEquals(new PVector(40, 50, 60), s.vec2);
         });
         UnsizedStructImpl struct2 = new UnsizedStructImpl();
         data2.forEachIn(struct2, s -> {
             assertEquals(1, count[0]);
             count[0]++;
             assertEquals(TEST_STRING, s.sdo.string);
-            assertEquals(new PVector(40,50,60), s.vec);
+            assertEquals(new PVector(40, 50, 60), s.vec);
         });
-        
+
         double[] data = new double[6];
-        
-        Struct struct3 = new Struct() { 
+
+        Struct struct3 = new Struct() {
             double[] d = register(data);
         };
-        
+
         data1.forEachIn(struct3, s -> {
             assertEquals(2, count[0]);
             count[0]++;
-            assertArrayEquals(new double[]{10,20,30,40,50,60}, data, 0);
+            assertArrayEquals(new double[]{10, 20, 30, 40, 50, 60}, data, 0);
         });
-        
-        Struct empty = new Struct(){};
-        
+
+        Struct empty = new Struct() {
+        };
+
         try {
-            data1.forEachIn(empty, s -> {});
+            data1.forEachIn(empty, s -> {
+            });
         } catch (Exception ex) {
             System.out.println(ex);
             assertTrue(true);
             return;
-        } 
+        }
         assertFalse(true);
-        
+
     }
 
     /**
@@ -138,21 +139,23 @@ public class StructTest {
     }
 
     private static class StructImpl extends Struct {
+
         PVector vec1 = register(new PVector());
         PVector vec2 = register(new PVector());
-        
+
     }
-    
+
     private static class UnsizedStructImpl extends Struct {
+
         StringDataObject sdo = register(new StringDataObject());
         PVector vec = register(new PVector());
-        
+
     }
-    
+
     private static class StringDataObject implements DataObject {
 
         String string = "";
-        
+
         @Override
         public void writeTo(DataOutput out) throws Exception {
             out.writeUTF(string);
@@ -162,7 +165,7 @@ public class StructTest {
         public void readFrom(DataInput in) throws Exception {
             string = in.readUTF();
         }
-        
+
     }
-    
+
 }
