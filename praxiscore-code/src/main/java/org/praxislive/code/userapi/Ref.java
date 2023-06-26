@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -139,6 +139,7 @@ public abstract class Ref<T> {
      * @param function an intensive or time-consuming function
      * @return this
      */
+    @Deprecated
     public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
         throw new UnsupportedOperationException();
     }

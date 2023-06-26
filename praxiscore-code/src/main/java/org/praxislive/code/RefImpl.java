@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -62,6 +62,7 @@ class RefImpl<T> extends Ref<T> {
     }
 
     @Override
+    @Deprecated
     public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
         ControlAddress to = context.locateService(TaskService.class)
                 .map(ad -> ControlAddress.of(ad, TaskService.SUBMIT))
@@ -181,6 +182,7 @@ class RefImpl<T> extends Ref<T> {
             }
         }
 
+        @Deprecated
         ControlDescriptor getControlDescriptor() {
             return control;
         }
@@ -207,6 +209,7 @@ class RefImpl<T> extends Ref<T> {
 
     }
 
+    @Deprecated
     private static class ControlImpl extends ControlDescriptor implements Control {
 
         private final Descriptor rd;
