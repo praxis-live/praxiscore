@@ -58,6 +58,7 @@ public abstract class Ref<T> {
     private Consumer<? super T> onResetHandler;
     private Consumer<? super T> onDisposeHandler;
     private List<Runnable> resetTasks;
+    private Async.Queue<T> asyncQueue;
 
     /**
      * Initialize the reference, calling the supplier function if a value is
@@ -97,6 +98,7 @@ public abstract class Ref<T> {
      * @return this
      */
     public Ref<T> clear() {
+        clearPendingSet();
         T oldValue = value;
         disposeValue();
         value = null;
@@ -132,12 +134,46 @@ public abstract class Ref<T> {
      */
     public Ref<T> compute(Function<? super T, ? extends T> function) {
         checkInit();
+        clearPendingSet();
         T newValue = function.apply(value);
         if (newValue != value) {
             disposeValue();
             T oldValue = value;
             value = newValue;
             notifyValueChanged(newValue, oldValue);
+        }
+        return this;
+    }
+
+    /**
+     * Set the value. This is a shortcut equivalent to calling
+     * <code>ref.init(() -> value).compute(old -> value)</code>.
+     *
+     * @param value ref value
+     * @return this
+     */
+    public Ref<T> set(T value) {
+        init(() -> value).compute(o -> value);
+        return this;
+    }
+
+    /**
+     * Set the value from completion of the provided {@link Async}. If the Async
+     * is already completed, the value will be set before return. Calls to other
+     * methods that set the Ref value will cancel the pending set.
+     *
+     * @param async async value to set
+     * @return this
+     */
+    public Ref<T> setAsync(Async<T> async) {
+        if (async.done()) {
+            handleAsyncDone(async);
+        } else {
+            if (asyncQueue == null) {
+                asyncQueue = new Async.Queue<>();
+                asyncQueue.onDone(this::handleAsyncDone);
+            }
+            asyncQueue.add(async);
         }
         return this;
     }
@@ -254,6 +290,7 @@ public abstract class Ref<T> {
     }
 
     protected void dispose() {
+        clearPendingSet();
         disposeValue();
         T oldValue = value;
         value = null;
@@ -284,9 +321,25 @@ public abstract class Ref<T> {
 
     protected abstract void log(Exception ex);
 
+    private void handleAsyncDone(Async<T> async) {
+        if (async.failed()) {
+            var err = async.error();
+            log(err.exception().orElseGet(() -> new Exception(err.message())));
+        } else {
+            var val = async.result();
+            init(() -> val).compute(o -> val);
+        }
+    }
+
     private void checkInit() {
         if (!inited) {
             throw new IllegalStateException("Ref is not inited");
+        }
+    }
+
+    private void clearPendingSet() {
+        if (asyncQueue != null) {
+            asyncQueue.clear();
         }
     }
 

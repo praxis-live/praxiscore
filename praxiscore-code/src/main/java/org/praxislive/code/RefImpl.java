@@ -24,20 +24,8 @@ package org.praxislive.code;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import org.praxislive.code.userapi.Ref;
-import org.praxislive.core.Call;
-import org.praxislive.core.Control;
-import org.praxislive.core.ControlAddress;
-import org.praxislive.core.ControlInfo;
-import org.praxislive.core.PacketRouter;
-import org.praxislive.core.Value;
-import org.praxislive.core.services.TaskService;
-import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PReference;
 import org.praxislive.core.services.LogLevel;
 
 /**
@@ -47,7 +35,6 @@ class RefImpl<T> extends Ref<T> {
 
     private final Type type;
     private final Class<?> rawType;
-    private final Set<Integer> activeCalls;
 
     private CodeContext<?> context;
     private Descriptor desc;
@@ -61,7 +48,6 @@ class RefImpl<T> extends Ref<T> {
         } else {
             rawType = Object.class;
         }
-        this.activeCalls = new HashSet<>(1);
     }
 
     private void attach(CodeContext<?> context, Descriptor desc) {
@@ -72,44 +58,9 @@ class RefImpl<T> extends Ref<T> {
     @Override
     @Deprecated
     public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
-        ControlAddress to = context.locateService(TaskService.class)
-                .map(ad -> ControlAddress.of(ad, TaskService.SUBMIT))
-                .orElseThrow(IllegalStateException::new);
-        ControlAddress from = ControlAddress.of(context.getComponent().getAddress(), desc.getID());
-        TaskService.Task task = () -> PReference.of(function.apply(key));
-        Call call = Call.create(to, from, context.getTime(), PReference.of(task));
-        context.getLookup().find(PacketRouter.class)
-                .orElseThrow(IllegalStateException::new)
-                .route(call);
-        activeCalls.add(call.matchID());
+        var async = context.async(key, k -> (T) function.apply(k));
+        setAsync(async);
         return this;
-    }
-
-    private void handleAsyncResponse(Call call) {
-        if (activeCalls.remove(call.matchID())) {
-            if (call.isReply()) {
-                try {
-                    T val = (T) PReference.from(call.args().get(0))
-                            .orElseThrow().as(Object.class).orElseThrow();
-                    if (!rawType.isInstance(val)) {
-                        throw new IllegalArgumentException(val.getClass() + " is not a " + rawType);
-                    }
-                    init(() -> val).compute(v -> val);
-                } catch (Exception ex) {
-                    context.getLog().log(LogLevel.ERROR, ex);
-                }
-            } else {
-                List<Value> args = call.args();
-                if (args.isEmpty()) {
-                    context.getLog().log(LogLevel.ERROR, "Error in asyncCompute on "
-                            + call.to().controlID());
-                } else {
-                    PError err = PError.from(args.get(0)).orElse(PError.of(args.get(0).toString()));
-                    context.getLog().log(LogLevel.ERROR, err);
-                }
-            }
-        }
-
     }
 
     @Override
@@ -120,7 +71,6 @@ class RefImpl<T> extends Ref<T> {
     @Override
     protected void dispose() {
         super.dispose();
-        activeCalls.clear();
     }
 
     @Override
@@ -153,7 +103,6 @@ class RefImpl<T> extends Ref<T> {
 
         private final Field refField;
         private final Type refType;
-        private final ControlImpl control;
         private final String subscribeTo;
         private final String publishTo;
 
@@ -165,7 +114,6 @@ class RefImpl<T> extends Ref<T> {
             super(id);
             this.refField = refField;
             this.refType = refType;
-            this.control = new ControlImpl(connector, id, this);
             Ref.Publish pub = refField.getAnnotation(Ref.Publish.class);
             if (pub != null) {
                 var name = pub.name();
@@ -298,11 +246,6 @@ class RefImpl<T> extends Ref<T> {
             }
         }
 
-        @Deprecated
-        ControlDescriptor getControlDescriptor() {
-            return control;
-        }
-
         static Descriptor create(CodeConnector<?> connector, Field field) {
             if (Ref.class.equals(field.getType())) {
                 var type = extractRefType(field);
@@ -324,41 +267,6 @@ class RefImpl<T> extends Ref<T> {
                 }
             }
             return null;
-        }
-
-    }
-
-    @Deprecated
-    private static class ControlImpl extends ControlDescriptor implements Control {
-
-        private final Descriptor rd;
-
-        ControlImpl(CodeConnector<?> connector, String id, Descriptor rd) {
-            super(id, Category.Synthetic, connector.getSyntheticIndex());
-            this.rd = rd;
-        }
-
-        @Override
-        public ControlInfo getInfo() {
-            return null;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, Control previous) {
-        }
-
-        @Override
-        public Control getControl() {
-            return this;
-        }
-
-        @Override
-        public void call(Call call, PacketRouter router) throws Exception {
-            if (call.isReply() || call.isError()) {
-                rd.ref.handleAsyncResponse(call);
-            } else {
-                throw new IllegalArgumentException("Reference control received unexpected call : " + call);
-            }
         }
 
     }
