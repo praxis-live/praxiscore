@@ -52,6 +52,7 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     private final FilteredTypes filteredTypes;
 
     private Lookup lookup;
+    private RefBus refBus;
 
     CodeRootContainer() {
         container = new ContainerImpl(this);
@@ -91,6 +92,13 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
 
     Control getContainerControl(String id) {
         return container.getControl(id);
+    }
+
+    RefBus getRefBus() {
+        if (refBus == null) {
+            refBus = new RefBus();
+        }
+        return refBus;
     }
 
     @Override

@@ -21,6 +21,10 @@
  */
 package org.praxislive.code.userapi;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -67,6 +71,9 @@ public abstract class Ref<T> {
     public Ref<T> init(Supplier<? extends T> supplier) {
         if (!inited && value == null) {
             value = supplier.get();
+            if (value != null) {
+                notifyValueChanged(value, null);
+            }
         }
         inited = true;
         return this;
@@ -90,7 +97,13 @@ public abstract class Ref<T> {
      * @return this
      */
     public Ref<T> clear() {
-        dispose();
+        T oldValue = value;
+        disposeValue();
+        value = null;
+        inited = false;
+        if (oldValue != null) {
+            notifyValueChanged(null, oldValue);
+        }
         return this;
     }
 
@@ -119,10 +132,12 @@ public abstract class Ref<T> {
      */
     public Ref<T> compute(Function<? super T, ? extends T> function) {
         checkInit();
-        T v = function.apply(value);
-        if (v != value) {
+        T newValue = function.apply(value);
+        if (newValue != value) {
             disposeValue();
-            value = v;
+            T oldValue = value;
+            value = newValue;
+            notifyValueChanged(newValue, oldValue);
         }
         return this;
     }
@@ -199,6 +214,20 @@ public abstract class Ref<T> {
     }
 
     /**
+     * Returns the ref value if present, or <code>other</code>.
+     * <p>
+     * This method may be safely called prior when the ref has not been
+     * initialized. If the ref has been initialized to <code>null</code> then
+     * the other value will be returned.
+     *
+     * @param other value to return if not initialized or null
+     * @return value or other
+     */
+    public T orElse(T other) {
+        return value != null ? value : other;
+    }
+
+    /**
      * Provide a function to run on the value whenever the Ref is reset - eg.
      * when the Ref is passed from one iteration of code to the next.
      *
@@ -226,7 +255,11 @@ public abstract class Ref<T> {
 
     protected void dispose() {
         disposeValue();
+        T oldValue = value;
         value = null;
+        if (oldValue != null) {
+            notifyValueChanged(null, oldValue);
+        }
         onResetHandler = null;
         onDisposeHandler = null;
         inited = false;
@@ -244,6 +277,9 @@ public abstract class Ref<T> {
         onResetHandler = null;
         onDisposeHandler = null;
         inited = false;
+    }
+
+    protected void valueChanged(T newValue, T oldValue) {
     }
 
     protected abstract void log(Exception ex);
@@ -289,6 +325,55 @@ public abstract class Ref<T> {
                 log(ex);
             }
         }
+    }
+
+    private void notifyValueChanged(T newValue, T oldValue) {
+        valueChanged(newValue, oldValue);
+    }
+
+    /**
+     * Annotation to be used on a {@link Ref} field on a container, to allow Ref
+     * fields of direct child components to subscribe and bind to the values of
+     * the published Ref. A name can be set to differentiate between Refs of the
+     * same type. If a name is not given, a value representing the type is used.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface Publish {
+
+        /**
+         * Name to publish the Ref under. An empty or blank name means the Ref
+         * will be published under a name generated from its type. The default
+         * value is an empty String.
+         *
+         * @return name to publish under
+         */
+        String name() default "";
+
+    }
+
+    /**
+     * Annotation to be used on a {@link Ref} field to bind its values to the
+     * values of the published Ref in the direct parent container. A name can be
+     * set to differentiate between published Refs of the same type. If a name
+     * is not given, a value representing the type is used.
+     * <p>
+     * Named subscriptions currently only support Refs of the exact type, even
+     * if the Ref type is theoretically compatible.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface Subscribe {
+
+        /**
+         * Name to subscribe the Ref to. An empty or blank name means the Ref
+         * will be subscribed under a name generated from its type. The default
+         * value is an empty String.
+         *
+         * @return name to subscribe to
+         */
+        String name() default "";
+
     }
 
     /**

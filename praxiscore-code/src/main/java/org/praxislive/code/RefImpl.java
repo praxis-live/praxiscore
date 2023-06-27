@@ -45,18 +45,26 @@ import org.praxislive.core.services.LogLevel;
  */
 class RefImpl<T> extends Ref<T> {
 
-    private final Class<?> refType;
+    private final Type type;
+    private final Class<?> rawType;
     private final Set<Integer> activeCalls;
 
     private CodeContext<?> context;
-    private ReferenceDescriptor desc;
+    private Descriptor desc;
 
-    private RefImpl(Class<?> refType) {
-        this.refType = refType;
+    private RefImpl(Type type) {
+        this.type = type;
+        if (type instanceof ParameterizedType) {
+            rawType = (Class<?>) ((ParameterizedType) type).getRawType();
+        } else if (type instanceof Class) {
+            rawType = (Class<?>) type;
+        } else {
+            rawType = Object.class;
+        }
         this.activeCalls = new HashSet<>(1);
     }
 
-    private void attach(CodeContext<?> context, ReferenceDescriptor desc) {
+    private void attach(CodeContext<?> context, Descriptor desc) {
         this.context = context;
         this.desc = desc;
     }
@@ -83,8 +91,8 @@ class RefImpl<T> extends Ref<T> {
                 try {
                     T val = (T) PReference.from(call.args().get(0))
                             .orElseThrow().as(Object.class).orElseThrow();
-                    if (!refType.isInstance(val)) {
-                        throw new IllegalArgumentException(val.getClass() + " is not a " + refType);
+                    if (!rawType.isInstance(val)) {
+                        throw new IllegalArgumentException(val.getClass() + " is not a " + rawType);
                     }
                     init(() -> val).compute(v -> val);
                 } catch (Exception ex) {
@@ -120,18 +128,58 @@ class RefImpl<T> extends Ref<T> {
         context.getLog().log(LogLevel.ERROR, ex);
     }
 
+    @Override
+    protected void valueChanged(T newValue, T oldValue) {
+        if (desc.publishTo != null && desc.publishBus != null) {
+            desc.publishBus.notifySubscribers(desc.publishTo, this);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    void updateFromPublisher(RefImpl<?> publisher) {
+        if (type.equals(publisher.type)) {
+            T val = (T) publisher.orElse(null);
+            if (val != null) {
+                init(() -> val).compute(o -> val);
+            } else {
+                clear();
+            }
+        } else {
+            clear();
+        }
+    }
+
     static class Descriptor extends ReferenceDescriptor {
 
         private final Field refField;
-        private final Class<?> refType;
+        private final Type refType;
         private final ControlImpl control;
-        private RefImpl<?> ref;
+        private final String subscribeTo;
+        private final String publishTo;
 
-        private Descriptor(CodeConnector<?> connector, String id, Field refField, Class<?> refType) {
+        private RefImpl<?> ref;
+        private RefBus subscribeBus;
+        private RefBus publishBus;
+
+        private Descriptor(CodeConnector<?> connector, String id, Field refField, Type refType) {
             super(id);
             this.refField = refField;
             this.refType = refType;
             this.control = new ControlImpl(connector, id, this);
+            Ref.Publish pub = refField.getAnnotation(Ref.Publish.class);
+            if (pub != null) {
+                var name = pub.name();
+                publishTo = name.isBlank() ? refType.toString() : name;
+            } else {
+                publishTo = null;
+            }
+            Ref.Subscribe sub = refField.getAnnotation(Ref.Subscribe.class);
+            if (sub != null) {
+                var name = sub.name();
+                subscribeTo = name.isBlank() ? refType.toString() : name;
+            } else {
+                subscribeTo = null;
+            }
         }
 
         @Override
@@ -140,6 +188,11 @@ class RefImpl<T> extends Ref<T> {
                 RefImpl.Descriptor pd = (RefImpl.Descriptor) previous;
                 if (isCompatible(pd)) {
                     ref = pd.ref;
+                    pd.removePublishing();
+                    pd.removeSubscription();
+                    if (pd.subscribeTo != null && subscribeTo == null) {
+                        ref.clear();
+                    }
                     pd.ref = null;
                 } else {
                     pd.dispose();
@@ -160,25 +213,88 @@ class RefImpl<T> extends Ref<T> {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
 
+            checkPublishing();
+            checkSubscription();
+
         }
 
         private boolean isCompatible(Descriptor other) {
-            return refField.getGenericType().equals(other.refField.getGenericType());
+            return refType.equals(other.refType);
         }
 
         @Override
         public void reset(boolean full) {
-            if (full) {
-                dispose();
-            } else if (ref != null) {
-                ref.reset();
+            if (ref != null) {
+                if (full) {
+                    ref.dispose();
+                    removePublishing();
+                    removeSubscription();
+                } else {
+                    ref.reset();
+                }
+                checkPublishing();
+                checkSubscription();
             }
         }
 
         @Override
         public void dispose() {
             if (ref != null) {
+                removePublishing();
+                removeSubscription();
                 ref.dispose();
+                ref = null;
+            }
+        }
+
+        private void checkPublishing() {
+            if (publishTo != null && publishBus == null) {
+                publishBus = findPublishBus(ref.context.getComponent());
+                if (publishBus != null) {
+                    publishBus.publish(publishTo, ref);
+                }
+            }
+        }
+
+        private void removePublishing() {
+            if (publishBus != null && publishTo != null && ref != null) {
+                publishBus.unpublish(publishTo, ref);
+                publishBus = null;
+            }
+        }
+
+        private void checkSubscription() {
+            if (subscribeTo != null && subscribeBus == null) {
+                subscribeBus = findSubscribeBus(ref.context.getComponent());
+                if (subscribeBus != null) {
+                    subscribeBus.subscribe(subscribeTo, ref);
+                }
+            }
+        }
+
+        private void removeSubscription() {
+            if (subscribeBus != null && subscribeTo != null && ref != null) {
+                subscribeBus.unsubscribe(subscribeTo, ref);
+                subscribeBus = null;
+            }
+        }
+
+        private RefBus findPublishBus(CodeComponent<?> cmp) {
+            if (cmp instanceof CodeContainer) {
+                return ((CodeContainer<?>) cmp).getRefBus();
+            } else if (cmp instanceof CodeRootContainer) {
+                return ((CodeRootContainer<?>) cmp).getRefBus();
+            } else {
+                return null;
+            }
+        }
+
+        private RefBus findSubscribeBus(CodeComponent<?> cmp) {
+            var parent = cmp.getParent();
+            if (parent instanceof CodeComponent) {
+                return findPublishBus((CodeComponent<?>) parent);
+            } else {
+                return null;
             }
         }
 
@@ -188,23 +304,26 @@ class RefImpl<T> extends Ref<T> {
         }
 
         static Descriptor create(CodeConnector<?> connector, Field field) {
-            if (Ref.class.equals(field.getType())
-                    && field.getGenericType() instanceof ParameterizedType) {
-                Class<?> refType = findRefType((ParameterizedType) field.getGenericType());
-                field.setAccessible(true);
-                return new Descriptor(connector, field.getName(), field, refType);
-            } else {
-                return null;
+            if (Ref.class.equals(field.getType())) {
+                var type = extractRefType(field);
+                if (type != null) {
+                    field.setAccessible(true);
+                    return new Descriptor(connector, field.getName(), field, type);
+                }
             }
+            return null;
         }
 
-        private static Class<?> findRefType(ParameterizedType type) {
-            Type[] types = type.getActualTypeArguments();
-            if (types.length > 0 && types[0] instanceof Class) {
-                return (Class) types[0];
-            } else {
-                return Object.class;
+        private static Type extractRefType(Field field) {
+            var type = field.getGenericType();
+            if (type instanceof ParameterizedType) {
+                var parType = (ParameterizedType) type;
+                var types = parType.getActualTypeArguments();
+                if (types.length == 1) {
+                    return types[0];
+                }
             }
+            return null;
         }
 
     }
