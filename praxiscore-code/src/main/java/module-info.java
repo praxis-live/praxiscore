@@ -14,7 +14,7 @@ module org.praxislive.code {
     provides javax.annotation.processing.Processor with 
             org.praxislive.code.internal.GenerateTemplateProcessor;
     provides org.praxislive.core.Port.TypeProvider with
-            org.praxislive.code.DataPort.Provider;
+            org.praxislive.code.internal.CodePortTypeProvider;
     provides org.praxislive.core.Protocol.TypeProvider with
             org.praxislive.code.internal.CodeProtocolsProvider;
     

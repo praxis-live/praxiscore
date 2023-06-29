@@ -30,7 +30,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -41,10 +43,18 @@ import java.util.function.Supplier;
  * iterations of code.
  * <p>
  * Use with {@link Inject} eg. {@code @Inject Ref<List<String>> strings;} Then
- * in init() / setup() use {@code strings.init(ArrayList::new);}
+ * in init() / setup() use {@code strings.init(ArrayList::new);}.
  * <p>
- * <strong>Most methods will throw an Exception if init() has not been called
- * with a Supplier function.</strong>
+ * Can also be used with {@link Out} and {@link AuxOut} annotations to provide
+ * output ports to share the Ref value with {@link Ref.Input} input ports on
+ * other components.
+ * <p>
+ * A Ref field on a container can additionally be annotated with
+ * {@link Ref.Publish} to share the value with direct child Ref fields annotated
+ * with {@link Ref.Subscribe}.
+ * <p>
+ * Many methods will throw an Exception if init() has not been called with a
+ * Supplier function, even if the value has been set
  * <p>
  * The default dispose handler checks if the referenced value is
  * {@link AutoCloseable} and automatically closes it.
@@ -382,6 +392,108 @@ public abstract class Ref<T> {
 
     private void notifyValueChanged(T newValue, T oldValue) {
         valueChanged(newValue, oldValue);
+    }
+
+    /**
+     * A field type for Ref input ports. Can be used with {@link In} or
+     * {@link AuxIn} annotations.
+     *
+     * @param <T> type of references
+     */
+    public static abstract class Input<T> {
+
+        private final List<Link> links;
+        private List<T> values;
+
+        protected Input() {
+            this.values = List.of();
+            this.links = new CopyOnWriteArrayList<>();
+        }
+
+        /**
+         * Current list of connected values. This list contains the values from
+         * all connected Refs that have initialized and non-null values.
+         *
+         * @return list of connected values
+         */
+        public List<T> values() {
+            return values;
+        }
+
+        /**
+         * Clear all links added with {@link #onUpdate()} or
+         * {@link #onUpdate(java.util.function.Consumer)}.
+         *
+         * @return this
+         */
+        public Input clearLinks() {
+            links.clear();
+            return this;
+        }
+
+        /**
+         * Returns a new {@link Linkable} for reacting to updates in the list of
+         * values. The Linkable will also be called immediately on addition with
+         * the existing values.
+         *
+         * @return linkable for values changes
+         */
+        public Linkable<List<T>> onUpdate() {
+            return new Link();
+        }
+
+        /**
+         * Connect a consumer for reacting to updates in the list of values. The
+         * consumer will also be called immediately on addition with the
+         * existing values.
+         * <p>
+         * This method is a shorthand for calling
+         * {@code onUpdate().link(consumer)}.
+         *
+         * @param consumer consumer called on updates
+         * @return this
+         */
+        public Input onUpdate(Consumer<List<T>> consumer) {
+            onUpdate().link(consumer);
+            return this;
+        }
+
+        protected void update(List<Ref<T>> refs) {
+            List<T> list = new ArrayList<>();
+            for (var ref : refs) {
+                T value = ref.orElse(null);
+                if (value != null) {
+                    list.add(value);
+                }
+            }
+            if (!values.equals(list)) {
+                values = List.copyOf(list);
+                links.forEach(link -> {
+                    link.fire(values);
+                });
+            }
+        }
+
+        private class Link implements Linkable<List<T>> {
+
+            private Consumer<List<T>> consumer;
+
+            @Override
+            public void link(Consumer<List<T>> consumer) {
+                if (this.consumer != null) {
+                    throw new IllegalStateException("Cannot link multiple consumers in one chain");
+                }
+                this.consumer = Objects.requireNonNull(consumer);
+                fire(values());
+                links.add(this);
+            }
+
+            private void fire(List<T> values) {
+                consumer.accept(values);
+            }
+
+        }
+
     }
 
     /**

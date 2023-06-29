@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -522,6 +522,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             return true;
         }
 
+        RefPort.InputDescriptor rin = RefPort.InputDescriptor.create(this, ann, field);
+        if (rin != null) {
+            addPort(rin);
+            return true;
+        }
+
         return false;
     }
 
@@ -536,6 +542,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         DataPort.InputDescriptor din = DataPort.InputDescriptor.create(this, ann, field);
         if (din != null) {
             addPort(din);
+            return true;
+        }
+
+        RefPort.InputDescriptor rin = RefPort.InputDescriptor.create(this, ann, field);
+        if (rin != null) {
+            addPort(rin);
             return true;
         }
 
@@ -556,6 +568,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             return true;
         }
 
+        RefImpl.Descriptor rdsc = RefImpl.Descriptor.create(this, field, ann);
+        if (rdsc != null) {
+            addReference(rdsc);
+            addPort(rdsc.getPortDescriptor());
+            return true;
+        }
+
         return false;
     }
 
@@ -569,6 +588,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         DataPort.OutputDescriptor dout = DataPort.OutputDescriptor.create(this, ann, field);
         if (dout != null) {
             addPort(dout);
+            return true;
+        }
+
+        RefImpl.Descriptor rdsc = RefImpl.Descriptor.create(this, field, ann);
+        if (rdsc != null) {
+            addReference(rdsc);
+            addPort(rdsc.getPortDescriptor());
             return true;
         }
 

@@ -22,9 +22,10 @@
 package org.praxislive.code;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.function.Function;
+import org.praxislive.code.userapi.AuxOut;
+import org.praxislive.code.userapi.Out;
 import org.praxislive.code.userapi.Ref;
 import org.praxislive.core.services.LogLevel;
 
@@ -34,20 +35,12 @@ import org.praxislive.core.services.LogLevel;
 class RefImpl<T> extends Ref<T> {
 
     private final Type type;
-    private final Class<?> rawType;
 
     private CodeContext<?> context;
     private Descriptor desc;
 
     private RefImpl(Type type) {
         this.type = type;
-        if (type instanceof ParameterizedType) {
-            rawType = (Class<?>) ((ParameterizedType) type).getRawType();
-        } else if (type instanceof Class) {
-            rawType = (Class<?>) type;
-        } else {
-            rawType = Object.class;
-        }
     }
 
     private void attach(CodeContext<?> context, Descriptor desc) {
@@ -83,6 +76,9 @@ class RefImpl<T> extends Ref<T> {
         if (desc.publishTo != null && desc.publishBus != null) {
             desc.publishBus.notifySubscribers(desc.publishTo, this);
         }
+        if (desc.outputPort != null) {
+            desc.outputPort.fireChange();
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -109,6 +105,7 @@ class RefImpl<T> extends Ref<T> {
         private RefImpl<?> ref;
         private RefBus subscribeBus;
         private RefBus publishBus;
+        private RefPort.OutputDescriptor outputPort;
 
         private Descriptor(CodeConnector<?> connector, String id, Field refField, Type refType) {
             super(id);
@@ -195,6 +192,19 @@ class RefImpl<T> extends Ref<T> {
             }
         }
 
+        // Output port support
+        Type getRefType() {
+            return refType;
+        }
+
+        RefImpl<?> getRef() {
+            return ref;
+        }
+
+        RefPort.OutputDescriptor getPortDescriptor() {
+            return outputPort;
+        }
+
         private void checkPublishing() {
             if (publishTo != null && publishBus == null) {
                 publishBus = findPublishBus(ref.context.getComponent());
@@ -248,7 +258,7 @@ class RefImpl<T> extends Ref<T> {
 
         static Descriptor create(CodeConnector<?> connector, Field field) {
             if (Ref.class.equals(field.getType())) {
-                var type = extractRefType(field);
+                var type = TypeUtils.extractTypeParameter(field, Ref.class);
                 if (type != null) {
                     field.setAccessible(true);
                     return new Descriptor(connector, field.getName(), field, type);
@@ -257,16 +267,24 @@ class RefImpl<T> extends Ref<T> {
             return null;
         }
 
-        private static Type extractRefType(Field field) {
-            var type = field.getGenericType();
-            if (type instanceof ParameterizedType) {
-                var parType = (ParameterizedType) type;
-                var types = parType.getActualTypeArguments();
-                if (types.length == 1) {
-                    return types[0];
-                }
+        static Descriptor create(CodeConnector<?> connector, Field field, Out out) {
+            var desc = create(connector, field);
+            if (desc != null) {
+                desc.outputPort = RefPort.OutputDescriptor.create(connector.findID(field), out, desc);
+                return desc;
+            } else {
+                return null;
             }
-            return null;
+        }
+
+        static Descriptor create(CodeConnector<?> connector, Field field, AuxOut auxOut) {
+            var desc = create(connector, field);
+            if (desc != null) {
+                desc.outputPort = RefPort.OutputDescriptor.create(connector.findID(field), auxOut, desc);
+                return desc;
+            } else {
+                return null;
+            }
         }
 
     }
