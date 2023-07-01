@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
@@ -67,6 +68,7 @@ public abstract class Ref<T> {
     private boolean inited;
     private Consumer<? super T> onResetHandler;
     private Consumer<? super T> onDisposeHandler;
+    private Consumer<ChangeEvent<T>> onChangeHandler;
     private List<Runnable> resetTasks;
     private Async.Queue<T> asyncQueue;
 
@@ -274,10 +276,23 @@ public abstract class Ref<T> {
     }
 
     /**
+     * Provide a function to handle changes in the Ref value. The provided
+     * {@link ChangeEvent} gives access to the current and previous values, if
+     * available.
+     *
+     * @param onChangeHandler handler of change event
+     * @return this
+     */
+    public Ref<T> onChange(Consumer<ChangeEvent<T>> onChangeHandler) {
+        this.onChangeHandler = onChangeHandler;
+        return this;
+    }
+
+    /**
      * Provide a function to run on the value whenever the Ref is reset - eg.
      * when the Ref is passed from one iteration of code to the next.
      *
-     * @param onResetHandler
+     * @param onResetHandler handler to reset ref value
      * @return this
      */
     public Ref<T> onReset(Consumer<? super T> onResetHandler) {
@@ -291,7 +306,7 @@ public abstract class Ref<T> {
      * root is being stopped, or {@link #clear() clear} has been explicitly
      * called.
      *
-     * @param onDisposeHandler
+     * @param onDisposeHandler handler to dispose ref value
      * @return this
      */
     public Ref<T> onDispose(Consumer<? super T> onDisposeHandler) {
@@ -309,6 +324,7 @@ public abstract class Ref<T> {
         }
         onResetHandler = null;
         onDisposeHandler = null;
+        onChangeHandler = null;
         inited = false;
     }
 
@@ -323,10 +339,11 @@ public abstract class Ref<T> {
         }
         onResetHandler = null;
         onDisposeHandler = null;
+        onChangeHandler = null;
         inited = false;
     }
 
-    protected void valueChanged(T newValue, T oldValue) {
+    protected void valueChanged(T currentValue, T previousValue) {
     }
 
     protected abstract void log(Exception ex);
@@ -390,8 +407,47 @@ public abstract class Ref<T> {
         }
     }
 
-    private void notifyValueChanged(T newValue, T oldValue) {
-        valueChanged(newValue, oldValue);
+    private void notifyValueChanged(T currentValue, T previousValue) {
+        valueChanged(currentValue, previousValue);
+        if (onChangeHandler != null) {
+            onChangeHandler.accept(new ChangeEvent<>(currentValue, previousValue));
+        }
+    }
+
+    /**
+     * Event passed to {@link #onChangeHandler} when the Ref value changes.
+     * Provides access to the current and previous values, where they exist.
+     *
+     * @param <T> reference type
+     */
+    public static final class ChangeEvent<T> {
+
+        private final T currentValue;
+        private final T previousValue;
+
+        private ChangeEvent(T currentValue, T previousValue) {
+            this.currentValue = currentValue;
+            this.previousValue = previousValue;
+        }
+
+        /**
+         * Query the current value.
+         *
+         * @return current value or empty optional
+         */
+        public Optional<T> current() {
+            return Optional.ofNullable(currentValue);
+        }
+
+        /**
+         * Query the previous value.
+         *
+         * @return previous value or empty optional
+         */
+        public Optional<T> previous() {
+            return Optional.ofNullable(previousValue);
+        }
+
     }
 
     /**

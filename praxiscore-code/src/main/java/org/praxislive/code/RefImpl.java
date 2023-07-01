@@ -72,7 +72,7 @@ class RefImpl<T> extends Ref<T> {
     }
 
     @Override
-    protected void valueChanged(T newValue, T oldValue) {
+    protected void valueChanged(T currentValue, T previousValue) {
         if (desc.publishTo != null && desc.publishBus != null) {
             desc.publishBus.notifySubscribers(desc.publishTo, this);
         }
