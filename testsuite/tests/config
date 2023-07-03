@@ -6,3 +6,4 @@ core/basic-multiprocess
 core/shared-delegates
 core/async-functions
 core/code-roots
+core/refs

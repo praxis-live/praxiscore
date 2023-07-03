@@ -1,0 +1,377 @@
+@ /refs root:custom {
+  #%praxis.version 5.7.0-SNAPSHOT
+  .shared-code "SHARED.Source \{package SHARED;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+
+public class Source \{
+
+    private final List<Consumer<String>> listeners;
+    private final String message;
+
+    public Source(String message) \{
+        this.listeners = new ArrayList<>();
+        this.message = Objects.requireNonNull(message);
+    \}
+
+    public void addListener(Consumer<String> listener) \{
+        listeners.add(Objects.requireNonNull(listener));
+    \}
+
+    public void removeListener(Consumer<String> listener) \{
+        listeners.remove(listener);
+    \}
+
+    public void fire() \{
+        listeners.forEach(l -> l.accept(message));
+    \}
+
+\}
+\}"
+  .code "import SHARED.Source;
+
+
+    @Inject @Ref.Publish
+    Ref<String> defRef;
+
+    @Inject @Ref.Publish(name = \"alt\")
+    Ref<String> altRef;
+
+    @Inject @Ref.Publish
+    Ref<Source> sourceRef;
+
+    @Override
+    public void init() \{
+        defRef.set(\"default\");
+        altRef.set(\"alternate\");
+    \}
+
+    @FN
+    void sourceUpdate(String message) \{
+        var previous = sourceRef.orElse(null);
+        if (message.isBlank()) \{
+            sourceRef.clear();
+        \} else \{
+            sourceRef.set(new Source(message));
+        \}
+        var current = sourceRef.orElse(null);
+        if (previous != null) \{
+            previous.fire();
+        \}
+        if (current != null) \{
+            current.fire();
+        \}
+    \}
+
+"
+  @ ./exit core:custom {
+    #%graph.x 954
+    #%graph.y 95
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./test1 core:custom {
+    #%graph.x 486
+    #%graph.y 95
+    #%graph.comment Check pub/sub
+    .code "
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Inject @Ref.Subscribe
+    Ref<String> defRef;
+
+    @Inject @Ref.Subscribe(name = \"alt\")
+    Ref<String> altRef;
+
+    @Inject @Ref.Subscribe(name = \"unknown\")
+    Ref<String> unknownRef;
+
+    String def, alt, unknown;
+
+    @Override
+    public void init() \{
+        def = defRef.orElse(\"\");
+        alt = altRef.orElse(\"\");
+        unknown = unknownRef.orElse(\"unknown\");
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 1 : Checking Ref Publish and Subscribe\");
+        if (!\"default\".equals(def)) \{
+            log(ERROR, \"<FAIL> Default reference not correctly set\");
+            error.send();
+        \} else if (!\"alternate\".equals(alt)) \{
+            log(ERROR, \"<FAIL> Named reference not correctly set\");
+            error.send();
+        \} else if (!\"unknown\".equals(unknown)) \{
+            log(ERROR, \"<FAIL> Unknown named reference should not be set\");
+            error.send();
+        \} else \{
+            log(INFO, \"<OK> : Test 1\");
+            ok.send();
+        \}
+    \}
+
+
+"
+  }
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 285
+    #%graph.y 95
+  }
+  @ ./test2 core:custom {
+    #%graph.x 486
+    #%graph.y 255
+    #%graph.comment Check set, setAsync and onChange
+    .code "
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Inject
+    Ref<String> ref;
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 2 : Checking Ref set, asyncSet and onChange\");
+        ref.onChange(null);
+        ref.clear();
+        var value = ref.orElse(\"unset\");
+        if (!\"unset\".equals(value)) \{
+            log(ERROR, \"<FAIL> : ref value is not unset\");
+            error.send();
+            return;
+        \}
+        var called = new boolean\[1\];
+        var failed = new boolean\[1\];
+        ref.onChange(e -> \{
+            called\[0\] = true;
+            if (!\"SYNC\".equals(e.current().orElse(\"FAIL\"))) \{
+                failed\[0\] = true;
+                log(ERROR, \"<FAIL> : expected value SYNC in change event\");
+                error.send();
+            \}
+        \});
+        ref.set(\"SYNC\");
+        if (failed\[0\]) \{
+            return;
+        \}
+        if (!called\[0\]) \{
+            log(ERROR, \"<FAIL> : onChange handler not called\");
+        \}
+        ref.setAsync(async(\"ASYNC\", s -> s));
+        ref.onChange(e -> \{
+            if (!\"ASYNC\".equals(e.current().orElse(\"FAIL\"))) \{
+                log(ERROR, \"<FAIL> : expected value ASYNC in change event\");
+                error.send();
+            \} else \{
+                log(INFO, \"<OK> : Test 2\");
+                ref.onChange(null);
+                ok.send();
+            \}
+        \});
+    \}
+
+
+"
+  }
+  @ ./delay-1 core:timing:delay {
+    #%graph.x 285
+    #%graph.y 255
+    .time 0.01
+  }
+  @ ./delay-2 core:timing:delay {
+    #%graph.x 285
+    #%graph.y 419
+    .time 0.01
+  }
+  @ ./test3 core:custom {
+    #%graph.x 486
+    #%graph.y 419
+    #%graph.comment Check binding
+    .code "import SHARED.Source;
+
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Inject @Ref.Subscribe
+    Ref<Source> ref;
+    @Inject
+    Ref<Source> localRef;
+
+    @Inject List<String> received;
+
+    private final List<String> EXPECTED = List.of(\"MESSAGE 1\", \"MESSAGE 2\");
+    private final ControlAddress ROOT = ControlAddress.of(\"/refs.source-update\");
+
+    @Override
+    public void init() \{
+        localRef.clear();
+        localRef.bind(Source::addListener, Source::removeListener, received::add);
+        ref.bind(Source::addListener, Source::removeListener, msg -> \{
+            received.add(msg);
+            if (received.size() < EXPECTED.size()) \{
+                tell(ROOT, EXPECTED.get(received.size()));
+            \} else \{
+                if (EXPECTED.equals(received)) \{
+                    log(INFO, \"<OK> : Test 3\");
+                    ok.send();
+                \} else \{
+                    log(ERROR, \"<FAIL> : Expected \" + EXPECTED + \" but received \" + received);
+                    error.send();
+                \}
+            \}
+        \});
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 3 : Checking Ref binding\");
+        received.clear();
+        localRef.set(new Source(\"HELLO WORLD\"));
+        localRef.ifPresent(Source::fire);
+        if (received.isEmpty()) \{
+            log(ERROR, \"<FAIL> : no message received by local listener\");
+            error.send();
+            return;
+        \}
+        if (!\"HELLO WORLD\".equals(received.get(0))) \{
+            log(ERROR, \"<FAIL> : wrong message received by local listener : \" + received.get(0));
+            error.send();
+            return;
+        \}
+        received.clear();
+        tell(ROOT, EXPECTED.get(0));
+    \}
+
+
+"
+  }
+  @ ./ref-out-1 core:custom {
+    #%graph.x 473
+    #%graph.y 566
+    .code "
+    @Out(1)
+    Ref<String> out;
+
+    @In(1)
+    void update(String message) \{
+        if (message.isBlank()) \{
+            out.clear();
+        \} else \{
+            out.set(message);
+        \}
+    \}
+
+"
+  }
+  @ ./ref-out-2 core:custom {
+    #%graph.x 473
+    #%graph.y 668
+    .code "
+    @AuxOut(1)
+    Ref<String> out;
+
+    @In(1)
+    void update(String message) \{
+        if (message.isBlank()) \{
+            out.clear();
+        \} else \{
+            out.set(message);
+        \}
+    \}
+
+"
+  }
+  @ ./test4 core:custom {
+    #%graph.x 677
+    #%graph.y 588
+    #%graph.comment Check input ports
+    .code "import SHARED.Source;
+
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @In(1) Ref.Input<String> in;
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 4 : Checking Ref ports\");
+        transmit(\"ref-out-1\", \"update\", \"\");
+        transmit(\"ref-out-2\", \"update\", \"\");
+        in.clearLinks();
+        var values = in.values();
+        if (!values.isEmpty()) \{
+            log(ERROR, \"<FAIL> : Expected empty input but received \" + values);
+            error.send();
+            return;
+        \}
+        var expected1 = List.of(\"PORT 1\", \"PORT 2\");
+        transmit(\"ref-out-1\", \"update\", expected1.get(0));
+        transmit(\"ref-out-2\", \"update\", expected1.get(1));
+        values = in.values();
+        if (!values.equals(expected1)) \{
+            log(ERROR, \"<FAIL> : Expected \" + expected1 + \" input but received \" + values);
+            error.send();
+            return;
+        \}
+        var expected2 = List.of(\"NEW PORT 1\", \"NEW PORT 2\");
+        in.onUpdate(l -> \{
+            if (l.equals(expected2)) \{
+                log(INFO, \"<OK> : Test 4\");
+                ok.send();
+            \}
+        \});
+        tell(ControlAddress.of(\"/refs/ref-out-1.update\"), expected2.get(0));
+        tell(ControlAddress.of(\"/refs/ref-out-2.update\"), expected2.get(1));
+
+    \}
+
+
+"
+  }
+  @ ./delay-3 core:timing:delay {
+    #%graph.x 285
+    #%graph.y 588
+    .time 0.01
+  }
+  ~ ./start-trigger!out ./test1!test
+  ~ ./test1!error ./exit!exit-fail
+  ~ ./test2!error ./exit!exit-fail
+  ~ ./test1!ok ./delay-1!in
+  ~ ./delay-1!out ./test2!test
+  ~ ./test2!ok ./delay-2!in
+  ~ ./delay-2!out ./test3!test
+  ~ ./test3!error ./exit!exit-fail
+  ~ ./ref-out-1!out ./test4!in
+  ~ ./ref-out-2!out ./test4!in
+  ~ ./test3!ok ./delay-3!in
+  ~ ./delay-3!out ./test4!test
+  ~ ./test4!ok ./exit!exit-ok
+  ~ ./test4!error ./exit!exit-fail
+}
