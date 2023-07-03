@@ -373,8 +373,14 @@ public abstract class Ref<T> {
             var err = async.error();
             log(err.exception().orElseGet(() -> new Exception(err.message())));
         } else {
-            var val = async.result();
-            init(() -> val).compute(o -> val);
+            T newValue = async.result();
+            inited = true;
+            if (newValue != value) {
+                disposeValue();
+                T oldValue = value;
+                value = newValue;
+                notifyValueChanged(newValue, oldValue);
+            }
         }
     }
 
