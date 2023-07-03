@@ -69,7 +69,7 @@ public abstract class Ref<T> {
     private Consumer<? super T> onResetHandler;
     private Consumer<? super T> onDisposeHandler;
     private Consumer<ChangeEvent<T>> onChangeHandler;
-    private List<Runnable> resetTasks;
+    private List<Consumer<ChangeEvent<T>>> bindings;
     private Async.Queue<T> asyncQueue;
 
     /**
@@ -209,13 +209,19 @@ public abstract class Ref<T> {
 
     /**
      * Bind something (usually a callback / listener) to the reference,
-     * providing for automatic removal on reset or disposal. This also allows
-     * for the easy removal of listeners that are lambdas or method references,
-     * without the need to keep a reference to them.
+     * providing for automatic attachment and removal on reference change, reset
+     * or disposal. This also allows for the easy management of listeners that
+     * are lambdas or method references, without the need to keep a reference to
+     * them.
      * <p>
      * The binder and unbinder arguments will usually be method references for
      * the add and remove listener methods. The bindee will usually be the
      * listener, often as a lambda or method reference.
+     * <p>
+     * This method does not require the reference to have been initialized. If
+     * the reference is available, the bindee will be attached during this
+     * method call. If the reference is not available, the bindee will be queued
+     * for attachment when the reference is set.
      *
      * @param <V> the type of the value to bind to the reference, usually a
      * callback / listener
@@ -229,18 +235,31 @@ public abstract class Ref<T> {
     public <V> Ref<T> bind(BiConsumer<? super T, V> binder,
             BiConsumer<? super T, V> unbinder,
             V bindee) {
-        checkInit();
+        Consumer<ChangeEvent<T>> binding = e -> {
+            e.previous().ifPresent(v -> unbinder.accept(v, bindee));
+            e.current().ifPresent(v -> binder.accept(v, bindee));
+        };
+        if (bindings == null) {
+            bindings = new ArrayList<>();
+        }
         try {
-            binder.accept(value, bindee);
-            if (resetTasks == null) {
-                resetTasks = new ArrayList<>();
-            }
-            resetTasks.add(()
-                    -> unbinder.accept(value, bindee)
-            );
+            binding.accept(new ChangeEvent<>(value, null));
+            bindings.add(binding);
         } catch (Exception ex) {
             log(ex);
         }
+        return this;
+    }
+
+    /**
+     * Clear all bindings added via
+     * {@link #bind(java.util.function.BiConsumer, java.util.function.BiConsumer, java.lang.Object)}
+     * from this Ref.
+     *
+     * @return this
+     */
+    public Ref<T> unbind() {
+        clearBindings();
         return this;
     }
 
@@ -316,6 +335,7 @@ public abstract class Ref<T> {
 
     protected void dispose() {
         clearPendingSet();
+        clearBindings();
         disposeValue();
         T oldValue = value;
         value = null;
@@ -329,7 +349,7 @@ public abstract class Ref<T> {
     }
 
     protected void reset() {
-        runResetTasks();
+        clearBindings();
         if (value != null && onResetHandler != null) {
             try {
                 onResetHandler.accept(value);
@@ -370,21 +390,27 @@ public abstract class Ref<T> {
         }
     }
 
-    private void runResetTasks() {
-        if (resetTasks != null) {
-            resetTasks.forEach(r -> {
+    private void clearBindings() {
+        if (bindings != null && !bindings.isEmpty()) {
+            notifyBindings(null, value);
+            bindings.clear();
+        }
+    }
+
+    private void notifyBindings(T currentValue, T previousValue) {
+        if (bindings != null && !bindings.isEmpty()) {
+            var ev = new ChangeEvent<T>(currentValue, previousValue);
+            bindings.forEach(b -> {
                 try {
-                    r.run();
+                    b.accept(ev);
                 } catch (Exception ex) {
                     log(ex);
                 }
             });
-            resetTasks = null;
         }
     }
 
     private void disposeValue() {
-        runResetTasks();
         if (value != null && onResetHandler != null) {
             try {
                 onResetHandler.accept(value);
@@ -408,6 +434,7 @@ public abstract class Ref<T> {
     }
 
     private void notifyValueChanged(T currentValue, T previousValue) {
+        notifyBindings(currentValue, previousValue);
         valueChanged(currentValue, previousValue);
         if (onChangeHandler != null) {
             onChangeHandler.accept(new ChangeEvent<>(currentValue, previousValue));
