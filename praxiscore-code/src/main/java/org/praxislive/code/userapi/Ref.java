@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,12 +21,19 @@
  */
 package org.praxislive.code.userapi;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,10 +44,18 @@ import java.util.function.Supplier;
  * iterations of code.
  * <p>
  * Use with {@link Inject} eg. {@code @Inject Ref<List<String>> strings;} Then
- * in init() / setup() use {@code strings.init(ArrayList::new);}
+ * in init() / setup() use {@code strings.init(ArrayList::new);}.
  * <p>
- * <strong>Most methods will throw an Exception if init() has not been called
- * with a Supplier function.</strong>
+ * Can also be used with {@link Out} and {@link AuxOut} annotations to provide
+ * output ports to share the Ref value with {@link Ref.Input} input ports on
+ * other components.
+ * <p>
+ * A Ref field on a container can additionally be annotated with
+ * {@link Ref.Publish} to share the value with direct child Ref fields annotated
+ * with {@link Ref.Subscribe}.
+ * <p>
+ * Many methods will throw an Exception if init() has not been called with a
+ * Supplier function, even if the value has been set
  * <p>
  * The default dispose handler checks if the referenced value is
  * {@link AutoCloseable} and automatically closes it.
@@ -53,7 +68,9 @@ public abstract class Ref<T> {
     private boolean inited;
     private Consumer<? super T> onResetHandler;
     private Consumer<? super T> onDisposeHandler;
-    private List<Runnable> resetTasks;
+    private Consumer<ChangeEvent<T>> onChangeHandler;
+    private List<Consumer<ChangeEvent<T>>> bindings;
+    private Async.Queue<T> asyncQueue;
 
     /**
      * Initialize the reference, calling the supplier function if a value is
@@ -67,6 +84,9 @@ public abstract class Ref<T> {
     public Ref<T> init(Supplier<? extends T> supplier) {
         if (!inited && value == null) {
             value = supplier.get();
+            if (value != null) {
+                notifyValueChanged(value, null);
+            }
         }
         inited = true;
         return this;
@@ -90,7 +110,14 @@ public abstract class Ref<T> {
      * @return this
      */
     public Ref<T> clear() {
-        dispose();
+        clearPendingSet();
+        T oldValue = value;
+        disposeValue();
+        value = null;
+        inited = false;
+        if (oldValue != null) {
+            notifyValueChanged(null, oldValue);
+        }
         return this;
     }
 
@@ -119,10 +146,46 @@ public abstract class Ref<T> {
      */
     public Ref<T> compute(Function<? super T, ? extends T> function) {
         checkInit();
-        T v = function.apply(value);
-        if (v != value) {
+        clearPendingSet();
+        T newValue = function.apply(value);
+        if (newValue != value) {
             disposeValue();
-            value = v;
+            T oldValue = value;
+            value = newValue;
+            notifyValueChanged(newValue, oldValue);
+        }
+        return this;
+    }
+
+    /**
+     * Set the value. This is a shortcut equivalent to calling
+     * <code>ref.init(() -> value).compute(old -> value)</code>.
+     *
+     * @param value ref value
+     * @return this
+     */
+    public Ref<T> set(T value) {
+        init(() -> value).compute(o -> value);
+        return this;
+    }
+
+    /**
+     * Set the value from completion of the provided {@link Async}. If the Async
+     * is already completed, the value will be set before return. Calls to other
+     * methods that set the Ref value will cancel the pending set.
+     *
+     * @param async async value to set
+     * @return this
+     */
+    public Ref<T> setAsync(Async<T> async) {
+        if (async.done()) {
+            handleAsyncDone(async);
+        } else {
+            if (asyncQueue == null) {
+                asyncQueue = new Async.Queue<>();
+                asyncQueue.onDone(this::handleAsyncDone);
+            }
+            asyncQueue.add(async);
         }
         return this;
     }
@@ -139,19 +202,26 @@ public abstract class Ref<T> {
      * @param function an intensive or time-consuming function
      * @return this
      */
+    @Deprecated
     public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
         throw new UnsupportedOperationException();
     }
 
     /**
      * Bind something (usually a callback / listener) to the reference,
-     * providing for automatic removal on reset or disposal. This also allows
-     * for the easy removal of listeners that are lambdas or method references,
-     * without the need to keep a reference to them.
+     * providing for automatic attachment and removal on reference change, reset
+     * or disposal. This also allows for the easy management of listeners that
+     * are lambdas or method references, without the need to keep a reference to
+     * them.
      * <p>
      * The binder and unbinder arguments will usually be method references for
      * the add and remove listener methods. The bindee will usually be the
      * listener, often as a lambda or method reference.
+     * <p>
+     * This method does not require the reference to have been initialized. If
+     * the reference is available, the bindee will be attached during this
+     * method call. If the reference is not available, the bindee will be queued
+     * for attachment when the reference is set.
      *
      * @param <V> the type of the value to bind to the reference, usually a
      * callback / listener
@@ -165,18 +235,31 @@ public abstract class Ref<T> {
     public <V> Ref<T> bind(BiConsumer<? super T, V> binder,
             BiConsumer<? super T, V> unbinder,
             V bindee) {
-        checkInit();
+        Consumer<ChangeEvent<T>> binding = e -> {
+            e.previous().ifPresent(v -> unbinder.accept(v, bindee));
+            e.current().ifPresent(v -> binder.accept(v, bindee));
+        };
+        if (bindings == null) {
+            bindings = new ArrayList<>();
+        }
         try {
-            binder.accept(value, bindee);
-            if (resetTasks == null) {
-                resetTasks = new ArrayList<>();
-            }
-            resetTasks.add(()
-                    -> unbinder.accept(value, bindee)
-            );
+            binding.accept(new ChangeEvent<>(value, null));
+            bindings.add(binding);
         } catch (Exception ex) {
             log(ex);
         }
+        return this;
+    }
+
+    /**
+     * Clear all bindings added via
+     * {@link #bind(java.util.function.BiConsumer, java.util.function.BiConsumer, java.lang.Object)}
+     * from this Ref.
+     *
+     * @return this
+     */
+    public Ref<T> unbind() {
+        clearBindings();
         return this;
     }
 
@@ -198,10 +281,37 @@ public abstract class Ref<T> {
     }
 
     /**
+     * Returns the ref value if present, or <code>other</code>.
+     * <p>
+     * This method may be safely called prior when the ref has not been
+     * initialized. If the ref has been initialized to <code>null</code> then
+     * the other value will be returned.
+     *
+     * @param other value to return if not initialized or null
+     * @return value or other
+     */
+    public T orElse(T other) {
+        return value != null ? value : other;
+    }
+
+    /**
+     * Provide a function to handle changes in the Ref value. The provided
+     * {@link ChangeEvent} gives access to the current and previous values, if
+     * available.
+     *
+     * @param onChangeHandler handler of change event
+     * @return this
+     */
+    public Ref<T> onChange(Consumer<ChangeEvent<T>> onChangeHandler) {
+        this.onChangeHandler = onChangeHandler;
+        return this;
+    }
+
+    /**
      * Provide a function to run on the value whenever the Ref is reset - eg.
      * when the Ref is passed from one iteration of code to the next.
      *
-     * @param onResetHandler
+     * @param onResetHandler handler to reset ref value
      * @return this
      */
     public Ref<T> onReset(Consumer<? super T> onResetHandler) {
@@ -215,7 +325,7 @@ public abstract class Ref<T> {
      * root is being stopped, or {@link #clear() clear} has been explicitly
      * called.
      *
-     * @param onDisposeHandler
+     * @param onDisposeHandler handler to dispose ref value
      * @return this
      */
     public Ref<T> onDispose(Consumer<? super T> onDisposeHandler) {
@@ -224,15 +334,22 @@ public abstract class Ref<T> {
     }
 
     protected void dispose() {
+        clearPendingSet();
+        clearBindings();
         disposeValue();
+        T oldValue = value;
         value = null;
+        if (oldValue != null) {
+            notifyValueChanged(null, oldValue);
+        }
         onResetHandler = null;
         onDisposeHandler = null;
+        onChangeHandler = null;
         inited = false;
     }
 
     protected void reset() {
-        runResetTasks();
+        clearBindings();
         if (value != null && onResetHandler != null) {
             try {
                 onResetHandler.accept(value);
@@ -242,10 +359,30 @@ public abstract class Ref<T> {
         }
         onResetHandler = null;
         onDisposeHandler = null;
+        onChangeHandler = null;
         inited = false;
     }
 
+    protected void valueChanged(T currentValue, T previousValue) {
+    }
+
     protected abstract void log(Exception ex);
+
+    private void handleAsyncDone(Async<T> async) {
+        if (async.failed()) {
+            var err = async.error();
+            log(err.exception().orElseGet(() -> new Exception(err.message())));
+        } else {
+            T newValue = async.result();
+            inited = true;
+            if (newValue != value) {
+                disposeValue();
+                T oldValue = value;
+                value = newValue;
+                notifyValueChanged(newValue, oldValue);
+            }
+        }
+    }
 
     private void checkInit() {
         if (!inited) {
@@ -253,21 +390,33 @@ public abstract class Ref<T> {
         }
     }
 
-    private void runResetTasks() {
-        if (resetTasks != null) {
-            resetTasks.forEach(r -> {
+    private void clearPendingSet() {
+        if (asyncQueue != null) {
+            asyncQueue.clear();
+        }
+    }
+
+    private void clearBindings() {
+        if (bindings != null && !bindings.isEmpty()) {
+            notifyBindings(null, value);
+            bindings.clear();
+        }
+    }
+
+    private void notifyBindings(T currentValue, T previousValue) {
+        if (bindings != null && !bindings.isEmpty()) {
+            var ev = new ChangeEvent<T>(currentValue, previousValue);
+            bindings.forEach(b -> {
                 try {
-                    r.run();
+                    b.accept(ev);
                 } catch (Exception ex) {
                     log(ex);
                 }
             });
-            resetTasks = null;
         }
     }
 
     private void disposeValue() {
-        runResetTasks();
         if (value != null && onResetHandler != null) {
             try {
                 onResetHandler.accept(value);
@@ -288,6 +437,197 @@ public abstract class Ref<T> {
                 log(ex);
             }
         }
+    }
+
+    private void notifyValueChanged(T currentValue, T previousValue) {
+        notifyBindings(currentValue, previousValue);
+        valueChanged(currentValue, previousValue);
+        if (onChangeHandler != null) {
+            onChangeHandler.accept(new ChangeEvent<>(currentValue, previousValue));
+        }
+    }
+
+    /**
+     * Event passed to {@link #onChangeHandler} when the Ref value changes.
+     * Provides access to the current and previous values, where they exist.
+     *
+     * @param <T> reference type
+     */
+    public static final class ChangeEvent<T> {
+
+        private final T currentValue;
+        private final T previousValue;
+
+        private ChangeEvent(T currentValue, T previousValue) {
+            this.currentValue = currentValue;
+            this.previousValue = previousValue;
+        }
+
+        /**
+         * Query the current value.
+         *
+         * @return current value or empty optional
+         */
+        public Optional<T> current() {
+            return Optional.ofNullable(currentValue);
+        }
+
+        /**
+         * Query the previous value.
+         *
+         * @return previous value or empty optional
+         */
+        public Optional<T> previous() {
+            return Optional.ofNullable(previousValue);
+        }
+
+    }
+
+    /**
+     * A field type for Ref input ports. Can be used with {@link In} or
+     * {@link AuxIn} annotations.
+     *
+     * @param <T> type of references
+     */
+    public static abstract class Input<T> {
+
+        private final List<Link> links;
+        private List<T> values;
+
+        protected Input() {
+            this.values = List.of();
+            this.links = new CopyOnWriteArrayList<>();
+        }
+
+        /**
+         * Current list of connected values. This list contains the values from
+         * all connected Refs that have initialized and non-null values.
+         *
+         * @return list of connected values
+         */
+        public List<T> values() {
+            return values;
+        }
+
+        /**
+         * Clear all links added with {@link #onUpdate()} or
+         * {@link #onUpdate(java.util.function.Consumer)}.
+         *
+         * @return this
+         */
+        public Input clearLinks() {
+            links.clear();
+            return this;
+        }
+
+        /**
+         * Returns a new {@link Linkable} for reacting to updates in the list of
+         * values. The Linkable will also be called immediately on addition with
+         * the existing values.
+         *
+         * @return linkable for values changes
+         */
+        public Linkable<List<T>> onUpdate() {
+            return new Link();
+        }
+
+        /**
+         * Connect a consumer for reacting to updates in the list of values. The
+         * consumer will also be called immediately on addition with the
+         * existing values.
+         * <p>
+         * This method is a shorthand for calling
+         * {@code onUpdate().link(consumer)}.
+         *
+         * @param consumer consumer called on updates
+         * @return this
+         */
+        public Input onUpdate(Consumer<List<T>> consumer) {
+            onUpdate().link(consumer);
+            return this;
+        }
+
+        protected void update(List<Ref<T>> refs) {
+            List<T> list = new ArrayList<>();
+            for (var ref : refs) {
+                T value = ref.orElse(null);
+                if (value != null) {
+                    list.add(value);
+                }
+            }
+            if (!values.equals(list)) {
+                values = List.copyOf(list);
+                links.forEach(link -> {
+                    link.fire(values);
+                });
+            }
+        }
+
+        private class Link implements Linkable<List<T>> {
+
+            private Consumer<List<T>> consumer;
+
+            @Override
+            public void link(Consumer<List<T>> consumer) {
+                if (this.consumer != null) {
+                    throw new IllegalStateException("Cannot link multiple consumers in one chain");
+                }
+                this.consumer = Objects.requireNonNull(consumer);
+                fire(values());
+                links.add(this);
+            }
+
+            private void fire(List<T> values) {
+                consumer.accept(values);
+            }
+
+        }
+
+    }
+
+    /**
+     * Annotation to be used on a {@link Ref} field on a container, to allow Ref
+     * fields of direct child components to subscribe and bind to the values of
+     * the published Ref. A name can be set to differentiate between Refs of the
+     * same type. If a name is not given, a value representing the type is used.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface Publish {
+
+        /**
+         * Name to publish the Ref under. An empty or blank name means the Ref
+         * will be published under a name generated from its type. The default
+         * value is an empty String.
+         *
+         * @return name to publish under
+         */
+        String name() default "";
+
+    }
+
+    /**
+     * Annotation to be used on a {@link Ref} field to bind its values to the
+     * values of the published Ref in the direct parent container. A name can be
+     * set to differentiate between published Refs of the same type. If a name
+     * is not given, a value representing the type is used.
+     * <p>
+     * Named subscriptions currently only support Refs of the exact type, even
+     * if the Ref type is theoretically compatible.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface Subscribe {
+
+        /**
+         * Name to subscribe the Ref to. An empty or blank name means the Ref
+         * will be subscribed under a name generated from its type. The default
+         * value is an empty String.
+         *
+         * @return name to subscribe to
+         */
+        String name() default "";
+
     }
 
     /**

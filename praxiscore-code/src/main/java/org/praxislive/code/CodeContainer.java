@@ -75,6 +75,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     private PMap portMap;
     private ComponentInfo baseInfo;
     private ComponentInfo info;
+    private RefBus refBus;
 
     CodeContainer() {
         container = new ContainerImpl(this);
@@ -206,6 +207,13 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     PMap getPortMap() {
         return portMap;
+    }
+
+    RefBus getRefBus() {
+        if (refBus == null) {
+            refBus = new RefBus();
+        }
+        return refBus;
     }
 
     private class PortProxy implements Port {
