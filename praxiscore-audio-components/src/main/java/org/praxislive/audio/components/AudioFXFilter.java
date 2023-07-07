@@ -68,8 +68,8 @@ public class AudioFXFilter extends AudioCodeDelegate {
             f1.type(type);
             f2.type(type);
         });
-        frequency.link(f1::frequency, f2::frequency);
-        resonance.link(f1::resonance, f2::resonance);
+        frequency.link(f1::frequency).link(f2::frequency);
+        resonance.link(f1::resonance).link(f2::resonance);
         link(in1, f1, out1);
         link(in2, f2, out2);
     }

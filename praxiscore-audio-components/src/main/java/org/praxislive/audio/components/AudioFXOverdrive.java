@@ -60,7 +60,7 @@ public class AudioFXOverdrive extends AudioCodeDelegate {
     
     @Override
     public void init() {
-        drive.link(od1::drive, od2::drive);
+        drive.link(od1::drive).link(od2::drive);
         link(in1, od1, out1);
         link(in2, od2, out2);
     }

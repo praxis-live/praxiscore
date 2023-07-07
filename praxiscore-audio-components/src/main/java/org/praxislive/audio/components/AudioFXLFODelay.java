@@ -66,10 +66,10 @@ public class AudioFXLFODelay extends AudioCodeDelegate {
     
     @Override
     public void init() {
-        time.link(dl1::time, dl2::time);
-        range.link(dl1::range, dl2::range);
-        rate.link(dl1::rate, dl2::rate);
-        feedback.link(dl1::feedback, dl2::feedback);
+        time.link(dl1::time).link(dl2::time);
+        range.link(dl1::range).link(dl2::range);
+        rate.link(dl1::rate).link(dl2::rate);
+        feedback.link(dl1::feedback).link(dl2::feedback);
         link(in1, dl1, out1);
         link(in2, dl2, out2);
     }

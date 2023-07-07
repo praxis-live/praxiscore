@@ -183,7 +183,7 @@ public abstract class Property {
 
     /**
      * Call the provided consumer with the double value whenever the value
-     * changes. This is a shorthand for {@code values().link(consumer);}. The
+     * changes. This is a shorthand for {@code doubles().link(consumer);}. The
      * double value will be as if calling {@link #getDouble()}.
      *
      * @param consumer double consumer
@@ -195,6 +195,7 @@ public abstract class Property {
         return this;
     }
 
+    @Deprecated(forRemoval = true)
     public Property link(DoubleConsumer... consumers) {
         for (DoubleConsumer consumer : consumers) {
             link(consumer);
@@ -205,10 +206,23 @@ public abstract class Property {
     /**
      * Return a new {@link Linkable.Double} for observing changing values. The
      * double value will be as if calling {@link #getDouble()}.
+     * <p>
+     * This method is deprecated. Switch to {@link #doubles} instead.
      *
      * @return Linkable.Double of values.
      */
+    @Deprecated(forRemoval = true)
     public Linkable.Double values() {
+        return new DoubleLink();
+    }
+
+    /**
+     * Return a new {@link Linkable.Double} for observing changing values. The
+     * double value will be as if calling {@link #getDouble()}.
+     *
+     * @return Linkable.Double of values.
+     */
+    public Linkable.Double doubles() {
         return new DoubleLink();
     }
 
