@@ -50,6 +50,7 @@
     <module>praxiscore-osc</module>
     <module>praxiscore-code-ivy</module>
     <module>praxiscore-launcher-jline</module>
+    <module>praxiscore-purl</module>
   </modules>
     
   <scm>
