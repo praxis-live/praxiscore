@@ -1,0 +1,186 @@
+@ /libtest root:custom {
+  #%praxis.version 5.7.0-SNAPSHOT
+  @ ./exit core:custom {
+    #%graph.x 817
+    #%graph.y 118
+    .code "import org.praxislive.core.services.Services;
+import org.praxislive.core.services.SystemManagerService;
+
+
+    @T(1)
+    void exitOK() \{
+        exit(0);
+    \}
+
+    @T(2)
+    void exitFail() \{
+        exit(1);
+    \}
+
+    private void exit(int exitValue) \{
+        find(Services.class)
+                .flatMap(s -> s.locate(SystemManagerService.class))
+                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
+    \}
+
+"
+  }
+  @ ./test-pkg-maven core:custom {
+    #%graph.x 362
+    #%graph.y 241
+    .code "import org.praxislive.core.services.ScriptService;
+import org.praxislive.core.services.Services;
+
+
+    @Inject Async.Queue<Call> responses;
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Override
+    public void init() \{
+        responses.onDone(this::handleResponse, e -> \{
+            log(ERROR, \"<FAIL> : \" + e.message());
+            error.send();
+        \});
+    \}
+
+    @Override
+    public void update() \{
+    \}
+
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 2 : Check Maven library loading\");
+        try \{
+            var cls = Class.forName(\"org.openide.util.lookup.Lookups\");
+            log(ERROR, \"<FAIL> : should not be able to load library class\");
+            error.send();
+            return;
+        \} catch (ClassNotFoundException ex) \{
+            // expected!
+        \}
+
+        var service = find(Services.class)
+                .flatMap(srvs -> srvs.locate(ScriptService.class))
+                .map(cmp -> ControlAddress.of(cmp, ScriptService.EVAL))
+                .orElseThrow();
+        var script = \"add-lib pkg:maven/org.netbeans.api/org-openide-util@RELEASE180\\n\"
+                // force ourself to be recompiled
+                + self(\"code\") + \" \[\" + self(\"code\") + \"\]\\n\"
+                + \"array \[libraries\] \[libraries-all\] \[libraries-system\]\";
+//        log(INFO, script);
+        responses.add(ask(service, script));
+    \}
+
+    void handleResponse(Call call) \{
+        var response = PArray.from(call.args().get(0)).orElseThrow();
+        var libs = PArray.from(response.get(0)).orElseThrow();
+        var libsAll = PArray.from(response.get(1)).orElseThrow();
+        var libsSys = PArray.from(response.get(2)).orElseThrow();
+        if (!libs.stream().anyMatch(l -> l.toString().contains(\"org.netbeans.api/org-openide-util@\"))) \{
+            log(ERROR, \"<FAIL> : libraries does not contain requested lib : \" + libs);
+            error.send();
+            return;
+        \}
+        if (libs.stream().anyMatch(l -> l.toString().contains(\"org.netbeans.api/org-openide-util-lookup@\"))) \{
+            log(ERROR, \"<FAIL> : libraries contains transitive dependency : \" + libs);
+            error.send();
+            return;
+        \}
+        if (!libsAll.stream().anyMatch(l -> l.toString().contains(\"org.netbeans.api/org-openide-util-lookup@\"))) \{
+            log(ERROR, \"<FAIL> : libraries-all missing transitive dependency : \" + libsAll);
+            error.send();
+            return;
+        \}
+        try \{
+            var cls = Class.forName(\"org.openide.util.lookup.Lookups\");
+        \} catch (ClassNotFoundException ex) \{
+            log(ERROR, ex);
+            error.send();
+            return;
+        \}
+        log(INFO, \"<OK> : Test 2\");
+        ok.send();
+    \}
+"
+  }
+  @ ./start-trigger core:start-trigger {
+    #%graph.x 141
+    #%graph.y 89
+  }
+  @ ./test-system core:custom {
+    #%graph.x 377
+    #%graph.y 89
+    .code "import org.praxislive.core.services.ScriptService;
+import org.praxislive.core.services.Services;
+
+
+
+
+    @Inject Async.Queue<Call> responses;
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Override
+    public void init() \{
+        responses.onDone(this::handleResponse, e -> \{
+            log(ERROR, \"<FAIL> : \" + e.message());
+            error.send();
+        \});
+    \}
+
+    @Override
+    public void update() \{
+    \}
+    
+    @T(1)
+    void test() \{
+        log(INFO, \"Test 1 : Check system library information\");
+        var service = find(Services.class)
+                .flatMap(srvs -> srvs.locate(ScriptService.class))
+                .map(cmp -> ControlAddress.of(cmp, ScriptService.EVAL))
+                .orElseThrow();
+        responses.add(ask(service, \"array \[libraries\] \[libraries-all\] \[libraries-system\]\"));
+    \}
+
+    void handleResponse(Call call) \{
+        var response = PArray.from(call.args().get(0)).orElseThrow();
+        var libs = PArray.from(response.get(0)).orElseThrow();
+        var libsAll = PArray.from(response.get(1)).orElseThrow();
+        var libsSys = PArray.from(response.get(2)).orElseThrow();
+        if (!libs.isEmpty()) \{
+            log(ERROR, \"<FAIL> : libraries is not empty : \" + libs);
+            error.send();
+            return;
+        \}
+        if (!libsAll.isEmpty()) \{
+            log(ERROR, \"<FAIL> : libraries-all is not empty : \" + libsAll);
+            error.send();
+            return;
+        \}
+        if (!libsSys.stream().anyMatch(l -> l.toString().contains(\"org.praxislive/praxiscore-api\"))) \{
+            log(ERROR, \"<FAIL> : libraries-system does not contain praxiscore-api : \" + libsSys);
+            error.send();
+            return;
+        \}
+        log(INFO, \"<OK> : Test 1\");
+        ok.send();
+    \}
+
+
+"
+  }
+  @ ./delay-1 core:timing:delay {
+    #%graph.x 158
+    #%graph.y 241
+    .time 0.01
+  }
+  ~ ./start-trigger!out ./test-system!test
+  ~ ./test-system!error ./exit!exit-fail
+  ~ ./test-system!ok ./delay-1!in
+  ~ ./test-pkg-maven!error ./exit!exit-fail
+  ~ ./test-pkg-maven!ok ./exit!exit-ok
+  ~ ./delay-1!out ./test-pkg-maven!test
+}

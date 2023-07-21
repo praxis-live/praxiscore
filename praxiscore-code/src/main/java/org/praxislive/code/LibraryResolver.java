@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -117,6 +117,24 @@ public interface LibraryResolver {
          * @return resolver
          */
         public LibraryResolver createResolver();
+
+    }
+
+    /**
+     * Provider interface for pre-seeding the list of provided libraries with
+     * those built into the current PraxisCORE system.
+     *
+     * @see Context#provided()
+     */
+    public static interface SystemInfo {
+
+        /**
+         * A stream of libraries already provided by the running PraxisCORE
+         * system.
+         *
+         * @return stream of built-in libraries
+         */
+        public Stream<PResource> provided();
 
     }
 

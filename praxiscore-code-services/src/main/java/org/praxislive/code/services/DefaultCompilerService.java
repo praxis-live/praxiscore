@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,6 @@
 package org.praxislive.code.services;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
@@ -53,7 +52,6 @@ import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
-import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PArray;
@@ -91,6 +89,7 @@ public class DefaultCompilerService extends AbstractRoot
     private final JavaCompiler compiler;
     private final Set<PResource> libResolved;
     private final Set<PResource> libProvided;
+    private final Set<PResource> libSystem;
     private final Set<Path> libFiles;
     private final List<LibraryResolver> libResolvers;
     private final String defClasspath;
@@ -100,6 +99,7 @@ public class DefaultCompilerService extends AbstractRoot
     private PArray libs;
     private PArray libsAll;
     private PArray libPath;
+    private PArray libsSys;
 
     public DefaultCompilerService() {
 
@@ -115,6 +115,11 @@ public class DefaultCompilerService extends AbstractRoot
                 "libraries-all", (call, router) -> {
                     if (call.isRequest()) {
                         router.route(call.reply(libsAll));
+                    }
+                },
+                "libraries-system", (call, router) -> {
+                    if (call.isRequest()) {
+                        router.route(call.reply(libsSys));
                     }
                 },
                 "libraries-path", (call, router) -> {
@@ -144,6 +149,13 @@ public class DefaultCompilerService extends AbstractRoot
         libs = PArray.EMPTY;
         libsAll = PArray.EMPTY;
         libPath = PArray.EMPTY;
+        var systemProvided = ServiceLoader.load(LibraryResolver.SystemInfo.class)
+                .stream()
+                .map(ServiceLoader.Provider::get)
+                .flatMap(LibraryResolver.SystemInfo::provided)
+                .collect(Collectors.toList());
+        libSystem = new LinkedHashSet<>(systemProvided);
+        libsSys = PArray.of(libSystem);
         this.defClasspath = System.getProperty("java.class.path", "");
         this.defModulepath = System.getProperty("jdk.module.path", "");
     }
@@ -196,13 +208,13 @@ public class DefaultCompilerService extends AbstractRoot
                     "--add-modules", "ALL-MODULE-PATH",
                     "--module-path", defModulepath,
                     "-classpath", buildClasspath());
-            
-            Map<String, Supplier<InputStream>> shared =
-                    Optional.ofNullable(map.get(CodeCompilerService.KEY_SHARED_CLASSES))
-                    .flatMap(PMap::from)
-                    .map(m -> processExistingClasses(m))
-                    .orElse(Map.of());
-            
+
+            Map<String, Supplier<InputStream>> shared
+                    = Optional.ofNullable(map.get(CodeCompilerService.KEY_SHARED_CLASSES))
+                            .flatMap(PMap::from)
+                            .map(m -> processExistingClasses(m))
+                            .orElse(Map.of());
+
             Map<String, byte[]> classFiles
                     = CompilerTask.create(extractedSources)
                             .existingClasses(shared)
@@ -362,7 +374,7 @@ public class DefaultCompilerService extends AbstractRoot
 
         @Override
         public Stream<PResource> provided() {
-            return libProvided.stream();
+            return Stream.concat(libSystem.stream(), libProvided.stream());
         }
 
         @Override

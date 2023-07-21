@@ -3,6 +3,7 @@ module org.praxislive.code.ivy {
     
     requires org.praxislive.core;
     requires org.praxislive.code;
+    requires org.praxislive.purl;
     requires org.apache.ivy;
 
     provides org.praxislive.code.LibraryResolver.Provider with
