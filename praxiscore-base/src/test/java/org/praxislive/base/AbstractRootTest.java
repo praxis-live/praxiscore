@@ -176,6 +176,11 @@ public class AbstractRootTest {
         protected void terminating() {
             System.out.println("Terminate called");
             assertNotEquals(del.active, Thread.currentThread());
+            try {
+                del.active.join(1000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(AbstractRootTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
             assertTrue(!del.active.isAlive());
             latch.countDown();
         }
