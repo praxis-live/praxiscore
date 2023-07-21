@@ -1,0 +1,24 @@
+hub {
+  enable-fileserver false
+  proxies {
+    all {
+      host localhost
+      port auto
+      id-pattern *
+      type-pattern *
+      exec {
+        command default
+      }
+    }
+  }
+}
+compiler {
+  release 11
+}
+libraries {}
+
+# <<<BUILD>>>
+include [file "libtest.pxr"]
+
+# <<<RUN>>>
+/libtest.start

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -52,6 +52,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
         commands.put("add-libs", (namespace, args) -> new AddLibs(namespace, args, true));
         commands.put("libraries", Libraries::new);
         commands.put("libraries-all", LibrariesAll::new);
+        commands.put("libraries-system", LibrariesSystem::new);
         commands.put("libraries-path", LibrariesPath::new);
         commands.put("java-compiler-release", JavaRelease::new);
         commands.put("compiler", Compiler::new);
@@ -78,7 +79,6 @@ public class CompilerCommandInstaller implements CommandInstaller {
         }
 
     }
-
 
     private static class Libraries extends AbstractSingleCallFrame {
 
@@ -124,7 +124,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
         }
 
     }
-    
+
     private static class LibrariesAll extends AbstractSingleCallFrame {
 
         private LibrariesAll(Namespace namespace, List<Value> args) {
@@ -139,9 +139,26 @@ public class CompilerCommandInstaller implements CommandInstaller {
             return Call.create(ControlAddress.of(service, "libraries-all"),
                     env.getAddress(), env.getTime());
         }
-        
+
     }
-    
+
+    private static class LibrariesSystem extends AbstractSingleCallFrame {
+
+        private LibrariesSystem(Namespace namespace, List<Value> args) {
+            super(namespace, args);
+        }
+
+        @Override
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            ComponentAddress service = env.getLookup().find(Services.class)
+                    .flatMap(sm -> sm.locate(CodeCompilerService.class))
+                    .orElseThrow(ServiceUnavailableException::new);
+            return Call.create(ControlAddress.of(service, "libraries-system"),
+                    env.getAddress(), env.getTime());
+        }
+
+    }
+
     private static class LibrariesPath extends AbstractSingleCallFrame {
 
         private LibrariesPath(Namespace namespace, List<Value> args) {
@@ -156,7 +173,7 @@ public class CompilerCommandInstaller implements CommandInstaller {
             return Call.create(ControlAddress.of(service, "libraries-path"),
                     env.getAddress(), env.getTime());
         }
-        
+
     }
 
     private static class Compiler extends AbstractSingleCallFrame {

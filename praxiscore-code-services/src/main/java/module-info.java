@@ -16,5 +16,6 @@ module org.praxislive.code.services {
     
     uses org.praxislive.core.services.ComponentFactoryProvider;
     uses org.praxislive.code.LibraryResolver.Provider;
+    uses org.praxislive.code.LibraryResolver.SystemInfo;
     
 }

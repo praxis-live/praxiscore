@@ -30,9 +30,35 @@
           </programs>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-bom</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>tree</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.directory}/generated-resources/META-INF/praxiscore/bom</outputFile>
+              <scope>runtime</scope>
+              <tokens>whitespace</tokens>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>${project.build.directory}/generated-resources</directory>
+      </resource>
+    </resources>
   </build>
-  
+
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -149,7 +175,7 @@
       <artifactId>praxiscore-video-pgl-natives</artifactId>
       <version>${project.version}</version>
     </dependency>
-    
+
     <dependency>
       <groupId>org.jaudiolibs</groupId>
       <artifactId>audioservers-jack</artifactId>
@@ -166,7 +192,7 @@
       <version>2.0.0</version>
     </dependency>
   </dependencies>
-    
+
   <properties>
     <maven.javadoc.skip>true</maven.javadoc.skip>
     <maven.deploy.skip>true</maven.deploy.skip>

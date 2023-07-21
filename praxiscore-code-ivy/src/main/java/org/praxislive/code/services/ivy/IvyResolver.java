@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,6 @@
  */
 package org.praxislive.code.services.ivy;
 
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,35 +31,24 @@ import org.apache.ivy.core.report.ArtifactDownloadReport;
 import org.praxislive.code.LibraryResolver;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PResource;
+import org.praxislive.purl.PackageURL;
 
 /**
  *
  */
 public class IvyResolver implements LibraryResolver {
 
-    private static final String EXCLUDES = "org.praxislive:* "
-            + "org.jaudiolibs:* "
-            + "com.tinkerforge:* "
-            + "info.picocli:* "
-            + "com.formdev:* "
-            + "net.java.dev.jna:* "
-            + "org.lwjgl:* "
-            + "org.freedesktop.gstreamer:*";
-
     private final Grappa grappa;
-    private final List<MavenArtefactInfo> installed;
 
     private IvyResolver() {
         Grappa g = null;
         try {
             g = Grappa.create();
-            g.setExcludes(EXCLUDES);
         } catch (Exception ex) {
             System.getLogger(IvyResolver.class.getName())
                     .log(System.Logger.Level.ERROR, "Unable to initialise Ivy support", ex);
         }
         this.grappa = g;
-        this.installed = new ArrayList<>();
     }
 
     @Override
@@ -71,8 +59,8 @@ public class IvyResolver implements LibraryResolver {
             return Optional.empty();
         }
         var artefact = parsePURL(res);
-
-        var existing = findExisting(artefact);
+        var installed = buildInstalledList(context.provided().collect(Collectors.toList()));
+        var existing = findExisting(installed, artefact);
         if (existing != null) {
             if (!artefact.version().isBlank()
                     && !Objects.equals(existing.version(), artefact.version())) {
@@ -101,7 +89,7 @@ public class IvyResolver implements LibraryResolver {
         for (var node : nodes) {
             for (var download : report.getArtifactsReports(node.getResolvedId())) {
                 var info = toInfo(download);
-                var ex = findExisting(info);
+                var ex = findExisting(installed, info);
                 if (ex == null) {
                     var purl = toPURL(info);
                     if (artefact.isMatchingArtefact(info)) {
@@ -128,41 +116,34 @@ public class IvyResolver implements LibraryResolver {
             }
         }
 
-        installed.addAll(installing);
         return Optional.of(new Entry(resolved, files, provides));
     }
 
-    private MavenArtefactInfo parsePURL(String purl) {
-        purl = purl.substring(10); // remove "pkg:maven/"
-        String[] split = purl.split("\\?");
-        if (split.length > 1) {
-            throw new IllegalArgumentException(
-                    "PURL with query section not currently supported");
-        }
-        purl = split[0];
-        split = purl.split("@");
-        String version = "";
-        if (split.length > 2) {
-            throw new IllegalArgumentException("Invalid PURL");
-        } else if (split.length == 2) {
-            version = split[1];
-        }
-        purl = split[0];
-        split = purl.split("/");
-        if (split.length != 2) {
-            throw new IllegalArgumentException("Invalid PURL");
-        }
-        String group = split[0];
-        String artefact = split[1];
-        return new MavenArtefactInfo(group, artefact, version, "");
+    private static MavenArtefactInfo parsePURL(String purlString) {
+        var purl = PackageURL.parse(purlString);
+        return new MavenArtefactInfo(
+                purl.namespace().orElseThrow(IllegalArgumentException::new),
+                purl.name(),
+                purl.version().orElse(""),
+                purl.qualifiers().flatMap(q -> Optional.ofNullable(q.get("classifier"))).orElse("")
+        );
     }
 
-    private PResource toPURL(MavenArtefactInfo info) {
-        return PResource.of(URI.create("pkg:maven/" + info.group() + "/" + info.artefact()
-                + "@" + info.version()));
+    private static PResource toPURL(MavenArtefactInfo info) {
+        var builder = PackageURL.builder()
+                .withType("maven")
+                .withNamespace(info.group())
+                .withName(info.artefact());
+        if (!info.version().isBlank()) {
+            builder.withVersion(info.version());
+        }
+        if (!info.classifier().isBlank()) {
+            builder.withQualifier("classifier", info.classifier());
+        }
+        return PResource.of(builder.build().toURI());
     }
 
-    private MavenArtefactInfo toInfo(ArtifactDownloadReport report) {
+    private static MavenArtefactInfo toInfo(ArtifactDownloadReport report) {
         var mrid = report.getArtifact().getId().getModuleRevisionId();
         var group = mrid.getOrganisation();
         var artefact = mrid.getName();
@@ -172,7 +153,26 @@ public class IvyResolver implements LibraryResolver {
         return new MavenArtefactInfo(group, artefact, version, classifier);
     }
 
-    private MavenArtefactInfo findExisting(MavenArtefactInfo artefact) {
+    private static List<MavenArtefactInfo> buildInstalledList(List<PResource> provided) {
+        if (provided.isEmpty()) {
+            return List.of();
+        }
+        List<MavenArtefactInfo> list = new ArrayList<>(provided.size());
+        for (var res : provided) {
+            var str = res.toString();
+            if (!str.startsWith("pkg:maven")) {
+                continue;
+            }
+            try {
+                list.add(parsePURL(str));
+            } catch (Exception ex) {
+                // fall through
+            }
+        }
+        return List.copyOf(list);
+    }
+
+    private static MavenArtefactInfo findExisting(List<MavenArtefactInfo> installed, MavenArtefactInfo artefact) {
         return installed.stream()
                 .filter(artefact::isMatchingArtefact)
                 .findFirst().orElse(null);
