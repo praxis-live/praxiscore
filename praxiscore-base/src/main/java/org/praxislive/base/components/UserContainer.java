@@ -46,6 +46,7 @@ import org.praxislive.core.types.PMap;
 /**
  *
  */
+@Deprecated(forRemoval = true)
 public final class UserContainer extends AbstractContainer {
     
     private final static ComponentInfo BASE_INFO = Info.component(cmp -> cmp

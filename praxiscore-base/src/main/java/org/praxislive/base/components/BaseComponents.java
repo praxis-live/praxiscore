@@ -28,6 +28,7 @@ import org.praxislive.core.services.ComponentFactoryProvider;
 /**
  *
  */
+@Deprecated(forRemoval = true)
 public class BaseComponents implements ComponentFactoryProvider {
     
     private final static ComponentFactory FACTORY = new Factory();

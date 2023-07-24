@@ -70,6 +70,7 @@ import org.praxislive.core.DataObject;
  *
  * @webref math
  */
+@Deprecated(forRemoval = true)
 public class PVector implements Serializable, DataObject {
 
     /**

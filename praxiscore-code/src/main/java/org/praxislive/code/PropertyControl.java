@@ -403,6 +403,7 @@ public class PropertyControl extends Property implements Control {
             return new Descriptor(id, index, binding, propertyField);
         }
 
+        @SuppressWarnings("deprecation")
         private static Binding findBinding(CodeConnector<?> connector, Field field) {
             Class<?> type = field.getType();
             Binding binding = null;

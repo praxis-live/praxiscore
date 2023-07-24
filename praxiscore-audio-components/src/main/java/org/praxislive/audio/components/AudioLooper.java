@@ -81,7 +81,7 @@ public class AudioLooper extends AudioCodeDelegate {
     @Override
     public void init() {
         table.init( () -> AudioTable.generate((int) (MAX_BUFFER_SECONDS * sampleRate), 2));
-        loopSize.values().link(s -> looper.table(AudioTable.wrap(table.get(), (int) (s * sampleRate))));
+        loopSize.doubles().link(s -> looper.table(AudioTable.wrap(table.get(), (int) (s * sampleRate))));
         start.link(looper::in);
         end.link(looper::out);
         speed.link(looper::speed);

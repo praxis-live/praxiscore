@@ -40,6 +40,7 @@ import org.praxislive.core.services.LogLevel;
 /**
  *
  */
+@Deprecated(forRemoval = true)
 abstract class BytesBinding extends PropertyControl.Binding {
 
     @Override
@@ -76,9 +77,11 @@ abstract class BytesBinding extends PropertyControl.Binding {
     static BytesBinding create(CodeConnector<?> connector, Field field) {
        if (field.getType() == PBytes.class) {
            return new PBytesField(field);
-       }else if (isSerializableList(field.getGenericType())) {
+       } else if (isSerializableList(field.getGenericType())) {
+           connector.getLog().log(LogLevel.WARNING, "Property " + field.getName() + " is a serialized list. Support for serializable lists is deprecated for removal");
            return new ListField(field);
        } else if (isSerializableType(field.getGenericType())) {
+           connector.getLog().log(LogLevel.WARNING, "Property " + field.getName() + " is a serialized field. Support for serializable fields is deprecated for removal");
            return new SerializableField(field);
        } else {
            return null;
