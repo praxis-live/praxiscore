@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -50,10 +50,21 @@ public abstract class Input {
     /**
      * Return a {@link Linkable.Double} for reacting on inputs. None numeric
      * inputs will be ignored.
-     * 
+     *
      * @return Linkable.Double of input
      */
+    @Deprecated(forRemoval = true)
     public Linkable.Double values() {
+        return new DoubleLink();
+    }
+
+    /**
+     * Return a {@link Linkable.Double} for reacting on inputs. None numeric
+     * inputs will be ignored.
+     *
+     * @return Linkable.Double of input
+     */
+    public Linkable.Double doubles() {
         return new DoubleLink();
     }
 
