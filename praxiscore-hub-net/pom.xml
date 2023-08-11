@@ -26,6 +26,26 @@
       <artifactId>praxiscore-internal-osc</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.amazon.ion</groupId>
+      <artifactId>ion-java</artifactId>
+      <version>1.9.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>
