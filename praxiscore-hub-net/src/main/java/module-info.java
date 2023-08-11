@@ -11,6 +11,10 @@ module org.praxislive.hub.net {
     requires org.praxislive.internal.osc;
 
     requires com.amazon.ion;
+    requires io.netty.common;
+    requires io.netty.buffer;
+    requires io.netty.codec;
+    requires io.netty.transport;
 
     exports org.praxislive.hub.net;
 
