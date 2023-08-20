@@ -144,19 +144,16 @@ class IonCodec {
 
     private Message.Send readSendMessage(IonReader reader) throws Exception {
         Integer matchID = null;
-        boolean quiet = false;
         ControlAddress to = null;
         ControlAddress from = null;
-        List<Value> args = null;
+        List<Value> args = List.of();
+        PMap data = PMap.EMPTY;
         reader.stepIn();
         IonType type;
         while ((type = reader.next()) != null) {
             switch (reader.getFieldName()) {
                 case FIELD_MATCH_ID -> {
                     matchID = reader.intValue();
-                }
-                case FIELD_QUIET -> {
-                    quiet = reader.booleanValue();
                 }
                 case FIELD_TO -> {
                     to = ControlAddress.of(reader.stringValue());
@@ -167,28 +164,28 @@ class IonCodec {
                 case FIELD_ARGS -> {
                     args = readValues(reader);
                 }
+                case FIELD_DATA -> {
+                    data = readMap(reader);
+                }
             }
         }
         reader.stepOut();
-        return new Message.Send(matchID, quiet, to, from, args);
+        return new Message.Send(matchID, to, from, args, data);
     }
 
     private Message.Service readServiceMessage(IonReader reader) throws Exception {
         Integer matchID = null;
-        boolean quiet = false;
         String service = null;
         String control = null;
         ControlAddress from = null;
-        List<Value> args = null;
+        List<Value> args = List.of();
+        PMap data = PMap.EMPTY;
         reader.stepIn();
         IonType type;
         while ((type = reader.next()) != null) {
             switch (reader.getFieldName()) {
                 case FIELD_MATCH_ID -> {
                     matchID = reader.intValue();
-                }
-                case FIELD_QUIET -> {
-                    quiet = reader.booleanValue();
                 }
                 case FIELD_SERVICE -> {
                     service = reader.stringValue();
@@ -202,15 +199,19 @@ class IonCodec {
                 case FIELD_ARGS -> {
                     args = readValues(reader);
                 }
+                case FIELD_DATA -> {
+                    data = readMap(reader);
+                }
             }
         }
         reader.stepOut();
-        return new Message.Service(matchID, quiet, service, control, from, args);
+        return new Message.Service(matchID, service, control, from, args, data);
     }
 
     private Message.Reply readReplyMessage(IonReader reader) throws Exception {
         Integer matchID = null;
-        List<Value> args = null;
+        List<Value> args = List.of();
+        PMap data = PMap.EMPTY;
         reader.stepIn();
         IonType type;
         while ((type = reader.next()) != null) {
@@ -221,15 +222,19 @@ class IonCodec {
                 case FIELD_ARGS -> {
                     args = readValues(reader);
                 }
+                case FIELD_DATA -> {
+                    data = readMap(reader);
+                }
             }
         }
         reader.stepOut();
-        return new Message.Reply(matchID, args);
+        return new Message.Reply(matchID, args, data);
     }
 
     private Message.Error readErrorMessage(IonReader reader) throws Exception {
         Integer matchID = null;
-        List<Value> args = null;
+        List<Value> args = List.of();
+        PMap data = PMap.EMPTY;
         reader.stepIn();
         IonType type;
         while ((type = reader.next()) != null) {
@@ -240,10 +245,13 @@ class IonCodec {
                 case FIELD_ARGS -> {
                     args = readValues(reader);
                 }
+                case FIELD_DATA -> {
+                    data = readMap(reader);
+                }
             }
         }
         reader.stepOut();
-        return new Message.Error(matchID, args);
+        return new Message.Error(matchID, args, data);
     }
 
     private Message.System readSystemMessage(IonReader reader) throws Exception {
@@ -383,14 +391,20 @@ class IonCodec {
         writer.stepIn(IonType.STRUCT);
         writer.setFieldName(FIELD_MATCH_ID);
         writer.writeInt(message.matchID());
-        writer.setFieldName(FIELD_QUIET);
-        writer.writeBool(message.quiet());
         writer.setFieldName(FIELD_TO);
         writer.writeString(message.to().toString());
         writer.setFieldName(FIELD_FROM);
         writer.writeString(message.from().toString());
-        writer.setFieldName(FIELD_ARGS);
-        writeValues(writer, message.args());
+        var args = message.args();
+        if (!args.isEmpty()) {
+            writer.setFieldName(FIELD_ARGS);
+            writeValues(writer, message.args());
+        }
+        var data = message.data();
+        if (!data.isEmpty()) {
+            writer.setFieldName(FIELD_DATA);
+            writeMap(writer, message.data());
+        }
         writer.stepOut();
     }
 
@@ -399,16 +413,22 @@ class IonCodec {
         writer.stepIn(IonType.STRUCT);
         writer.setFieldName(FIELD_MATCH_ID);
         writer.writeInt(message.matchID());
-        writer.setFieldName(FIELD_QUIET);
-        writer.writeBool(message.quiet());
         writer.setFieldName(FIELD_SERVICE);
         writer.writeString(message.service());
         writer.setFieldName(FIELD_CONTROL);
         writer.writeString(message.control());
         writer.setFieldName(FIELD_FROM);
         writer.writeString(message.from().toString());
-        writer.setFieldName(FIELD_ARGS);
-        writeValues(writer, message.args());
+        var args = message.args();
+        if (!args.isEmpty()) {
+            writer.setFieldName(FIELD_ARGS);
+            writeValues(writer, message.args());
+        }
+        var data = message.data();
+        if (!data.isEmpty()) {
+            writer.setFieldName(FIELD_DATA);
+            writeMap(writer, message.data());
+        }
         writer.stepOut();
     }
 
@@ -417,8 +437,16 @@ class IonCodec {
         writer.stepIn(IonType.STRUCT);
         writer.setFieldName(FIELD_MATCH_ID);
         writer.writeInt(message.matchID());
-        writer.setFieldName(FIELD_ARGS);
-        writeValues(writer, message.args());
+        var args = message.args();
+        if (!args.isEmpty()) {
+            writer.setFieldName(FIELD_ARGS);
+            writeValues(writer, message.args());
+        }
+        var data = message.data();
+        if (!data.isEmpty()) {
+            writer.setFieldName(FIELD_DATA);
+            writeMap(writer, message.data());
+        }
         writer.stepOut();
     }
 
@@ -427,8 +455,16 @@ class IonCodec {
         writer.stepIn(IonType.STRUCT);
         writer.setFieldName(FIELD_MATCH_ID);
         writer.writeInt(message.matchID());
-        writer.setFieldName(FIELD_ARGS);
-        writeValues(writer, message.args());
+        var args = message.args();
+        if (!args.isEmpty()) {
+            writer.setFieldName(FIELD_ARGS);
+            writeValues(writer, message.args());
+        }
+        var data = message.data();
+        if (!data.isEmpty()) {
+            writer.setFieldName(FIELD_DATA);
+            writeMap(writer, message.data());
+        }
         writer.stepOut();
     }
 
@@ -439,8 +475,11 @@ class IonCodec {
         writer.writeInt(message.matchID());
         writer.setFieldName(FIELD_TYPE);
         writer.writeString(message.type());
-        writer.setFieldName(FIELD_DATA);
-        writeMap(writer, message.data());
+        var data = message.data();
+        if (!data.isEmpty()) {
+            writer.setFieldName(FIELD_DATA);
+            writeMap(writer, message.data());
+        }
         writer.stepOut();
     }
 

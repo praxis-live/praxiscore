@@ -34,48 +34,77 @@ sealed interface Message {
 
     public int matchID();
 
+    public PMap data();
+
     record Send(int matchID,
-            boolean quiet,
             ControlAddress to,
             ControlAddress from,
-            List<Value> args) implements Message {
+            List<Value> args,
+            PMap data) implements Message {
 
         public Send     {
             Objects.requireNonNull(to);
             Objects.requireNonNull(from);
             args = List.copyOf(args);
+            Objects.requireNonNull(data);
+        }
+
+        public Send(int matchID,
+                ControlAddress to,
+                ControlAddress from,
+                List<Value> args) {
+            this(matchID, to, from, args, PMap.EMPTY);
         }
 
     }
 
     record Service(int matchID,
-            boolean quiet,
             String service,
             String control,
             ControlAddress from,
-            List<Value> args) implements Message {
+            List<Value> args,
+            PMap data) implements Message {
 
         public Service      {
             Objects.requireNonNull(service);
             Objects.requireNonNull(control);
             Objects.requireNonNull(from);
             args = List.copyOf(args);
+            Objects.requireNonNull(data);
+        }
+
+        public Service(int matchID,
+                String service,
+                String control,
+                ControlAddress from,
+                List<Value> args) {
+            this(matchID, service, control, from, args, PMap.EMPTY);
         }
 
     }
 
-    record Reply(int matchID, List<Value> args) implements Message {
+    record Reply(int matchID, List<Value> args, PMap data) implements Message {
 
-        public Reply  {
+        public Reply   {
             args = List.copyOf(args);
+            Objects.requireNonNull(data);
+        }
+
+        public Reply(int matchID, List<Value> args) {
+            this(matchID, args, PMap.EMPTY);
         }
 
     }
 
-    record Error(int matchID, List<Value> args) implements Message {
+    record Error(int matchID, List<Value> args, PMap data) implements Message {
 
-        public Error  {
+        public Error   {
             args = List.copyOf(args);
+            Objects.requireNonNull(data);
+        }
+
+        public Error(int matchID, List<Value> args) {
+            this(matchID, args, PMap.EMPTY);
         }
 
     }

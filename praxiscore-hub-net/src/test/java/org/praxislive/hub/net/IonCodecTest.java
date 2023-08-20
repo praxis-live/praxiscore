@@ -54,7 +54,6 @@ public class IonCodecTest {
     @Test
     public void testSendMessage() throws Exception {
         var matchID = 1234;
-        var quiet = true;
         var to = ControlAddress.of("/root/component.control");
         var from = ControlAddress.of("/sender/component.control");
         var args = List.of(
@@ -62,7 +61,7 @@ public class IonCodecTest {
                 Value.ofObject(1.234),
                 PMap.of("key1", bytes, "key2", PArray.of(PNumber.ONE, PBoolean.FALSE))
         );
-        var msg = new Message.Send(matchID, quiet, to, from, args);
+        var msg = new Message.Send(matchID, to, from, args);
         var msgList = roundTrip(List.of(msg));
         assertEquals(1, msgList.size());
         var decoded = (Message.Send) msgList.get(0);
@@ -72,7 +71,6 @@ public class IonCodecTest {
     @Test
     public void testServiceMessage() throws Exception {
         var matchID = 1234;
-        var quiet = true;
         var service = "LogService";
         var control = "log";
         var from = ControlAddress.of("/sender/component.control");
@@ -81,7 +79,7 @@ public class IonCodecTest {
                 Value.ofObject(1.234),
                 PMap.of("key1", bytes, "key2", PArray.of(PNumber.ONE, PBoolean.FALSE))
         );
-        var msg = new Message.Service(matchID, quiet, service, control, from, args);
+        var msg = new Message.Service(matchID, service, control, from, args);
         var msgList = roundTrip(List.of(msg));
         assertEquals(1, msgList.size());
         var decoded = (Message.Service) msgList.get(0);
@@ -137,20 +135,20 @@ public class IonCodecTest {
     @Test
     public void testMultiMessage() throws Exception {
         var msg1 = new Message.Send(1,
-                false,
                 ControlAddress.of("/root1.trigger"),
                 ControlAddress.of("/root2.process"),
-                List.of(PString.of("FOO"), PNumber.ZERO)
+                List.of(PString.of("FOO"), PNumber.ZERO),
+                PMap.EMPTY
         );
         var msg2 = new Message.Service(2,
-                true,
                 "FooService",
                 "process",
                 ControlAddress.of("/root2.process"),
-                List.of(bytes)
+                List.of(bytes),
+                PMap.EMPTY
         );
-        var msg3 = new Message.Reply(3, List.of(PString.of("OK")));
-        var msg4 = new Message.Error(4, List.of());
+        var msg3 = new Message.Reply(3, List.of(PString.of("OK")), PMap.EMPTY);
+        var msg4 = new Message.Error(4, List.of(), PMap.EMPTY);
         var msg5 = new Message.System(5, "STATUS", PMap.of("active", true));
         var msgList = roundTrip(List.of(msg1, msg2, msg3, msg4, msg5));
         assertEquals(5, msgList.size());
