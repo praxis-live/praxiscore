@@ -111,6 +111,11 @@ sealed interface Message {
 
     record System(int matchID, String type, PMap data) implements Message {
 
+        static final String HELLO = "HELLO";
+        static final String HELLO_OK = "HELLO-OK";
+        static final String HELLO_ERROR = "HELLO-ERROR";
+        static final String GOODBYE = "GOODBYE";
+
         public System   {
             Objects.requireNonNull(type);
             Objects.requireNonNull(data);

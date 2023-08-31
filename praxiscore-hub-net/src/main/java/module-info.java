@@ -8,7 +8,6 @@ module org.praxislive.hub.net {
     requires org.praxislive.script;
 
     requires org.praxislive.internal.httpd;
-    requires org.praxislive.internal.osc;
 
     requires com.amazon.ion;
     requires io.netty.common;

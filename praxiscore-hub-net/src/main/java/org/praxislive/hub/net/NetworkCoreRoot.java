@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,6 +21,8 @@
  */
 package org.praxislive.hub.net;
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.praxislive.hub.net.internal.HubConfigurationService;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +59,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
     private final ChildLauncher childLauncher;
     private final Map<String, String> remotes;
 
+    private EventLoopGroup clientEventLoopGroup;
     private HubConfiguration configuration;
     private FileServer fileServer;
 
@@ -87,8 +90,6 @@ class NetworkCoreRoot extends BasicCoreRoot {
         super.registerServices();
         hubAccess.registerService(HubConfigurationService.class, getAddress());
     }
-    
-    
 
     @Override
     protected void starting() {
@@ -121,6 +122,8 @@ class NetworkCoreRoot extends BasicCoreRoot {
             return;
         }
 
+        clientEventLoopGroup = new NioEventLoopGroup();
+
         var requireServer = configuration.isFileServerEnabled()
                 && proxyInfo.stream().anyMatch(p -> !p.isLocal());
         var serverInfo = requireServer ? activateFileServer() : null;
@@ -129,15 +132,15 @@ class NetworkCoreRoot extends BasicCoreRoot {
             var id = PROXY_PREFIX + (i + 1);
             var info = proxyInfo.get(i);
             try {
-                installRoot(id, "netex", new ProxyClientRoot(info, services,
-                        childLauncher, serverInfo));
+                installRoot(id, "netex", new ProxyClientRoot(info, clientEventLoopGroup,
+                        services, childLauncher, serverInfo));
                 proxies.add(new ProxyData(info, ComponentAddress.of("/" + id)));
             } catch (Exception ex) {
                 System.getLogger(NetworkCoreRoot.class.getName())
                         .log(System.Logger.Level.ERROR, "", ex);
             }
         }
-        
+
     }
 
     private FileServer.Info activateFileServer() {
@@ -147,13 +150,11 @@ class NetworkCoreRoot extends BasicCoreRoot {
             return fileServer.getInfo();
         } catch (IOException ex) {
             System.getLogger(NetworkCoreRoot.class.getName())
-                        .log(System.Logger.Level.ERROR, "", ex);
+                    .log(System.Logger.Level.ERROR, "", ex);
             fileServer = null;
         }
         return null;
     }
-
-    
 
     private static class ProxyData {
 
@@ -187,7 +188,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
                     .filter(p -> p.info.matches(id, type))
                     .map(p -> p.address)
                     .findFirst().orElse(null);
-            
+
             ControlAddress to;
             if (proxy != null) {
                 to = ControlAddress.of(proxy, RootManagerService.ADD_ROOT);
@@ -251,7 +252,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
         }
 
     }
-    
+
     private class HubConfigurationControl implements Control {
 
         @Override
@@ -267,10 +268,9 @@ class NetworkCoreRoot extends BasicCoreRoot {
                     router.route(call.reply());
                 }
             }
-            
-            
+
         }
-        
+
     }
 
 }

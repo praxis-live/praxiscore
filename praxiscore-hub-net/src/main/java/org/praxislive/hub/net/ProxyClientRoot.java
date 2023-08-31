@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,62 +21,63 @@
  */
 package org.praxislive.hub.net;
 
-import java.io.IOException;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
-import org.praxislive.core.Clock;
+import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.Protocol;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
-import org.praxislive.internal.osc.OSCClient;
-import org.praxislive.internal.osc.OSCListener;
-import org.praxislive.internal.osc.OSCMessage;
-import org.praxislive.internal.osc.OSCPacket;
+
+import static java.lang.System.Logger.Level;
 
 /**
  *
  */
 class ProxyClientRoot extends AbstractRoot {
 
-    private final static Logger LOG = Logger.getLogger(ProxyClientRoot.class.getName());
-    private final static String HLO = "/HLO";
-    private final static String BYE = "/BYE";
+    private final static System.Logger LOG = System.getLogger(ProxyClientRoot.class.getName());
 
     private final ProxyInfo proxyInfo;
+    private final EventLoopGroup eventLoopGroup;
     private final List<Class<? extends Service>> services;
     private final ChildLauncher childLauncher;
     private final FileServer.Info fileServerInfo;
-    private final PraxisPacketCodec codec;
     private final Dispatcher dispatcher;
     private final Control addRootControl;
     private final Control removeRootControl;
 
-    private OSCClient client;
+    private Channel clientChannel;
     private long lastPurgeTime;
-    private Watchdog watchdog;
     private Process execProcess;
     private SocketAddress socketAddress;
 
     ProxyClientRoot(ProxyInfo proxyInfo,
+            EventLoopGroup eventLoopGroup,
             List<Class<? extends Service>> services,
             ChildLauncher childLauncher,
             FileServer.Info fileServerInfo) {
         this.proxyInfo = proxyInfo;
+        this.eventLoopGroup = eventLoopGroup;
         this.services = services;
         this.childLauncher = childLauncher;
         this.fileServerInfo = fileServerInfo;
-        codec = new PraxisPacketCodec();
-        dispatcher = new Dispatcher(codec);
+        dispatcher = new Dispatcher();
         addRootControl = new RootControl(true);
         removeRootControl = new RootControl(false);
     }
@@ -91,13 +92,12 @@ class ProxyClientRoot extends AbstractRoot {
     @Override
     protected void terminating() {
         super.terminating();
-        if (client != null) {
-            LOG.fine("Terminating - sending /BYE");
-            try {
-                client.send(new OSCMessage(BYE));
-            } catch (IOException ex) {
-                LOG.log(Level.FINE, null, ex);
-            }
+        if (clientChannel != null) {
+            clientChannel.writeAndFlush(List.of(new Message.System(
+                    0,
+                    Message.System.GOODBYE,
+                    PMap.EMPTY
+            )));
         }
         dispose();
         destroyChild();
@@ -126,11 +126,11 @@ class ProxyClientRoot extends AbstractRoot {
             } catch (Exception ex) {
                 router.route(call.error(PError.of(ex)));
             }
-        } else if (client != null) {
+        } else if (clientChannel != null) {
             dispatcher.handleCall(call);
         } else {
             connect();
-            if (client != null) {
+            if (clientChannel != null) {
                 dispatcher.handleCall(call);
             } else {
                 getRouter().route(call.error(PError.of("")));
@@ -146,51 +146,82 @@ class ProxyClientRoot extends AbstractRoot {
             dispatcher.purge(10, TimeUnit.SECONDS);
             lastPurgeTime = source.getTime();
         }
-        if (watchdog != null) {
-            watchdog.tick();
-        }
-    }
-
-    private void messageReceived(OSCMessage msg, SocketAddress sender, long timeTag) {
-        dispatcher.handleMessage(msg, timeTag);
-    }
-
-    private void send(OSCPacket packet) {
-        if (client != null) {
-            try {
-                client.send(packet);
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, "", ex);
-                dispose();
-            }
-        }
     }
 
     private void connect() {
         try {
             checkAndExecChild();
-            client = OSCClient.newUsing(codec, OSCClient.TCP);
-            client.setBufferSize(65536);
-            client.setTarget(socketAddress);
-            watchdog = new Watchdog(getRootHub().getClock(), client);
-            watchdog.start();
+            var helloLatch = new CountDownLatch(1);
+            var receiver = new Receiver(helloLatch);
+            var bootstrap = new Bootstrap();
+            bootstrap.group(eventLoopGroup)
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer() {
+                        @Override
+                        protected void initChannel(Channel ch) throws Exception {
+                            ch.pipeline().addLast(
+                                    new IonEncoder(),
+                                    new IonDecoder(),
+                                    receiver);
+                        }
+                    }
+                    );
+            clientChannel = bootstrap.connect(socketAddress).sync().channel();
 
             // HLO request
-            CountDownLatch hloLatch = new CountDownLatch(1);
-            client.addOSCListener(new Receiver(hloLatch));
-            client.start();
-            client.send(new OSCMessage(HLO, new Object[]{buildHLOParams().toString()}));
-            if (hloLatch.await(10, TimeUnit.SECONDS)) {
-                LOG.fine("/HLO received OK");
+            clientChannel.writeAndFlush(List.of(new Message.System(
+                    0,
+                    Message.System.HELLO,
+                    buildHLOParams()
+            ))).sync();
+            if (helloLatch.await(10, TimeUnit.SECONDS)) {
+                LOG.log(Level.DEBUG, "/HLO received OK");
             } else {
-                LOG.severe("Unable to connect");
+                LOG.log(Level.ERROR, "Unable to connect");
                 dispose();
             }
 
         } catch (Exception ex) {
-            LOG.log(Level.SEVERE, "Unable to connect", ex);
+            LOG.log(Level.ERROR, "Unable to connect", ex);
             dispose();
         }
+    }
+
+    private void handleMessages(List<Message> messages) {
+        for (var msg : messages) {
+            if (!handleMessage(msg)) {
+                break;
+            }
+        }
+    }
+
+    private boolean handleMessage(Message message) {
+        if (message instanceof Message.System systemMessage) {
+            return switch (systemMessage.type()) {
+                case Message.System.HELLO_OK -> {
+                    yield handleHelloOKMessage(systemMessage);
+                }
+                case Message.System.HELLO_ERROR -> {
+                    yield handleHelloErrorMessage(systemMessage);
+                }
+                default -> {
+                    LOG.log(Level.WARNING, "Unexpected system message {0}", systemMessage);
+                    yield true;
+                }
+            };
+        } else {
+            dispatcher.handleMessage(socketAddress, message);
+            return true;
+        }
+
+    }
+
+    private boolean handleHelloOKMessage(Message.System helloOK) {
+        return true;
+    }
+
+    private boolean handleHelloErrorMessage(Message.System helloError) {
+        return false;
     }
 
     private void checkAndExecChild() throws Exception {
@@ -234,25 +265,22 @@ class ProxyClientRoot extends AbstractRoot {
     }
 
     private PMap buildServiceMap() {
-        PMap.Builder srvs = PMap.builder(services.size());
+        PMap.Builder srvs = PMap.builder();
         services.forEach(service -> {
             try {
                 srvs.put(service.getName(), findService(service));
+
             } catch (ServiceUnavailableException ex) {
-                Logger.getLogger(ProxyClientRoot.class.getName()).log(Level.SEVERE, null, ex);
+                LOG.log(Level.ERROR, "Service resolution error", ex);
             }
         });
         return srvs.build();
     }
 
     private void dispose() {
-        if (client != null) {
-            client.dispose();
-            client = null;
-        }
-        if (watchdog != null) {
-            watchdog.shutdown();
-            watchdog = null;
+        if (clientChannel != null) {
+            clientChannel.close();
+            clientChannel = null;
         }
         dispatcher.purge(0, TimeUnit.NANOSECONDS);
     }
@@ -271,35 +299,45 @@ class ProxyClientRoot extends AbstractRoot {
                 try {
                     execProcess.waitFor(5, TimeUnit.SECONDS);
                 } catch (InterruptedException ex) {
-                    LOG.log(Level.SEVERE, "Child process won't quit", ex);
+                    LOG.log(Level.ERROR, "Child process won't quit", ex);
                 }
             }
             ChildRegistry.INSTANCE.remove(execProcess);
             execProcess = null;
+
         }
     }
 
-    private class Dispatcher extends OSCDispatcher {
+    private class Dispatcher extends MessageDispatcher {
 
         private String remoteSysPrefix;
 
-        private Dispatcher(PraxisPacketCodec codec) {
-            super(codec, new Clock() {
-                @Override
-                public long getTime() {
-                    return getExecutionContext().getTime();
-                }
-            });
-        }
-
         @Override
-        void send(OSCPacket packet) {
-            ProxyClientRoot.this.send(packet);
-        }
-
-        @Override
-        void send(Call call) {
+        void dispatchCall(Call call) {
             getRouter().route(call);
+        }
+
+        @Override
+        void dispatchMessage(SocketAddress remote, Message msg) throws Exception {
+            if (!remote.equals(socketAddress)) {
+                throw new IllegalArgumentException("Unknown remote address");
+            }
+            clientChannel.writeAndFlush(List.of(msg));
+        }
+
+        @Override
+        ComponentAddress findService(Class<? extends Service> service) throws ServiceUnavailableException {
+            return ProxyClientRoot.this.findService(service);
+        }
+
+        @Override
+        SocketAddress getPrimaryRemoteAddress() {
+            return socketAddress;
+        }
+
+        @Override
+        long getTime() {
+            return getExecutionContext().getTime();
         }
 
         @Override
@@ -307,51 +345,9 @@ class ProxyClientRoot extends AbstractRoot {
             assert remoteSysPrefix != null;
             return remoteSysPrefix;
         }
-
     }
 
-    private class Watchdog extends Thread {
-
-        private final Clock clock;
-        private final OSCClient client;
-
-        private volatile long lastTickTime;
-        private volatile boolean active;
-
-        private Watchdog(Clock clock, OSCClient client) {
-            this.clock = clock;
-            this.client = client;
-            lastTickTime = clock.getTime();
-            setDaemon(true);
-        }
-
-        @Override
-        public void run() {
-            while (active) {
-                if ((clock.getTime() - lastTickTime) > TimeUnit.SECONDS.toNanos(10)) {
-                    client.dispose();
-                    active = false;
-                }
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    // not a problem
-                }
-            }
-        }
-
-        private void tick() {
-            lastTickTime = clock.getTime();
-        }
-
-        private void shutdown() {
-            active = false;
-            interrupt();
-        }
-
-    }
-
-    private class Receiver implements OSCListener {
+    private class Receiver extends SimpleChannelInboundHandler<List<Message>> {
 
         private CountDownLatch hloLatch;
 
@@ -360,52 +356,45 @@ class ProxyClientRoot extends AbstractRoot {
         }
 
         @Override
-        public void messageReceived(final OSCMessage msg, final SocketAddress sender,
-                final long timeTag) {
-            if (hloLatch != null && HLO.equals(msg.getName())) {
+        protected void channelRead0(ChannelHandlerContext ctx, List<Message> msg) throws Exception {
+            if (hloLatch != null) {
                 hloLatch.countDown();
                 hloLatch = null;
             }
-            invokeLater(new Runnable() {
+            invokeLater(() -> handleMessages(msg));
+        }
 
-                @Override
-                public void run() {
-                    ProxyClientRoot.this.messageReceived(msg, sender, timeTag);
-                }
-            });
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            invokeLater(() -> dispose());
         }
 
     }
 
     private class RootControl implements Control {
 
-        private final boolean add;
+        private final String service;
+        private final String serviceControl;
 
         private RootControl(boolean add) {
-            this.add = add;
+            service = Protocol.Type.of(RootManagerService.class).name();
+            this.serviceControl = add ? RootManagerService.ADD_ROOT
+                    : RootManagerService.REMOVE_ROOT;
         }
 
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
-                if (client != null) {
-                    dispatch(call);
+                if (clientChannel != null) {
+                    dispatcher.handleServiceCall(call, service, serviceControl);
                 } else {
                     connect();
-                    if (client != null) {
-                        dispatch(call);
+                    if (clientChannel != null) {
+                        dispatcher.handleServiceCall(call, service, serviceControl);
                     } else {
                         router.route(call.error(PError.of("Couldn't connect to client")));
                     }
                 }
-            }
-        }
-
-        private void dispatch(Call call) {
-            if (add) {
-                dispatcher.handleAddRoot(call);
-            } else {
-                dispatcher.handleRemoveRoot(call);
             }
         }
 

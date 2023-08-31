@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,14 @@
  */
 package org.praxislive.hub.net;
 
-import java.io.IOException;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -29,44 +36,40 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
-import org.praxislive.core.Clock;
 import org.praxislive.core.ComponentAddress;
-import org.praxislive.core.ControlAddress;
-import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
 import org.praxislive.core.services.LogService;
-import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
+import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PResource;
 import org.praxislive.hub.Hub;
-import org.praxislive.internal.osc.OSCListener;
-import org.praxislive.internal.osc.OSCMessage;
-import org.praxislive.internal.osc.OSCPacket;
-import org.praxislive.internal.osc.OSCServer;
+
+import static java.lang.System.Logger.Level;
 
 /**
  *
  */
 class ServerCoreRoot extends NetworkCoreRoot {
 
-    private final static Logger LOG = Logger.getLogger(ServerCoreRoot.class.getName());
+    private final static System.Logger LOG = System.getLogger(ServerCoreRoot.class.getName());
     private final String SERVER_SYS_PREFIX = "/_remote";
-    
+
     private final InetSocketAddress address;
     private final CIDRUtils clientValidator;
-    private final PraxisPacketCodec codec;
     private final Dispatcher dispatcher;
     private final ResourceResolver resourceResolver;
+    private final Map<SocketAddress, Channel> connections;
 
-    private OSCServer server;
-    private SocketAddress master;
+    private EventLoopGroup eventLoopGroup;
+    private Channel serverChannel;
+    private SocketAddress parent;
     private long lastPurgeTime;
     private URI remoteUserDir;
     private URI remoteFileServer;
@@ -83,37 +86,57 @@ class ServerCoreRoot extends NetworkCoreRoot {
         super(hubAccess, exts, services, childLauncher, configuration);
         this.address = address;
         this.clientValidator = clientValidator;
-        this.codec = new PraxisPacketCodec();
-        this.dispatcher = new Dispatcher(codec);
+        this.dispatcher = new Dispatcher();
         this.resourceResolver = new ResourceResolver();
         this.futureInfo = futureInfo;
+        connections = new ConcurrentHashMap<>();
     }
 
     @Override
     protected void starting() {
+        eventLoopGroup = new NioEventLoopGroup();
         try {
-            server = OSCServer.newUsing(codec, OSCServer.TCP, address);
-            server.setBufferSize(65536);
-            server.addOSCListener(new OSCListener() {
-
-                @Override
-                public void messageReceived(final OSCMessage msg, final SocketAddress sender, final long time) {
-                    invokeLater(new Runnable() {
-
+            var bootstrap = new ServerBootstrap();
+            bootstrap.group(eventLoopGroup)
+                    .channel(NioServerSocketChannel.class)
+                    .localAddress(address)
+                    .childHandler(new ChannelInitializer() {
                         @Override
-                        public void run() {
-                            ServerCoreRoot.this.messageReceived(msg, sender, time);
+                        protected void initChannel(Channel ch) throws Exception {
+                            ch.pipeline().addLast(
+                                    new IonEncoder(),
+                                    new IonDecoder(),
+                                    new SimpleChannelInboundHandler<List<Message>>() {
+                                @Override
+                                public void channelActive(ChannelHandlerContext ctx) throws Exception {
+                                    super.channelActive(ctx);
+                                    connections.put(ctx.channel().remoteAddress(), ctx.channel());
+                                }
+
+                                @Override
+                                protected void channelRead0(ChannelHandlerContext ctx, List<Message> msgs) throws Exception {
+                                    var address = ctx.channel().remoteAddress();
+                                    invokeLater(() -> handleMessages(address, msgs));
+                                }
+
+                                @Override
+                                public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+                                    super.channelInactive(ctx);
+                                    connections.remove(ctx.channel().remoteAddress(),
+                                            ctx.channel());
+                                }
+
+                            }
+                            );
                         }
                     });
-                }
-            });
-            server.start();
+            serverChannel = bootstrap.bind().sync().channel();
             if (futureInfo != null) {
-                futureInfo.complete(new NetworkCoreFactory.Info(server.getLocalAddress()));
+                futureInfo.complete(new NetworkCoreFactory.Info(serverChannel.localAddress()));
                 futureInfo = null;
             }
-        } catch (IOException ex) {
-            Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception ex) {
+            LOG.log(Level.ERROR, "Error starting server", ex);
             if (futureInfo != null) {
                 futureInfo.completeExceptionally(ex);
                 futureInfo = null;
@@ -121,15 +144,6 @@ class ServerCoreRoot extends NetworkCoreRoot {
             forceTermination();
             throw new RuntimeException(ex);
         }
-        getLookup().find(ExecutionContext.class)
-                .orElseThrow(IllegalStateException::new)
-                .addClockListener(new ExecutionContext.ClockListener() {
-
-                    @Override
-                    public void tick(ExecutionContext source) {
-                        ServerCoreRoot.this.tick(source);
-                    }
-                });
         super.starting();
     }
 
@@ -137,14 +151,18 @@ class ServerCoreRoot extends NetworkCoreRoot {
     protected void terminating() {
         super.terminating();
         try {
-            if (server != null) {
-                server.stop();
-                server.dispose();
+            if (serverChannel != null) {
+                serverChannel.close();
             }
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, "", ex);
+            if (eventLoopGroup != null) {
+                eventLoopGroup.shutdownGracefully();
+            }
+        } catch (Exception ex) {
+            LOG.log(Level.WARNING, "Error shutting down server", ex);
         } finally {
-            server = null;
+            serverChannel = null;
+            eventLoopGroup = null;
+            parent = null;
         }
     }
 
@@ -156,53 +174,93 @@ class ServerCoreRoot extends NetworkCoreRoot {
             dispatcher.handleCall(call);
         }
     }
-    
-    
 
     PResource.Resolver getResourceResolver() {
         return resourceResolver;
     }
 
-    private void tick(ExecutionContext source) {
-        if ((source.getTime() - lastPurgeTime) > TimeUnit.SECONDS.toNanos(1)) {
-//            LOG.fine("Triggering dispatcher purge");
+    @Override
+    protected void update() {
+        super.update();
+        long time = getExecutionContext().getTime();
+        if ((time - lastPurgeTime) > TimeUnit.SECONDS.toNanos(1)) {
+            LOG.log(Level.TRACE, "Triggering dispatcher purge");
             dispatcher.purge(10, TimeUnit.SECONDS);
-            lastPurgeTime = source.getTime();
+            lastPurgeTime = time;
         }
     }
 
-    private void messageReceived(OSCMessage msg, SocketAddress sender, long time) {
-        if (master == null || !master.equals(sender)) {
-            if (!"/HLO".equals(msg.getName())) {
+    private void handleMessages(SocketAddress sender, List<Message> messages) {
+        for (var msg : messages) {
+            if (!handleMessage(sender, msg)) {
+                break;
+            }
+        }
+    }
+
+    private boolean handleMessage(SocketAddress sender, Message message) {
+        if (parent == null || !parent.equals(sender)) {
+            if (message instanceof Message.System sysMsg
+                    && Message.System.HELLO.equals(sysMsg.type())) {
+                // fall through and handle HELLO
+            } else {
                 LOG.log(Level.WARNING, "Received unexpected message from {0}", sender);
-                return;
+                return false;
             }
-            // otherwise fall through and handle HLO
         }
-        switch (msg.getName()) {
-            case "/HLO":
-                handleHLO(sender, msg);
-                break;
-            case "/BYE":
-                master = null;
-                forceTermination();
-                break;
-            default:
-                dispatcher.handleMessage(msg, time);
 
+        if (message instanceof Message.System systemMessage) {
+            return switch (systemMessage.type()) {
+                case Message.System.HELLO -> {
+                    yield handleHello(sender, systemMessage);
+                }
+                case Message.System.GOODBYE -> {
+                    yield handleGoodbye(sender, systemMessage);
+                }
+                default -> {
+                    LOG.log(Level.WARNING, "Unexpected system message {0}", systemMessage);
+                    yield true;
+                }
+            };
+        } else {
+            dispatcher.handleMessage(sender, message);
+            return true;
         }
+
     }
 
-    private void handleHLO(SocketAddress sender, OSCMessage msg) {
-        if (validate(sender) && handleHLOParams((InetSocketAddress) sender, msg)) {
-            master = sender;
-            try {
-                server.send(new OSCMessage("/HLO", new Object[]{"OK"}), sender);
-            } catch (IOException ex) {
-                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
-                master = null;
+    private boolean handleHello(SocketAddress sender, Message.System helloMessage) {
+        if (parent != null) {
+            if (parent.equals(sender)) {
+                LOG.log(Level.DEBUG, "Duplicate Hello message from {0}", sender);
+                return true;
+            } else {
+                LOG.log(Level.ERROR, "Unexpected Hello message from {0}", sender);
+                return false;
             }
         }
+        try {
+            if (validate(sender) && handleHelloData(sender, helloMessage.data())) {
+                connections.get(sender).writeAndFlush(List.of(new Message.System(
+                        helloMessage.matchID(),
+                        Message.System.HELLO_OK,
+                        PMap.EMPTY
+                )));
+                parent = sender;
+                return true;
+            }
+        } catch (Exception ex) {
+            LOG.log(Level.ERROR, "Error during hello handling", ex);
+        }
+        return false;
+    }
+
+    private boolean handleGoodbye(SocketAddress sender, Message.System goodbyeMessage) {
+        if (parent != null && parent.equals(sender)) {
+            parent = null;
+            forceTermination();
+        }
+        return false;
     }
 
     private boolean validate(SocketAddress sender) {
@@ -210,39 +268,34 @@ class ServerCoreRoot extends NetworkCoreRoot {
             // server forced local only
             return true;
         }
-        if (sender instanceof InetSocketAddress) {
-            InetSocketAddress inet = (InetSocketAddress) sender;
+        if (sender instanceof InetSocketAddress inet) {
             try {
                 return clientValidator.isInRange(inet.getHostString());
             } catch (UnknownHostException ex) {
-                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+                LOG.log(Level.ERROR, "Unable to validate connection", ex);
                 // fall through
             }
         }
         return false;
     }
 
-    private boolean handleHLOParams(InetSocketAddress sender, OSCMessage msg) {
-        if (msg.getArgCount() < 1) {
-            return true; // assume defaults???
-        }
+    private boolean handleHelloData(SocketAddress sender, PMap data) {
         try {
-            PMap params = PMap.parse(msg.getArg(0).toString());
-            String masterUserDir = params.getString(Utils.KEY_MASTER_USER_DIRECTORY, null);
+            String masterUserDir = data.getString(Utils.KEY_MASTER_USER_DIRECTORY, null);
             if (masterUserDir != null) {
                 remoteUserDir = URI.create(masterUserDir);
             }
-            
-            PMap services = PMap.parse(params.getString(Utils.KEY_REMOTE_SERVICES, ""));
+
+            PMap services = PMap.parse(data.getString(Utils.KEY_REMOTE_SERVICES, ""));
             if (!services.isEmpty()) {
                 for (String serviceName : services.keys()) {
                     // @TODO temporary workaround for v4 - v5 change
                     Class<? extends Service> service;
+
                     if ("org.praxislive.logging.LogService".equals(serviceName)) {
                         service = LogService.class;
                     } else {
-                        service = (Class<? extends Service>)
-                                Class.forName(serviceName, true,
+                        service = (Class<? extends Service>) Class.forName(serviceName, true,
                                 Thread.currentThread().getContextClassLoader());
                     }
                     ComponentAddress serviceAddress = ComponentAddress.of(
@@ -250,57 +303,53 @@ class ServerCoreRoot extends NetworkCoreRoot {
                     getHubAccessor().registerService(service, serviceAddress);
                 }
             }
-            
-            int fileServerPort = params.getInt(Utils.KEY_FILE_SERVER_PORT, 0);
+
+            int fileServerPort = data.getInt(Utils.KEY_FILE_SERVER_PORT, 0);
             if (fileServerPort > 0) {
-                remoteFileServer = URI.create("http://" + sender.getAddress().getHostAddress() + ":" + fileServerPort);
+                remoteFileServer = URI.create("http://"
+                        + ((InetSocketAddress) sender).getAddress().getHostAddress()
+                        + ":" + fileServerPort);
             }
-            
             return true;
+
         } catch (Exception ex) {
-            Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
+            LOG.log(Level.ERROR, "Error configuring hello parameters", ex);
             return false;
+
         }
     }
 
-    private class Dispatcher extends OSCDispatcher {
-
-        private Dispatcher(PraxisPacketCodec codec) {
-            super(codec, new Clock() {
-                @Override
-                public long getTime() {
-                    return getExecutionContext().getTime();
-                }
-            });
-        }
+    private class Dispatcher extends MessageDispatcher {
 
         @Override
-        void send(OSCPacket packet) {
-            try {
-                server.send(packet, master);
-            } catch (IOException ex) {
-                Logger.getLogger(ServerCoreRoot.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-
-        @Override
-        void send(Call call) {
+        void dispatchCall(Call call) {
             getRouter().route(call);
+        }
+
+        @Override
+        void dispatchMessage(SocketAddress remote, Message msg) {
+            connections.get(remote).writeAndFlush(List.of(msg));
+        }
+
+        @Override
+        ComponentAddress findService(Class<? extends Service> service)
+                throws ServiceUnavailableException {
+            return ServerCoreRoot.this.findService(service);
+        }
+
+        @Override
+        SocketAddress getPrimaryRemoteAddress() {
+            return parent;
+        }
+
+        @Override
+        long getTime() {
+            return getExecutionContext().getTime();
         }
 
         @Override
         String getRemoteSysPrefix() {
             return SERVER_SYS_PREFIX;
-        }
-
-        @Override
-        ControlAddress getAddRootAddress() {
-            return ControlAddress.of(getAddress(), RootManagerService.ADD_ROOT);
-        }
-
-        @Override
-        ControlAddress getRemoveRootAddress() {
-            return ControlAddress.of(getAddress(), RootManagerService.REMOVE_ROOT);
         }
 
     }
@@ -319,19 +368,19 @@ class ServerCoreRoot extends NetworkCoreRoot {
             if (!"file".equals(res.getScheme())) {
                 return Collections.singletonList(res);
             }
-            
+
             List<URI> uris = new ArrayList<>(2);
-            
+
             if (dir != null) {
                 uris.add(Utils.getUserDirectory().toURI().resolve(dir.relativize(res)));
             }
-            
+
             if (srv != null) {
                 uris.add(srv.resolve(res.getRawPath()));
             }
-            
+
             return uris;
-            
+
         }
 
     }

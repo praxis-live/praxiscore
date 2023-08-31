@@ -258,19 +258,19 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
      */
     public final static class Info {
 
-        private final InetSocketAddress localAddress;
+        private final SocketAddress localAddress;
 
         Info() {
             this(null);
         }
 
-        Info(InetSocketAddress localAddress) {
+        Info(SocketAddress localAddress) {
             this.localAddress = localAddress;
         }
 
         /**
          * Socket address of the launched hub, if available.
-         * 
+         *
          * @return optional of socket address
          */
         public Optional<SocketAddress> serverAddress() {
