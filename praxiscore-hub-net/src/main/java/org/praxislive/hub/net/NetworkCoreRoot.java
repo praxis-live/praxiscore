@@ -145,9 +145,8 @@ class NetworkCoreRoot extends BasicCoreRoot {
 
     private FileServer.Info activateFileServer() {
         try {
-            fileServer = new FileServer(Utils.getFileServerPort(), Utils.getUserDirectory());
-            fileServer.start();
-            return fileServer.getInfo();
+            fileServer = new FileServer(Utils.getUserDirectory().toPath(), Utils.getFileServerPort());
+            return fileServer.start();
         } catch (IOException ex) {
             System.getLogger(NetworkCoreRoot.class.getName())
                     .log(System.Logger.Level.ERROR, "", ex);

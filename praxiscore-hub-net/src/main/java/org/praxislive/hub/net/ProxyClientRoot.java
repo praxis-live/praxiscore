@@ -258,7 +258,7 @@ class ProxyClientRoot extends AbstractRoot {
         if (!proxyInfo.isLocal()) {
             params.put(Utils.KEY_MASTER_USER_DIRECTORY, Utils.getUserDirectory().toURI().toString());
             if (fileServerInfo != null) {
-                params.put(Utils.KEY_FILE_SERVER_PORT, fileServerInfo.getPort());
+                params.put(Utils.KEY_FILE_SERVER_PORT, fileServerInfo.port());
             }
         }
         return params.build();

@@ -7,12 +7,12 @@ module org.praxislive.hub.net {
     requires org.praxislive.base;
     requires org.praxislive.script;
 
-    requires org.praxislive.internal.httpd;
-
     requires com.amazon.ion;
     requires io.netty.common;
     requires io.netty.buffer;
     requires io.netty.codec;
+    requires io.netty.codec.http;
+    requires io.netty.handler;
     requires io.netty.transport;
 
     exports org.praxislive.hub.net;

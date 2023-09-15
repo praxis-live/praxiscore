@@ -17,16 +17,6 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-internal-httpd</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-internal-osc</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.amazon.ion</groupId>
       <artifactId>ion-java</artifactId>
       <version>1.9.5</version>
@@ -49,6 +39,11 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec</artifactId>
+      <version>4.1.96.Final</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
       <version>4.1.96.Final</version>
     </dependency>
     <dependency>
