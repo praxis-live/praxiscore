@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,14 +21,13 @@
  */
 package org.praxislive.hub;
 
+import java.lang.System.Logger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractAsyncControl;
@@ -53,12 +52,14 @@ import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 
+import static java.lang.System.Logger.Level;
+
 /**
  *
  */
 public class BasicCoreRoot extends AbstractRoot {
 
-    private final static Logger LOG = Logger.getLogger(BasicCoreRoot.class.getName());
+    private final static Logger LOG = System.getLogger(BasicCoreRoot.class.getName());
 
     private final Hub.Accessor hubAccess;
     private final List<Root> exts;
@@ -153,16 +154,16 @@ public class BasicCoreRoot extends AbstractRoot {
             List<Class<? extends Service>> services = extractServices(ext);
             String extID = Hub.EXT_PREFIX + Integer.toHexString(ext.hashCode());
             try {
-                LOG.log(Level.CONFIG, "Installing extension {0}", extID);
+                LOG.log(Level.DEBUG, "Installing extension {0}", extID);
                 installRoot(extID, "sysex", ext);
             } catch (Exception ex) {
-                LOG.log(Level.SEVERE, "Failed to install extension\n{0} to /{1}\n{2}",
+                LOG.log(Level.ERROR, "Failed to install extension\n{0} to /{1}\n{2}",
                         new Object[]{ext.getClass(), extID, ex});
                 continue;
             }
             ComponentAddress ad = ComponentAddress.of("/" + extID);
             for (Class<? extends Service> service : services) {
-                LOG.log(Level.CONFIG, "Registering service {0}", service);
+                LOG.log(Level.DEBUG, "Registering service {0}", service);
                 hubAccess.registerService(service, ad);
             }
         }

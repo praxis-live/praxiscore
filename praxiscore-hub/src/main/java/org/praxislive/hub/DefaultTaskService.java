@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,18 +21,16 @@
  */
 package org.praxislive.hub;
 
+import java.lang.System.Logger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Value;
 import org.praxislive.core.Call;
@@ -44,12 +42,14 @@ import org.praxislive.core.services.TaskService.Task;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
 
+import static java.lang.System.Logger.Level;
+
 /**
  *
  */
 class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider {
 
-    private final static Logger LOG = Logger.getLogger(DefaultTaskService.class.getName());
+    private final static Logger LOG = System.getLogger(DefaultTaskService.class.getName());
 
     private final ExecutorService threadService;
     private final Map<Future<Value>, Call> futures;
@@ -97,7 +97,7 @@ class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider
                     getRouter().route(call);
                     completed.add(future);
                 } catch (Exception ex) {
-                    LOG.log(Level.FINEST, null, ex);
+                    LOG.log(Level.TRACE, "", ex);
                     if (ex instanceof ExecutionException) {
                         Throwable t = ex.getCause();
                         if (t instanceof Exception) {
