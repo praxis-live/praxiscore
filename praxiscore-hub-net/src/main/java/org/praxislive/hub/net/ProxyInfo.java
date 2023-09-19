@@ -27,6 +27,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Optional;
 import org.praxislive.core.ComponentType;
+import org.praxislive.core.services.Service;
 
 /**
  * Information about an available proxy process to connect to.
@@ -76,6 +77,22 @@ public interface ProxyInfo {
      */
     public default Optional<Exec> exec() {
         return Optional.empty();
+    }
+
+    /**
+     * List of services that should be delegated to this proxy. The proxy will
+     * be registered as a provider of that service. The order of provided
+     * proxies is important, as later registrations supersede earlier ones.
+     * <p>
+     * This method forms the reverse of
+     * {@link NetworkCoreFactory.Builder#exposeServices(java.util.List)}.
+     * <p>
+     * By default this method returns an empty list.
+     *
+     * @return list of delegated services
+     */
+    public default List<Class<? extends Service>> services() {
+        return List.of();
     }
 
     /**

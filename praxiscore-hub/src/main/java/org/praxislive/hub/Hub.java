@@ -54,7 +54,7 @@ public final class Hub {
     public final static String EXT_PREFIX = SYS_PREFIX + "ext_";
 
     private final ConcurrentMap<String, Root.Controller> roots;
-    private final ConcurrentMap<Class<? extends Service>, ComponentAddress[]> services;
+    private final ConcurrentMap<Class<? extends Service>, List<ComponentAddress>> services;
     private final Root core;
     private final Lookup lookup;
     private final RootHubImpl rootHub;
@@ -164,18 +164,13 @@ public final class Hub {
 
     private void registerService(Class<? extends Service> service,
             ComponentAddress provider) {
-        if (service == null || provider == null) {
-            throw new NullPointerException();
-        }
-        ComponentAddress[] provs = services.get(service);
-        if (provs == null) {
-            services.put(service, new ComponentAddress[]{provider});
-        } else {
-            ComponentAddress[] nprovs = new ComponentAddress[provs.length + 1];
-            nprovs[0] = provider;
-            System.arraycopy(provs, 0, nprovs, 1, provs.length);
-            services.put(service, nprovs);
-        }
+        Objects.requireNonNull(service);
+        Objects.requireNonNull(provider);
+        services.merge(service, List.of(provider), (existingValues, newValue) -> {
+            var list = new ArrayList<ComponentAddress>(newValue);
+            list.addAll(existingValues);
+            return list;
+        });
     }
 
     private Set<Class<? extends Service>> getServices() {
@@ -223,22 +218,17 @@ public final class Hub {
 
         @Override
         public Optional<ComponentAddress> locate(Class<? extends Service> service) {
-            ComponentAddress[] provs = services.get(service);
-            if (provs == null || provs.length == 0) {
+            var list = services.get(service);
+            if (list == null || list.isEmpty()) {
                 return Optional.empty();
             } else {
-                return Optional.of(provs[0]);
+                return Optional.of(list.get(0));
             }
         }
 
         @Override
         public Stream<ComponentAddress> locateAll(Class<? extends Service> service) {
-            ComponentAddress[] provs = services.get(service);
-            if (provs == null) {
-                return Stream.empty();
-            } else {
-                return Stream.of(provs);
-            }
+            return services.getOrDefault(service, List.of()).stream();
         }
 
     }

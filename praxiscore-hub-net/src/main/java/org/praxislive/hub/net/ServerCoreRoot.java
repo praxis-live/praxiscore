@@ -43,10 +43,12 @@ import java.util.concurrent.TimeUnit;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.Protocol;
 import org.praxislive.core.Root;
-import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PResource;
 import org.praxislive.hub.Hub;
@@ -59,9 +61,8 @@ import static java.lang.System.Logger.Level;
 class ServerCoreRoot extends NetworkCoreRoot {
 
     private final static System.Logger LOG = System.getLogger(ServerCoreRoot.class.getName());
-    private final String SERVER_SYS_PREFIX = "/_remote";
 
-    private final InetSocketAddress address;
+    private final InetSocketAddress localAddress;
     private final CIDRUtils clientValidator;
     private final Dispatcher dispatcher;
     private final ResourceResolver resourceResolver;
@@ -74,6 +75,7 @@ class ServerCoreRoot extends NetworkCoreRoot {
     private URI remoteUserDir;
     private URI remoteFileServer;
     private CompletableFuture<NetworkCoreFactory.Info> futureInfo;
+    private String remoteSysPrefix;
 
     ServerCoreRoot(Hub.Accessor hubAccess,
             List<Root> exts,
@@ -84,7 +86,7 @@ class ServerCoreRoot extends NetworkCoreRoot {
             CIDRUtils clientValidator,
             CompletableFuture<NetworkCoreFactory.Info> futureInfo) {
         super(hubAccess, exts, services, childLauncher, configuration);
-        this.address = address;
+        this.localAddress = address;
         this.clientValidator = clientValidator;
         this.dispatcher = new Dispatcher();
         this.resourceResolver = new ResourceResolver();
@@ -94,39 +96,20 @@ class ServerCoreRoot extends NetworkCoreRoot {
 
     @Override
     protected void starting() {
+        remoteSysPrefix = getAddress().toString() + "/_remote";
         eventLoopGroup = new NioEventLoopGroup();
         try {
             var bootstrap = new ServerBootstrap();
             bootstrap.group(eventLoopGroup)
                     .channel(NioServerSocketChannel.class)
-                    .localAddress(address)
+                    .localAddress(localAddress)
                     .childHandler(new ChannelInitializer() {
                         @Override
                         protected void initChannel(Channel ch) throws Exception {
                             ch.pipeline().addLast(
                                     new IonEncoder(),
                                     new IonDecoder(),
-                                    new SimpleChannelInboundHandler<List<Message>>() {
-                                @Override
-                                public void channelActive(ChannelHandlerContext ctx) throws Exception {
-                                    super.channelActive(ctx);
-                                    connections.put(ctx.channel().remoteAddress(), ctx.channel());
-                                }
-
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext ctx, List<Message> msgs) throws Exception {
-                                    var address = ctx.channel().remoteAddress();
-                                    invokeLater(() -> handleMessages(address, msgs));
-                                }
-
-                                @Override
-                                public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-                                    super.channelInactive(ctx);
-                                    connections.remove(ctx.channel().remoteAddress(),
-                                            ctx.channel());
-                                }
-
-                            }
+                                    new Receiver()
                             );
                         }
                     });
@@ -168,8 +151,14 @@ class ServerCoreRoot extends NetworkCoreRoot {
 
     @Override
     protected void processCall(Call call, PacketRouter router) {
-        if (call.to().component().equals(getAddress())) {
+        var address = getAddress();
+        var toComponent = call.to().component();
+        if (toComponent.equals(address)) {
             super.processCall(call, router);
+        } else if (toComponent.rootID().equals(address.rootID())
+                && toComponent.depth() == 3
+                && "services".equals(toComponent.componentID(1))) {
+            dispatcher.handleServiceCall(call, toComponent.componentID(2), call.to().controlID());
         } else {
             dispatcher.handleCall(call);
         }
@@ -279,31 +268,31 @@ class ServerCoreRoot extends NetworkCoreRoot {
         return false;
     }
 
+    @SuppressWarnings("unchecked")
     private boolean handleHelloData(SocketAddress sender, PMap data) {
         try {
             String masterUserDir = data.getString(Utils.KEY_MASTER_USER_DIRECTORY, null);
             if (masterUserDir != null) {
                 remoteUserDir = URI.create(masterUserDir);
             }
-
-            PMap services = PMap.parse(data.getString(Utils.KEY_REMOTE_SERVICES, ""));
+            PArray services = PArray.parse(data.getString(Utils.KEY_REMOTE_SERVICES, ""));
             if (!services.isEmpty()) {
-                for (String serviceName : services.keys()) {
-                    // @TODO temporary workaround for v4 - v5 change
+                for (var serviceName : services) {
                     Class<? extends Service> service;
 
-                    if ("org.praxislive.logging.LogService".equals(serviceName)) {
-                        service = LogService.class;
-                    } else {
-                        service = (Class<? extends Service>) Class.forName(serviceName, true,
-                                Thread.currentThread().getContextClassLoader());
+                    try {
+                        service = (Class<? extends Service>) Protocol.Type.fromName(serviceName.toString())
+                                .map(Protocol.Type::asClass)
+                                .filter(Service.class::isAssignableFrom)
+                                .orElseThrow(ClassNotFoundException::new);
+                        var serviceAddress = ComponentAddress.of(
+                                getAddress() + "/services/" + serviceName);
+                        getHubAccessor().registerService(service, serviceAddress);
+                    } catch (ClassNotFoundException classNotFoundException) {
+                        LOG.log(Level.DEBUG, "Service {0} not known.", serviceName);
                     }
-                    ComponentAddress serviceAddress = ComponentAddress.of(
-                            SERVER_SYS_PREFIX + services.getString(serviceName, null));
-                    getHubAccessor().registerService(service, serviceAddress);
                 }
             }
-
             int fileServerPort = data.getInt(Utils.KEY_FILE_SERVER_PORT, 0);
             if (fileServerPort > 0) {
                 remoteFileServer = URI.create("http://"
@@ -334,7 +323,14 @@ class ServerCoreRoot extends NetworkCoreRoot {
         @Override
         ComponentAddress findService(Class<? extends Service> service)
                 throws ServiceUnavailableException {
-            return ServerCoreRoot.this.findService(service);
+            return getLookup().find(Services.class)
+                    .flatMap(sm -> {
+                        return sm.locateAll(service)
+                                .filter(cmp -> !cmp.rootID().equals(getAddress().rootID())
+                                || cmp.depth() == 1)
+                                .findFirst();
+                    })
+                    .orElseThrow(() -> new ServiceUnavailableException(service.toString()));
         }
 
         @Override
@@ -349,7 +345,31 @@ class ServerCoreRoot extends NetworkCoreRoot {
 
         @Override
         String getRemoteSysPrefix() {
-            return SERVER_SYS_PREFIX;
+            assert remoteSysPrefix != null;
+            return remoteSysPrefix;
+        }
+
+    }
+
+    private class Receiver extends SimpleChannelInboundHandler<List<Message>> {
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            super.channelActive(ctx);
+            connections.put(ctx.channel().remoteAddress(), ctx.channel());
+        }
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, List<Message> msgs) throws Exception {
+            var address = ctx.channel().remoteAddress();
+            invokeLater(() -> handleMessages(address, msgs));
+        }
+
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            super.channelInactive(ctx);
+            connections.remove(ctx.channel().remoteAddress(),
+                    ctx.channel());
         }
 
     }

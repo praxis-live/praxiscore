@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -45,7 +45,7 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
     private final boolean enableServer;
     private final InetSocketAddress serverAddress;
     private final CIDRUtils cidr;
-    private final List<Class<? extends Service>> services;
+    private final List<Class<? extends Service>> exposedServices;
     private final ChildLauncher childLauncher;
     private final HubConfiguration hubConfiguration;
     private final CompletableFuture<Info> futureInfo;
@@ -66,7 +66,7 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
             serverAddress = null;
             cidr = null;
         }
-        services = builder.services;
+        exposedServices = builder.services;
         hubConfiguration = builder.hubConfiguration;
         childLauncher = builder.childLauncher;
         futureInfo = new CompletableFuture<>();
@@ -79,11 +79,11 @@ public final class NetworkCoreFactory extends Hub.CoreRootFactory {
         }
         if (enableServer) {
             root = new ServerCoreRoot(accessor, extensions,
-                    services, childLauncher, hubConfiguration,
+                    exposedServices, childLauncher, hubConfiguration,
                     serverAddress, cidr, futureInfo);
         } else {
             root = new NetworkCoreRoot(accessor, extensions,
-                    services, childLauncher, hubConfiguration);
+                    exposedServices, childLauncher, hubConfiguration);
         }
         return root;
     }

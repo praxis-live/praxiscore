@@ -36,6 +36,7 @@ import org.praxislive.core.ComponentType;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.Protocol;
 import org.praxislive.core.Root;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.RootFactoryService;
@@ -86,9 +87,9 @@ class NetworkCoreRoot extends BasicCoreRoot {
     }
 
     @Override
-    protected void registerServices() {
-        super.registerServices();
-        hubAccess.registerService(HubConfigurationService.class, getAddress());
+    protected void buildServiceMap(Map<Class<? extends Service>, ComponentAddress> srvs) {
+        super.buildServiceMap(srvs);
+        srvs.put(HubConfigurationService.class, getAddress());
     }
 
     @Override
@@ -132,15 +133,20 @@ class NetworkCoreRoot extends BasicCoreRoot {
             var id = PROXY_PREFIX + (i + 1);
             var info = proxyInfo.get(i);
             try {
-                installRoot(id, "netex", new ProxyClientRoot(info, clientEventLoopGroup,
+                var ctrl = installRoot(id, new ProxyClientRoot(info, clientEventLoopGroup,
                         services, childLauncher, serverInfo));
-                proxies.add(new ProxyData(info, ComponentAddress.of("/" + id)));
+                info.services().forEach(cls -> {
+                    var address = ComponentAddress.of("/" + id + "/services/" +
+                            Protocol.Type.of(cls).name());
+                    hubAccess.registerService(cls, address);
+                });
+                proxies.add(new ProxyData(info, ComponentAddress.of("/" + id), ctrl));
             } catch (Exception ex) {
                 System.getLogger(NetworkCoreRoot.class.getName())
                         .log(System.Logger.Level.ERROR, "", ex);
             }
         }
-
+        proxies.forEach(pd -> startRoot(pd.address().rootID(), pd.controller()));
     }
 
     private FileServer.Info activateFileServer() {
@@ -155,17 +161,8 @@ class NetworkCoreRoot extends BasicCoreRoot {
         return null;
     }
 
-    private static class ProxyData {
+    private record ProxyData(ProxyInfo info, ComponentAddress address, Root.Controller controller) {}
 
-        private final ProxyInfo info;
-        private final ComponentAddress address;
-
-        public ProxyData(ProxyInfo info, ComponentAddress address) {
-            this.info = info;
-            this.address = address;
-        }
-
-    }
 
     private class AddRootControl extends AbstractAsyncControl {
 
@@ -184,8 +181,8 @@ class NetworkCoreRoot extends BasicCoreRoot {
                     .orElseThrow(() -> new IllegalArgumentException("Invalid Component type"));
 
             ComponentAddress proxy = proxies.stream()
-                    .filter(p -> p.info.matches(id, type))
-                    .map(p -> p.address)
+                    .filter(p -> p.info().matches(id, type))
+                    .map(p -> p.address())
                     .findFirst().orElse(null);
 
             ControlAddress to;
@@ -216,8 +213,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
                 Root r = PReference.from(args.get(0))
                         .flatMap(ref -> ref.as(Root.class))
                         .orElseThrow();
-                String type = active.args().get(1).toString();
-                installRoot(id, type, r);
+                startRoot(id, installRoot(id, r));
             }
             return active.reply();
         }

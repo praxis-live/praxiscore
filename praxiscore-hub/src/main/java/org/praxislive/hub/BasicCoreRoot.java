@@ -23,22 +23,19 @@ package org.praxislive.hub;
 
 import java.lang.System.Logger;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
-import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
-import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Value;
@@ -76,20 +73,23 @@ public class BasicCoreRoot extends AbstractRoot {
     }
 
     @Override
-    public Controller initialize(String id, RootHub hub) {
+    public final Controller initialize(String id, RootHub hub) {
         Controller ctrl = super.initialize(id, hub);
         this.controller = ctrl;
         return ctrl;
     }
 
     @Override
-    protected void activating() {
-        registerServices();
-        HashMap<String, Control> ctrls = new HashMap<>();
+    protected final void activating() {
+        Map<Class<? extends Service>, ComponentAddress> services = new HashMap<>();
+        buildServiceMap(services);
+        services.forEach(hubAccess::registerService);
+        Map<String, Control> ctrls = new HashMap<>();
         buildControlMap(ctrls);
         controls.putAll(ctrls);
-        installExtensions();
-        setRunning();
+        var extCtrls = installExtensions();
+        setRunning(); // calls starting()
+        extCtrls.forEach(this::startRoot);
     }
 
     @Override
@@ -100,11 +100,11 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
-    protected void forceTermination() {
+    protected final void forceTermination() {
         controller.shutdown();
         interrupt();
     }
-    
+
     protected int exitValue() {
         return exitValue;
     }
@@ -127,9 +127,9 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
-    protected void registerServices() {
-        hubAccess.registerService(RootManagerService.class, getAddress());
-        hubAccess.registerService(SystemManagerService.class, getAddress());
+    protected void buildServiceMap(Map<Class<? extends Service>, ComponentAddress> srvs) {
+        srvs.putIfAbsent(RootManagerService.class, getAddress());
+        srvs.putIfAbsent(SystemManagerService.class, getAddress());
     }
 
     protected void buildControlMap(Map<String, Control> ctrls) {
@@ -149,67 +149,69 @@ public class BasicCoreRoot extends AbstractRoot {
         });
     }
 
-    protected void installExtensions() {
-        for (Root ext : exts) {
-            List<Class<? extends Service>> services = extractServices(ext);
-            String extID = Hub.EXT_PREFIX + Integer.toHexString(ext.hashCode());
-            try {
-                LOG.log(Level.DEBUG, "Installing extension {0}", extID);
-                installRoot(extID, "sysex", ext);
-            } catch (Exception ex) {
-                LOG.log(Level.ERROR, "Failed to install extension\n{0} to /{1}\n{2}",
-                        new Object[]{ext.getClass(), extID, ex});
-                continue;
-            }
-            ComponentAddress ad = ComponentAddress.of("/" + extID);
-            for (Class<? extends Service> service : services) {
-                LOG.log(Level.DEBUG, "Registering service {0}", service);
-                hubAccess.registerService(service, ad);
-            }
-        }
-    }
-
-    private List<Class<? extends Service>> extractServices(Root root) {
-        if (root instanceof RootHub.ServiceProvider) {
-            return ((RootHub.ServiceProvider) root).services();
-        } else if (root instanceof Component) {
-            ComponentInfo info = ((Component) root).getInfo();
-            return info.protocols()
-                    .filter(Service.class::isAssignableFrom)
-                    .map(c -> c.asSubclass(Service.class))
-                    .collect(Collectors.toList());
-
-        } else {
-            return Collections.EMPTY_LIST;
-        }
-    }
-
-    protected void installRoot(String id, String type, Root root)
+    protected final Root.Controller installRoot(String id, Root root)
             throws Exception {
         if (!ComponentAddress.isValidID(id) || hubAccess.getRootController(id) != null) {
             throw new IllegalArgumentException();
         }
         Root.Controller ctrl = root.initialize(id, hubAccess.getRootHub());
         if (hubAccess.registerRootController(id, ctrl)) {
-            startRoot(id, type, ctrl);
+            return ctrl;
         } else {
-            assert false;
+            throw new IllegalStateException();
         }
     }
 
-    protected void uninstallRoot(String id) {
+    protected final Root.Controller uninstallRoot(String id) {
         Root.Controller ctrl = hubAccess.unregisterRootController(id);
         if (ctrl != null) {
             ctrl.shutdown();
+            return ctrl;
+        } else {
+            return null;
         }
     }
 
-    protected void startRoot(final String id, String type, final Root.Controller ctrl) {
+    protected final void startRoot(final String id, final Root.Controller ctrl) {
         ctrl.start(r -> new Thread(r, id));
     }
 
-    protected Hub.Accessor getHubAccessor() {
+    protected final Hub.Accessor getHubAccessor() {
         return hubAccess;
+    }
+
+    private Map<String, Root.Controller> installExtensions() {
+        if (exts.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Root.Controller> ctrls = new LinkedHashMap<>();
+        for (var ext : exts) {
+            var services = extractServices(ext);
+            String extID = Hub.EXT_PREFIX + Integer.toHexString(ext.hashCode());
+            try {
+                LOG.log(Level.DEBUG, "Installing extension {0}", extID);
+                var ctrl = installRoot(extID, ext);
+                ctrls.put(extID, ctrl);
+            } catch (Exception ex) {
+                LOG.log(Level.ERROR, "Failed to install extension\n{0} to /{1}\n{2}",
+                        new Object[]{ext.getClass(), extID, ex});
+                continue;
+            }
+            ComponentAddress ad = ComponentAddress.of("/" + extID);
+            for (var service : services) {
+                LOG.log(Level.DEBUG, "Registering service {0}", service);
+                hubAccess.registerService(service, ad);
+            }
+        }
+        return ctrls;
+    }
+
+    private List<Class<? extends Service>> extractServices(Root root) {
+        if (root instanceof RootHub.ServiceProvider serviceProvider) {
+            return serviceProvider.services();
+        } else {
+            return List.of();
+        }
     }
 
     public static Hub.CoreRootFactory factory() {
@@ -244,8 +246,7 @@ public class BasicCoreRoot extends AbstractRoot {
             Call active = getActiveCall();
 //            addChild(active.getArgs().get(0).toString(), c);
             String id = active.args().get(0).toString();
-            String type = active.args().get(1).toString();
-            installRoot(id, type, r);
+            startRoot(id, installRoot(id, r));
             return active.reply();
         }
 

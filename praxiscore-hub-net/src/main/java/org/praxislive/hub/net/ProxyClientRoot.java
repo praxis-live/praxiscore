@@ -41,8 +41,11 @@ import org.praxislive.core.Protocol;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
+import org.praxislive.core.types.PString;
 
 import static java.lang.System.Logger.Level;
 
@@ -55,7 +58,7 @@ class ProxyClientRoot extends AbstractRoot {
 
     private final ProxyInfo proxyInfo;
     private final EventLoopGroup eventLoopGroup;
-    private final List<Class<? extends Service>> services;
+    private final List<Class<? extends Service>> exposedServices;
     private final ChildLauncher childLauncher;
     private final FileServer.Info fileServerInfo;
     private final Dispatcher dispatcher;
@@ -66,15 +69,16 @@ class ProxyClientRoot extends AbstractRoot {
     private long lastPurgeTime;
     private Process execProcess;
     private SocketAddress socketAddress;
+    private String remoteSysPrefix;
 
     ProxyClientRoot(ProxyInfo proxyInfo,
             EventLoopGroup eventLoopGroup,
-            List<Class<? extends Service>> services,
+            List<Class<? extends Service>> exposedServices,
             ChildLauncher childLauncher,
             FileServer.Info fileServerInfo) {
         this.proxyInfo = proxyInfo;
         this.eventLoopGroup = eventLoopGroup;
-        this.services = services;
+        this.exposedServices = exposedServices;
         this.childLauncher = childLauncher;
         this.fileServerInfo = fileServerInfo;
         dispatcher = new Dispatcher();
@@ -85,7 +89,7 @@ class ProxyClientRoot extends AbstractRoot {
     @Override
     protected void activating() {
         lastPurgeTime = getExecutionContext().getTime();
-        dispatcher.remoteSysPrefix = getAddress().toString() + "/_remote";
+        remoteSysPrefix = getAddress().toString() + "/_remote";
         setRunning();
     }
 
@@ -111,7 +115,9 @@ class ProxyClientRoot extends AbstractRoot {
             }
             return;
         }
-        if (call.to().component().equals(getAddress())) {
+        var address = getAddress();
+        var toComponent = call.to().component();
+        if (toComponent.equals(address)) {
             try {
                 switch (call.to().controlID()) {
                     case RootManagerService.ADD_ROOT:
@@ -126,15 +132,22 @@ class ProxyClientRoot extends AbstractRoot {
             } catch (Exception ex) {
                 router.route(call.error(PError.of(ex)));
             }
-        } else if (clientChannel != null) {
-            dispatcher.handleCall(call);
-        } else {
+            return;
+        }
+        if (clientChannel == null) {
             connect();
-            if (clientChannel != null) {
-                dispatcher.handleCall(call);
-            } else {
+            if (clientChannel == null) {
                 getRouter().route(call.error(PError.of("")));
+                return;
             }
+        }
+        if (toComponent.rootID().equals(address.rootID())
+                && toComponent.depth() == 3
+                && "services".equals(toComponent.componentID(1))) {
+            dispatcher.handleServiceCall(call, toComponent.componentID(2), call.to().controlID());
+        } else {
+            dispatcher.handleCall(call);
+
         }
     }
 
@@ -254,7 +267,7 @@ class ProxyClientRoot extends AbstractRoot {
 
     private PMap buildHLOParams() {
         PMap.Builder params = PMap.builder();
-        params.put(Utils.KEY_REMOTE_SERVICES, buildServiceMap());
+        params.put(Utils.KEY_REMOTE_SERVICES, buildServices());
         if (!proxyInfo.isLocal()) {
             params.put(Utils.KEY_MASTER_USER_DIRECTORY, Utils.getUserDirectory().toURI().toString());
             if (fileServerInfo != null) {
@@ -264,17 +277,12 @@ class ProxyClientRoot extends AbstractRoot {
         return params.build();
     }
 
-    private PMap buildServiceMap() {
-        PMap.Builder srvs = PMap.builder();
-        services.forEach(service -> {
-            try {
-                srvs.put(service.getName(), findService(service));
-
-            } catch (ServiceUnavailableException ex) {
-                LOG.log(Level.ERROR, "Service resolution error", ex);
-            }
-        });
-        return srvs.build();
+    private PArray buildServices() {
+        return exposedServices.stream()
+                .map(Protocol.Type::of)
+                .map(Protocol.Type::name)
+                .map(PString::of)
+                .collect(PArray.collector());
     }
 
     private void dispose() {
@@ -310,8 +318,6 @@ class ProxyClientRoot extends AbstractRoot {
 
     private class Dispatcher extends MessageDispatcher {
 
-        private String remoteSysPrefix;
-
         @Override
         void dispatchCall(Call call) {
             getRouter().route(call);
@@ -327,7 +333,13 @@ class ProxyClientRoot extends AbstractRoot {
 
         @Override
         ComponentAddress findService(Class<? extends Service> service) throws ServiceUnavailableException {
-            return ProxyClientRoot.this.findService(service);
+            return getLookup().find(Services.class)
+                    .flatMap(sm -> {
+                        return sm.locateAll(service)
+                                .filter(cmp -> !cmp.rootID().equals(getAddress().rootID()))
+                                .findFirst();
+                    })
+                    .orElseThrow(() -> new ServiceUnavailableException(service.toString()));
         }
 
         @Override
