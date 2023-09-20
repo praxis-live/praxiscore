@@ -21,24 +21,25 @@
  */
 package org.praxislive.hub;
 
+import java.lang.System.Logger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Lookup;
 
+import static java.lang.System.Logger.Level;
+
 /**
  *
  */
 class ComponentRegistry {
 
-    private final static Logger logger
-            = Logger.getLogger(ComponentRegistry.class.getName());
+    private final static Logger LOG
+            = System.getLogger(ComponentRegistry.class.getName());
     private final Map<ComponentType, ComponentFactory> componentCache;
     private final Map<ComponentType, ComponentFactory> rootCache;
 
@@ -102,13 +103,13 @@ class ComponentRegistry {
         Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
                 .map(ComponentFactoryProvider::getFactory)
                 .forEachOrdered(factory -> {
-                    logger.log(Level.CONFIG, "Adding components from : {0}", factory.getClass());
+                    LOG.log(Level.DEBUG, "Adding components from : {0}", factory.getClass());
                     factory.componentTypes().forEachOrdered(type -> {
-                        logger.log(Level.CONFIG, "Adding component type : {0}", type);
+                        LOG.log(Level.DEBUG, "Adding component type : {0}", type);
                         componentCache.put(type, factory);
                     });
                     factory.rootTypes().forEachOrdered(type -> {
-                        logger.log(Level.CONFIG, "Adding root type : {0}", type);
+                        LOG.log(Level.DEBUG, "Adding root type : {0}", type);
                         rootCache.put(type, factory);
                     });
                 });
