@@ -108,6 +108,53 @@ public class NetworkCoreFactoryTest {
 
     @Test
     @Timeout(10)
+    public void testLocalParentChildWithHubCommand() throws Exception {
+
+        var childCoreFactory = NetworkCoreFactory.builder()
+                .enableServer()
+                .build();
+        var childHub = Hub.builder()
+                .setCoreRootFactory(childCoreFactory)
+                .addExtension(new RootFactoryImpl())
+                .build();
+        childHub.start();
+        int port = childCoreFactory.awaitInfo(10, TimeUnit.SECONDS)
+                .serverAddress()
+                .map(InetSocketAddress.class::cast)
+                .map(InetSocketAddress::getPort)
+                .orElseThrow();
+
+        var runner = new TestRunner("""
+                                    hub {
+                                      proxies {
+                                        test {
+                                          id-pattern r*
+                                          type-pattern te*
+                                          port %d
+                                        }
+                                      }
+                                    }
+                                    @ /root root:test
+                                    /root.get-result
+                                    """.formatted(port));
+        var parentHub = Hub.builder()
+                .setCoreRootFactory(NetworkCoreFactory.builder().build())
+                .addExtension(runner)
+                .build();
+        parentHub.start();
+        try {
+            var result = runner.awaitResult();
+            assertEquals("Hello World", result);
+        } finally {
+            parentHub.shutdown();
+            parentHub.await();
+            childHub.shutdown();
+            childHub.await();
+        }
+    }
+
+    @Test
+    @Timeout(10)
     public void testScriptServiceOnChild() throws Exception {
         var childCoreFactory = NetworkCoreFactory.builder()
                 .enableServer()
