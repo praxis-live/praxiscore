@@ -45,7 +45,14 @@ import org.praxislive.core.services.Services;
 import org.praxislive.script.impl.ScriptServiceImpl;
 
 /**
- *
+ * Support for configuring and running a {@link RootHub}, along with the
+ * {@link Root}s within it.
+ * <p>
+ * This class doesn't implement either RootHub or Root directly. It uses a core
+ * root, usually an instance or subclass of {@link BasicCoreRoot}, to manage
+ * other system and user roots.
+ * <p>
+ * Use {@link #builder()} to configure and create an instance of this class.
  */
 public final class Hub {
 
@@ -60,7 +67,6 @@ public final class Hub {
     private final RootHubImpl rootHub;
     private final List<String> rootIDs;
 
-//    private Thread coreThread;
     private Thread coreThread;
     private Root.Controller coreController;
     long startTime;
@@ -90,6 +96,13 @@ public final class Hub {
         exts.addAll(builder.extensions);
     }
 
+    /**
+     * Start the hub. This will start the core root, which will in turn start
+     * other services. A hub cannot be started more than once and is not
+     * reusable.
+     *
+     * @throws Exception if start fails or the hub has already been started
+     */
     public synchronized void start() throws Exception {
         if (coreThread != null) {
             throw new IllegalStateException();
@@ -105,14 +118,31 @@ public final class Hub {
         assert coreThread.isAlive();
     }
 
+    /**
+     * Signal the hub to shutdown. This will signal the core root to terminate,
+     * which will terminate all other roots.
+     */
     public void shutdown() {
         coreController.shutdown();
     }
 
+    /**
+     * Wait for the core root and hub to terminate.
+     *
+     * @throws InterruptedException if interrupted
+     */
     public void await() throws InterruptedException {
         coreThread.join();
     }
 
+    /**
+     * Wait for the given time period for the core root and hub to terminate.
+     *
+     * @param time time to wait
+     * @param unit unit of time to wait
+     * @throws InterruptedException if interrupted
+     * @throws TimeoutException if the hub has not terminated in the given time
+     */
     public void await(long time, TimeUnit unit) throws InterruptedException, TimeoutException {
         coreThread.join(unit.toMillis(time));
         if (coreThread.isAlive()) {
@@ -120,10 +150,21 @@ public final class Hub {
         }
     }
 
+    /**
+     * Query whether the hub and core root are running.
+     *
+     * @return true if active
+     */
     public boolean isAlive() {
         return coreThread.isAlive();
     }
 
+    /**
+     * Return an exit value for the hub. This may be used as the exit value for
+     * the hub process. The default value is 0.
+     *
+     * @return exit value
+     */
     public int exitValue() {
         if (core instanceof BasicCoreRoot) {
             return ((BasicCoreRoot) core).exitValue();
@@ -177,6 +218,11 @@ public final class Hub {
         return Collections.unmodifiableSet(services.keySet());
     }
 
+    /**
+     * Create a {@link Hub.Builder}.
+     *
+     * @return builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -248,49 +294,120 @@ public final class Hub {
 
     }
 
+    /**
+     * Provides access to control of the RootHub. An instance of this class is
+     * passed to the core root factory to provide private access to the RootHub
+     * for the core root implementation.
+     */
     public final class Accessor {
 
+        private Accessor() {
+
+        }
+
+        /**
+         * Register the root controller under the provided id. This method does
+         * not start the root.
+         *
+         * @param id root id
+         * @param controller root controller
+         * @return true on success
+         */
         public boolean registerRootController(String id, Root.Controller controller) {
             return Hub.this.registerRootController(id, controller);
         }
 
+        /**
+         * Unregister the root controller with the provided id. The registered
+         * controller is returned, if it exists. This method does not terminate
+         * the root.
+         *
+         * @param id root id
+         * @return controller or null
+         */
         public Root.Controller unregisterRootController(String id) {
             return Hub.this.unregisterRootController(id);
         }
 
+        /**
+         * Get the root controller with the provided id, if one is registered.
+         *
+         * @param id root id
+         * @return controller or null
+         */
         public Root.Controller getRootController(String id) {
             return Hub.this.getRootController(id);
         }
 
+        /**
+         * Get a list of the registered root IDs.
+         *
+         * @return registered root IDs
+         */
         public String[] getRootIDs() {
             return Hub.this.getRootIDs();
         }
 
+        /**
+         * Register a service provider.
+         *
+         * @param service implemented service
+         * @param provider service address
+         */
         public void registerService(Class<? extends Service> service,
                 ComponentAddress provider) {
             Hub.this.registerService(service, provider);
         }
 
-        public Set<Class<? extends Service>> getServices() {
-            return Hub.this.getServices();
-        }
-
+//        public Set<Class<? extends Service>> getServices() {
+//            return Hub.this.getServices();
+//        }
+        /**
+         * Get the {@link RootHub} implementation.
+         *
+         * @return root hub
+         */
         public RootHub getRootHub() {
             return Hub.this.getRootHub();
         }
 
     }
 
-    public static abstract class CoreRootFactory {
+    /**
+     * An interface for creating custom core root implementations.
+     */
+    public interface CoreRootFactory {
 
+        /**
+         * Create a core root implementation with the provided RootHub accessor
+         * and extensions. The return type of this method will usually be a
+         * subclass of {@link BasicCoreRoot}.
+         *
+         * @param accessor private access to control the RootHub
+         * @param extensions extensions to install
+         * @return core root implementation
+         */
         public abstract Root createCoreRoot(Accessor accessor, List<Root> extensions);
 
-        public Lookup extendLookup(Lookup lookup) {
+        /**
+         * Provide the option for the factory to extend or alter the hub lookup.
+         * This should usually be done by passing the provided lookup in as
+         * parent to
+         * {@link Lookup#of(org.praxislive.core.Lookup, java.lang.Object...)}.
+         * The default implementation returns the provided lookup unchanged.
+         *
+         * @param lookup existing lookup
+         * @return extended lookup
+         */
+        public default Lookup extendLookup(Lookup lookup) {
             return lookup;
         }
 
     }
 
+    /**
+     * A builder for Hubs.
+     */
     public static class Builder {
 
         private final List<Root> extensions;
@@ -310,21 +427,48 @@ public final class Hub {
                     .collect(Collectors.toList());
         }
 
+        /**
+         * Configure the {@link CoreRootFactory} to use to build the core root.
+         * The default configuration will create a {@link BasicCoreRoot}.
+         *
+         * @param coreRootFactory factory for core root
+         * @return this
+         */
         public Builder setCoreRootFactory(CoreRootFactory coreRootFactory) {
             this.coreRootFactory = Objects.requireNonNull(coreRootFactory);
             return this;
         }
 
+        /**
+         * Add a root to install as an extension. If the extension implements
+         * {@link RootHub.ServiceProvider} then it will be automatically
+         * registered as a provider of those services. Order of extensions is
+         * important - later providers will supersede earlier ones.
+         *
+         * @param extension extension to add
+         * @return this
+         */
         public Builder addExtension(Root extension) {
             extensions.add(Objects.requireNonNull(extension));
             return this;
         }
 
+        /**
+         * Extend the hub lookup with the provided object.
+         *
+         * @param obj object to add
+         * @return this
+         */
         public Builder extendLookup(Object obj) {
             lookupContent.add(Objects.requireNonNull(obj));
             return this;
         }
 
+        /**
+         * Build the hub.
+         *
+         * @return hub
+         */
         public Hub build() {
 
             Hub hub = new Hub(this);

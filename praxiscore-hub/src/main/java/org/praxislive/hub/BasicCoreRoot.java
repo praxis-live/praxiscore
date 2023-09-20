@@ -52,7 +52,10 @@ import org.praxislive.core.types.PString;
 import static java.lang.System.Logger.Level;
 
 /**
- *
+ * A base implementation of a core root for use with {@link Hub}. This is the
+ * default implementation used unless a custom {@link Hub.CoreRootFactory} is
+ * provided. It is recommended to extend this class to provide custom core root
+ * behaviour.
  */
 public class BasicCoreRoot extends AbstractRoot {
 
@@ -65,6 +68,12 @@ public class BasicCoreRoot extends AbstractRoot {
     private Controller controller;
     private int exitValue;
 
+    /**
+     * Create an instance.
+     *
+     * @param hubAccess private roothub access
+     * @param exts extensions
+     */
     protected BasicCoreRoot(Hub.Accessor hubAccess, List<Root> exts) {
         this.hubAccess = Objects.requireNonNull(hubAccess);
         this.exts = Objects.requireNonNull(exts);
@@ -79,6 +88,19 @@ public class BasicCoreRoot extends AbstractRoot {
         return ctrl;
     }
 
+    /**
+     * Activation hook implementation of the BasicCoreRoot. During activation,
+     * controls and services on the core root are registered, extensions are
+     * installed, the root is set to running, and extensions are started.
+     * <p>
+     * The {@link AbstractRoot#starting()} hook will be called after extensions
+     * are installed, but before they are running.
+     * <p>
+     * This method is currently final. Customizing controls and services can be
+     * achieved using {@link #buildControlMap(java.util.Map)} and
+     * {@link #buildServiceMap(java.util.Map)}. Further customization should be
+     * done in the starting hook.
+     */
     @Override
     protected final void activating() {
         Map<Class<? extends Service>, ComponentAddress> services = new HashMap<>();
@@ -92,6 +114,11 @@ public class BasicCoreRoot extends AbstractRoot {
         extCtrls.forEach(this::startRoot);
     }
 
+    /**
+     * Termination hook implementation. This implementation shuts down all
+     * registered roots. If overriding this method, ensure to call the super
+     * implementation, or otherwise terminate all roots.
+     */
     @Override
     protected void terminating() {
         String[] ids = hubAccess.getRootIDs();
@@ -100,11 +127,21 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
+    /**
+     * Force termination of this root.
+     */
     protected final void forceTermination() {
         controller.shutdown();
         interrupt();
     }
 
+    /**
+     * The exit value to be returned from {@link Hub#exitValue()}. By default
+     * this returns the value passed to the {@link SystemManagerService}
+     * implementation, if any, otherwise 0.
+     *
+     * @return exit value
+     */
     protected int exitValue() {
         return exitValue;
     }
@@ -127,11 +164,30 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
+    /**
+     * Build the map of services implemented by this root. Usually the root
+     * address from {@link #getAddress()} will be used, although subclasses may
+     * use subpaths of that address if required. Subclasses may override this
+     * method and choose whether or not to call the super implementation. This
+     * implementation adds {@link RootManagerService} and
+     * {@link SystemManagerService} at the root address if they are absent from
+     * the map.
+     *
+     * @param srvs map of service addresses to register
+     */
     protected void buildServiceMap(Map<Class<? extends Service>, ComponentAddress> srvs) {
         srvs.putIfAbsent(RootManagerService.class, getAddress());
         srvs.putIfAbsent(SystemManagerService.class, getAddress());
     }
 
+    /**
+     * Build the controls on this root. Subclasses may override this method and
+     * choose whether or not to call the super implementation. This
+     * implementation adds all {@link RootManagerService} and
+     * {@link SystemManagerService} controls if they are absent from the map.
+     *
+     * @param ctrls map of control id to control
+     */
     protected void buildControlMap(Map<String, Control> ctrls) {
         ctrls.computeIfAbsent(RootManagerService.ADD_ROOT, k -> new AddRootControl());
         ctrls.computeIfAbsent(RootManagerService.REMOVE_ROOT, k -> new RemoveRootControl());
@@ -149,6 +205,18 @@ public class BasicCoreRoot extends AbstractRoot {
         });
     }
 
+    /**
+     * Install a root in the hub with the provided ID. This method will
+     * initialize the root and register it in the roothub, returning the root
+     * controller. It does not start the root - see
+     * {@link #startRoot(java.lang.String, org.praxislive.core.Root.Controller)}.
+     *
+     * @param id root ID
+     * @param root root to initialize and install
+     * @return root controller
+     * @throws Exception if id is invalid or in use, or if root cannot be
+     * initialized
+     */
     protected final Root.Controller installRoot(String id, Root root)
             throws Exception {
         if (!ComponentAddress.isValidID(id) || hubAccess.getRootController(id) != null) {
@@ -162,6 +230,12 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
+    /**
+     * Uninstall the root with the provided ID and trigger it to shutdown.
+     *
+     * @param id root ID
+     * @return root controller (or null if no registered root with id)
+     */
     protected final Root.Controller uninstallRoot(String id) {
         Root.Controller ctrl = hubAccess.unregisterRootController(id);
         if (ctrl != null) {
@@ -172,10 +246,21 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
+    /**
+     * Start the root with the provided ID and controller.
+     *
+     * @param id root ID
+     * @param ctrl root controller
+     */
     protected final void startRoot(final String id, final Root.Controller ctrl) {
         ctrl.start(r -> new Thread(r, id));
     }
 
+    /**
+     * Acquire the hub accessor.
+     *
+     * @return hub accessor
+     */
     protected final Hub.Accessor getHubAccessor() {
         return hubAccess;
     }
@@ -292,7 +377,7 @@ public class BasicCoreRoot extends AbstractRoot {
         }
     }
 
-    private static class Factory extends Hub.CoreRootFactory {
+    private static class Factory implements Hub.CoreRootFactory {
 
         @Override
         public Root createCoreRoot(Hub.Accessor accessor, List<Root> extensions) {

@@ -40,7 +40,7 @@ import org.praxislive.hub.Hub;
  * A CoreRootFactory supporting a tree of networked roots. Use
  * {@link #builder()} to create.
  */
-public final class NetworkCoreFactory extends Hub.CoreRootFactory {
+public final class NetworkCoreFactory implements Hub.CoreRootFactory {
 
     private final boolean enableServer;
     private final InetSocketAddress serverAddress;
