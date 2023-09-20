@@ -104,6 +104,11 @@ class ProxyClientRoot extends AbstractRoot {
             )));
         }
         dispose();
+        try {
+            eventLoopGroup.shutdownGracefully(100, 100, TimeUnit.MILLISECONDS).sync();
+        } catch (Exception ex) {
+            LOG.log(Level.WARNING, "Error closing down proxy client", ex);
+        }
         destroyChild();
     }
 

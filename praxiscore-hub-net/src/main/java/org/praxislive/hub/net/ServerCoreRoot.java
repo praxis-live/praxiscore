@@ -138,7 +138,7 @@ class ServerCoreRoot extends NetworkCoreRoot {
                 serverChannel.close();
             }
             if (eventLoopGroup != null) {
-                eventLoopGroup.shutdownGracefully();
+                eventLoopGroup.shutdownGracefully(100, 100, TimeUnit.MILLISECONDS).sync();
             }
         } catch (Exception ex) {
             LOG.log(Level.WARNING, "Error shutting down server", ex);
