@@ -39,8 +39,6 @@ import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import org.praxislive.code.CodeCompilerService;
-import org.praxislive.code.services.tools.ClassBodyCompiler;
-import org.praxislive.code.ClassBodyContext;
 import org.praxislive.code.LibraryResolver;
 import org.praxislive.code.services.tools.CompilerTask;
 import org.praxislive.code.services.tools.MessageHandler;
@@ -181,11 +179,7 @@ public class DefaultCompilerService extends AbstractRoot
             if (call.isRequest()) {
                 PMap map = PMap.from(call.args().get(0)).orElseThrow();
                 PMap ret;
-                if (map.keys().contains(CodeCompilerService.KEY_SOURCES)) {
-                    ret = process(map);
-                } else {
-                    ret = processLegacy(map);
-                }
+                ret = process(map);
                 router.route(call.reply(ret));
             } else {
                 throw new UnsupportedOperationException();
@@ -227,35 +221,6 @@ public class DefaultCompilerService extends AbstractRoot
                     CodeCompilerService.KEY_LOG, PArray.of(log.toList()),
                     EXT_CLASSPATH, libPath);
             return response;
-        }
-
-        @SuppressWarnings("deprecation")
-        private PMap processLegacy(PMap map) throws Exception {
-            String code = map.getString(CodeCompilerService.KEY_CODE, "");
-            ClassBodyContext<?> cbc = getClassBodyContext(map);
-            LogBuilder log = new LogBuilder(LogLevel.WARNING);
-            Map<String, byte[]> classFiles
-                    = ClassBodyCompiler.create(cbc)
-                            .setCompiler(compiler)
-                            .setRelease(release)
-                            .addMessageHandler(new LogMessageHandler(log))
-                            .extendClasspath(libFiles.stream()
-                                    .map(Path::toFile)
-                                    .collect(Collectors.toList()))
-                            .compile(code);
-            PMap classes = convertClasses(classFiles);
-            PMap response = PMap.of(CodeCompilerService.KEY_CLASSES, classes,
-                    CodeCompilerService.KEY_LOG, PArray.of(log.toList()),
-                    EXT_CLASSPATH, libPath);
-            return response;
-        }
-
-        @SuppressWarnings("deprecation")
-        private ClassBodyContext<?> getClassBodyContext(PMap map) throws Exception {
-            String cbcClass = map.getString(CodeCompilerService.KEY_CLASS_BODY_CONTEXT, null);
-            return (ClassBodyContext<?>) Class.forName(cbcClass, true, Thread.currentThread().getContextClassLoader())
-                    .getDeclaredConstructor()
-                    .newInstance();
         }
 
         private LogLevel getLogLevel(PMap map) {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,7 +32,7 @@ import org.praxislive.core.services.LogLevel;
 /**
  *
  */
-public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D> {
+public class AudioCodeContext extends CodeContext<AudioCodeDelegate> {
 
     private final UGenDescriptor[] ugens;
     private final AudioInPort.Descriptor[] ins;
@@ -40,7 +40,7 @@ public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D
 
     private AudioContext audioCtxt;
 
-    public AudioCodeContext(AudioCodeConnector<D> connector) {
+    public AudioCodeContext(AudioCodeConnector connector) {
         super(connector, true);
         ugens = connector.extractUGens();
         ins = connector.extractIns();
@@ -48,7 +48,7 @@ public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D
     }
 
     @Override
-    protected void configure(CodeComponent<D> cmp, CodeContext<D> oldCtxt) {
+    protected void configure(CodeComponent<AudioCodeDelegate> cmp, CodeContext<AudioCodeDelegate> oldCtxt) {
         super.configure(cmp, oldCtxt);
         // audio ins and outs attached in super call because they're ports
         for (UGenDescriptor ugd : ugens) {
@@ -101,7 +101,7 @@ public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D
             getLog().log(LogLevel.ERROR, e, "Exception thrown during update()");
         }
     }
-    
+
     private void setupUGens() {
         for (UGenDescriptor ugd : ugens) {
             Pipe ug = ugd.getUGen();
@@ -109,7 +109,7 @@ public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D
             ug.reset();
         }
     }
-    
+
     private void setupPorts() {
         for (AudioInPort.Descriptor aipd : ins) {
             Utils.disconnectSinks(aipd.getPort().getPipe());
@@ -120,7 +120,7 @@ public class AudioCodeContext<D extends AudioCodeDelegate> extends CodeContext<D
             pipe.triggerSwitch();
         }
     }
-    
+
     private void resetPorts() {
         for (AudioOutPort.Descriptor aopd : outs) {
             AudioOutPort.AudioOutPipe pipe = aopd.getPort().getPipe();

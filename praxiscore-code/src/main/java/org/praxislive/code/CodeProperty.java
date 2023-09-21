@@ -210,8 +210,7 @@ class CodeProperty<D extends CodeDelegate>
             return ControlInfo.createPropertyInfo(
                     ArgumentInfo.of(PString.class,
                             PMap.of(PString.KEY_MIME_TYPE, MIME_TYPE,
-                                    ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
-                                    ClassBodyContext.KEY, factory.getClassBodyContextName(),
+                                    ArgumentInfo.KEY_TEMPLATE, factory.sourceTemplate(),
                                     CodeFactory.BASE_CLASS_KEY, factory.baseClass().getName(),
                                     CodeFactory.BASE_IMPORTS_KEY,
                                     factory.baseImports().stream().map(PString::of).collect(PArray.collector()))

@@ -60,33 +60,6 @@ public class CodeFactory<D extends CodeDelegate> {
     private final Supplier<? extends CodeComponent<D>> componentCreator;
     private final BiFunction<CodeFactory.Task<D>, D, CodeContext<D>> contextCreator;
 
-    /**
-     * Construct CodeFactory for a type extending the base code delegate type.
-     * This constructor allows for a precompiled default delegate class to be
-     * provided. This must correspond to the code compiled from wrapping the
-     * provided class body template in the provided class body context.
-     *
-     * @param cbc class body context that will wrap source code
-     * @param type the component type
-     * @param defaultCls precompiled default delegate
-     * @param template code template reflecting default delegate
-     */
-    @Deprecated
-    protected CodeFactory(
-            ClassBodyContext<D> cbc,
-            ComponentType type,
-            Class<? extends D> defaultCls,
-            String template) {
-        this.baseClass = cbc.getExtendedClass();
-        this.baseImports = List.of(cbc.getDefaultImports());
-        this.lookup = Lookup.of(cbc);
-        this.type = type;
-        this.defaultDelegateClass = defaultCls;
-        this.template = template;
-        this.componentCreator = CodeComponent::new;
-        this.contextCreator = null;
-    }
-
     private CodeFactory(Base<D> base, ComponentType type, Class<? extends D> defaultCls, String template) {
         this.baseClass = base.baseClass;
         this.baseImports = base.baseImports;
@@ -96,23 +69,6 @@ public class CodeFactory<D extends CodeDelegate> {
         this.type = Objects.requireNonNull(type);
         this.defaultDelegateClass = Objects.requireNonNull(defaultCls);
         this.template = Objects.requireNonNull(template);
-    }
-
-    /**
-     * Construct CodeFactory for a type extending the base code delegate type.
-     * This constructor is used where the default delegate is compiled from the
-     * template at runtime.
-     *
-     * @param cbc class body context that will wrap source code
-     * @param type the component type
-     * @param template code template reflecting default delegate
-     */
-    @Deprecated
-    protected CodeFactory(
-            ClassBodyContext<D> cbc,
-            ComponentType type,
-            String template) {
-        this(cbc, type, null, template);
     }
 
     /**
@@ -132,30 +88,6 @@ public class CodeFactory<D extends CodeDelegate> {
      */
     public final ComponentType componentType() {
         return type;
-    }
-
-    /**
-     * Class body context used to create wrapping class for source code.
-     *
-     * @return class body context
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    public final ClassBodyContext<D> getClassBodyContext() {
-        return (ClassBodyContext<D>) lookup.find(ClassBodyContext.class)
-                .orElseGet(() -> new ClassBodyContext(baseClass) {
-            @Override
-            public String[] getDefaultImports() {
-                return baseImports.toArray(String[]::new);
-            }
-
-        });
-    }
-
-    final String getClassBodyContextName() {
-        return lookup.find(ClassBodyContext.class)
-                .map(cbc -> cbc.getClass().getName())
-                .orElse(ClassBodyContext.Default.class.getName());
     }
 
     /**
@@ -389,7 +321,7 @@ public class CodeFactory<D extends CodeDelegate> {
          *
          * @return log builder
          */
-        protected LogBuilder getLog() {
+        public LogBuilder getLog() {
             return log;
         }
 
@@ -399,7 +331,7 @@ public class CodeFactory<D extends CodeDelegate> {
          *
          * @return previous delegate class
          */
-        protected Class<D> getPrevious() {
+        public Class<D> getPrevious() {
             return previous;
         }
 
@@ -408,7 +340,7 @@ public class CodeFactory<D extends CodeDelegate> {
          *
          * @return code factory
          */
-        protected CodeFactory<D> getFactory() {
+        public CodeFactory<D> getFactory() {
             return factory;
         }
 

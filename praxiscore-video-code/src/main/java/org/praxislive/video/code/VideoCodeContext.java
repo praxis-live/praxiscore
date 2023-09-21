@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,7 +42,7 @@ import org.praxislive.video.render.Surface;
  *
  * 
  */
-public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D> {
+public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
     private final static UnaryOperator<Boolean> DEFAULT_RENDER_QUERY = b -> b;
     
@@ -55,7 +55,7 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
     private boolean setupRequired;
     private UnaryOperator<Boolean> renderQuery = DEFAULT_RENDER_QUERY;
 
-    public VideoCodeContext(VideoCodeConnector<D> connector) {
+    public VideoCodeContext(VideoCodeConnector connector) {
         super(connector, connector.hasUpdate());
         setupRequired = true;
         output = connector.extractOutput();
@@ -78,16 +78,16 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
     }
 
     @Override
-    protected void configure(CodeComponent<D> cmp, CodeContext<D> oldCtxt) {
+    protected void configure(CodeComponent<VideoCodeDelegate> cmp, CodeContext<VideoCodeDelegate> oldCtxt) {
         output.getPort().getPipe().addSource(processor);
         for (VideoInputPort.Descriptor vidp : inputs) {
             processor.addSource(vidp.getPort().getPipe());
         }
-        configureOffScreen((VideoCodeContext<D>) oldCtxt);
+        configureOffScreen((VideoCodeContext) oldCtxt);
         getDelegate().context = this;
     }
     
-    private void configureOffScreen(VideoCodeContext<D> oldCtxt) {
+    private void configureOffScreen(VideoCodeContext oldCtxt) {
         Map<String, OffScreenGraphicsInfo> oldOffscreen = oldCtxt == null
                 ? Collections.EMPTY_MAP : oldCtxt.offscreen;
         offscreen.forEach( (id, osgi) -> osgi.attach(this, oldOffscreen.remove(id)));

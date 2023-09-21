@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,7 +41,7 @@ import org.praxislive.video.code.userapi.PImage;
  *
  * 
  */
-public class VideoCodeConnector<T extends VideoCodeDelegate> extends CodeConnector<T> {
+public class VideoCodeConnector extends CodeConnector<VideoCodeDelegate> {
 
     private final static String INIT = "init";
     private final static String UPDATE = "update";
@@ -52,8 +52,8 @@ public class VideoCodeConnector<T extends VideoCodeDelegate> extends CodeConnect
     private boolean hasInit;
     private boolean hasUpdate;
 
-    public VideoCodeConnector(CodeFactory.Task<T> contextCreator,
-            T delegate) {
+    public VideoCodeConnector(CodeFactory.Task<VideoCodeDelegate> contextCreator,
+            VideoCodeDelegate delegate) {
         super(contextCreator, delegate);
         offscreen = new LinkedHashMap<>();
     }

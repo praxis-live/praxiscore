@@ -30,8 +30,7 @@ import org.praxislive.code.CodeUtils;
  */
 public class CoreCode {
 
-    private final static List<String> DEFAULT_IMPORTS
-            = List.of(CodeUtils.defaultImports());
+    private final static List<String> DEFAULT_IMPORTS = CodeUtils.defaultImports();
 
     private final static CodeFactory.Base<CoreCodeDelegate> BASE
             = CodeFactory.base(CoreCodeDelegate.class,
@@ -52,9 +51,9 @@ public class CoreCode {
     }
 
     /**
-     * Access {@link CodeFactory.Base} for {@link CoreContainerDelegate}.
+     * Access {@link CodeFactory.Base} for {@link CoreCodeDelegate}.
      *
-     * @return code factory base for CoreContainerDelegate.
+     * @return code factory base for CoreCodeDelegate.
      */
     public static CodeFactory.Base<CoreCodeDelegate> base() {
         return BASE;

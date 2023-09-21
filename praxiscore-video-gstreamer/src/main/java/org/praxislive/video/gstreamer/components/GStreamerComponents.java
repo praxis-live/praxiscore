@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,10 @@
 package org.praxislive.video.gstreamer.components;
 
 import org.praxislive.code.AbstractComponentFactory;
-import org.praxislive.core.ComponentType;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
+import org.praxislive.video.code.VideoCode;
 import org.praxislive.video.code.VideoCodeDelegate;
-import org.praxislive.video.code.VideoCodeFactory;
 
 /**
  *
@@ -53,9 +52,7 @@ public class GStreamerComponents implements ComponentFactoryProvider {
         }
         
         private void add(String type, Class<? extends VideoCodeDelegate> cls, String path) {
-            add(data(
-                    new VideoCodeFactory(ComponentType.of(type), cls, source(path))
-            ));
+            add(VideoCode.base().create(type, cls, source(path)));
         }
         
     }

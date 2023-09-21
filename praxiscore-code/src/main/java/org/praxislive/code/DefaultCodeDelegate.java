@@ -22,6 +22,7 @@
 package org.praxislive.code;
 
 import java.lang.reflect.Array;
+import java.util.List;
 import java.util.Random;
 import org.praxislive.code.userapi.Constants;
 
@@ -30,7 +31,7 @@ import org.praxislive.code.userapi.Constants;
  */
 public class DefaultCodeDelegate extends CodeDelegate implements DefaultDelegateAPI {
 
-    final static String[] IMPORTS = {
+    final static List<String> DEFAULT_IMPORTS = List.of(
         "java.util.*",
         "java.util.function.*",
         "java.util.stream.*",
@@ -38,7 +39,7 @@ public class DefaultCodeDelegate extends CodeDelegate implements DefaultDelegate
         "org.praxislive.core.types.*",
         "org.praxislive.code.userapi.*",
         "static org.praxislive.code.userapi.Constants.*"
-    };
+    );
 
     protected final Random RND;
 
