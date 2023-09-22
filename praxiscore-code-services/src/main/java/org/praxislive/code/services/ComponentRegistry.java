@@ -51,8 +51,9 @@ class ComponentRegistry {
 
         Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
                 .map(ComponentFactoryProvider::getFactory)
-                .filter(factory
-                        -> factory.getFactoryService() == CodeComponentFactoryService.class)
+                .filter(factory -> factory.componentRedirect()
+                        .filter(r -> r.service() == CodeComponentFactoryService.class)
+                        .isPresent())
                 .forEachOrdered(factory -> {
                     factory.componentTypes().forEachOrdered(type -> {
                         componentCache.put(type, factory);
@@ -62,8 +63,9 @@ class ComponentRegistry {
         
         Lookup.SYSTEM.findAll(ComponentFactoryProvider.class)
                 .map(ComponentFactoryProvider::getFactory)
-                .filter(factory
-                        -> factory.getRootFactoryService() == CodeRootFactoryService.class)
+                .filter(factory -> factory.rootRedirect()
+                        .filter(r -> r.service() == CodeRootFactoryService.class)
+                        .isPresent())
                 .forEachOrdered(factory -> {
                     factory.rootTypes().forEachOrdered(type -> {
                         componentCache.put(type, factory);

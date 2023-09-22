@@ -23,7 +23,6 @@ package org.praxislive.code;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.praxislive.core.ComponentType;
@@ -76,16 +75,6 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return component type
      */
-    @Deprecated
-    public final ComponentType getComponentType() {
-        return type;
-    }
-
-    /**
-     * Get the component type.
-     *
-     * @return component type
-     */
     public final ComponentType componentType() {
         return type;
     }
@@ -95,28 +84,8 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return source template
      */
-    @Deprecated
-    public final String getSourceTemplate() {
-        return template;
-    }
-
-    /**
-     * The source template corresponding to the default delegate class.
-     *
-     * @return source template
-     */
     public final String sourceTemplate() {
         return template;
-    }
-
-    /**
-     * Optional precompiled version of the default delegate class.
-     *
-     * @return optional precompiled default delegate
-     */
-    @Deprecated
-    public final Optional<Class<? extends D>> getDefaultDelegateClass() {
-        return Optional.ofNullable(defaultDelegateClass);
     }
 
     /**

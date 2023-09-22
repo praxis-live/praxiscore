@@ -44,7 +44,7 @@ public interface RootHub extends Lookup.Provider {
 
     /**
      * Dispatch a message to another Root.
-     *
+     * <p>
      * See {@link Root.Controller#submitPacket(org.praxislive.core.Packet)
      *
      * @param packet message to dispatch
@@ -78,9 +78,8 @@ public interface RootHub extends Lookup.Provider {
 
     /**
      * An interface for RootHub extensions (see {@link ExtensionProvider}) to
-     * advertise the services they provide. Use of {@link Component#getInfo()}
-     * for this purpose should be considered deprecated.
-     * 
+     * advertise the services they provide.
+     * <p>
      * The Root itself must provide the advertised services. Support for root
      * containers to provide services via child components is not yet supported.
      *
@@ -88,8 +87,6 @@ public interface RootHub extends Lookup.Provider {
      */
     public static interface ServiceProvider extends Root {
 
-        // ideally this would be part of the ExtensionProvider itself, but breaks
-        // too many assumptions in the API
         /**
          * A list of the services this extension provides. This method will be
          * called as the extension Root is installed in the RootHub.
