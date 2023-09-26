@@ -104,7 +104,7 @@ public class AudioCodeConnector extends CodeConnector<AudioCodeDelegate> {
         if (AudioTable.class.isAssignableFrom(field.getType())) {
             P p = field.getAnnotation(P.class);
             if (p != null) {
-                ResourceProperty.Descriptor<AudioTable> ipd
+                ResourceProperty.Descriptor ipd
                         = ResourceProperty.Descriptor.create(this, p, field, TableLoader.getDefault());
                 if (ipd != null) {
                     addControl(ipd);

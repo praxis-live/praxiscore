@@ -112,10 +112,10 @@ public class AudioCodeContext extends CodeContext<AudioCodeDelegate> {
 
     private void setupPorts() {
         for (AudioInPort.Descriptor aipd : ins) {
-            Utils.disconnectSinks(aipd.getPort().getPipe());
+            Utils.disconnectSinks(aipd.port().getPipe());
         }
         for (AudioOutPort.Descriptor aopd : outs) {
-            AudioOutPort.AudioOutPipe pipe = aopd.getPort().getPipe();
+            AudioOutPort.AudioOutPipe pipe = aopd.port().getPipe();
             Utils.disconnectSources(pipe);
             pipe.triggerSwitch();
         }
@@ -123,7 +123,7 @@ public class AudioCodeContext extends CodeContext<AudioCodeDelegate> {
 
     private void resetPorts() {
         for (AudioOutPort.Descriptor aopd : outs) {
-            AudioOutPort.AudioOutPipe pipe = aopd.getPort().getPipe();
+            AudioOutPort.AudioOutPipe pipe = aopd.port().getPipe();
             pipe.resetSwitch();
         }
     }

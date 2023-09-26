@@ -44,29 +44,29 @@ import org.praxislive.core.services.LogLevel;
  *
  */
 public abstract class DataPort<T> implements Port {
-    
+
     public final static class Input<T> extends DataPort<T> {
-        
+
         private final InPipe<T> in;
         private final List<Output<T>> connections;
         private final List<PortListener> listeners;
-        
+
         private java.lang.reflect.Type type;
-        
+
         private Input(InputDescriptor desc) {
             this.type = Objects.requireNonNull(desc.type);
             in = new InPipe<>();
             connections = new ArrayList<>();
             listeners = new CopyOnWriteArrayList<>();
         }
-        
+
         private void reconfigure(InputDescriptor desc) {
             if (!Objects.equals(type, desc.type)) {
                 this.type = Objects.requireNonNull(desc.type);
                 in.reset(true);
             }
         }
-        
+
         @Override
         public void connect(Port port) throws PortConnectionException {
             if (port instanceof Output) {
@@ -75,14 +75,14 @@ public abstract class DataPort<T> implements Port {
                 throw new PortConnectionException();
             }
         }
-        
+
         @Override
         public void disconnect(Port port) {
             if (port instanceof Output) {
                 port.disconnect(this);
             }
         }
-        
+
         private void addDataOutputPort(Output<T> port, Data.Pipe<T> source) throws PortConnectionException {
             if (connections.contains(port)) {
                 throw new PortConnectionException();
@@ -95,79 +95,78 @@ public abstract class DataPort<T> implements Port {
                 throw new PortConnectionException(ex);
             }
         }
-        
+
         private void removeDataOutputPort(Output<T> port, Data.Pipe<T> source) {
             if (connections.remove(port)) {
                 in.removeSource(source);
                 listeners.forEach(l -> l.connectionsChanged(this));
             }
         }
-        
+
         @Override
         public void disconnectAll() {
             for (Output<T> connection : connections()) {
                 disconnect(connection);
             }
         }
-        
+
         @Override
         public List<Output<T>> connections() {
             return List.copyOf(connections);
         }
-        
+
         @Override
         public void addListener(PortListener listener) {
             listeners.add(Objects.requireNonNull(listener));
         }
-        
+
         @Override
         public void removeListener(PortListener listener) {
             listeners.remove(listener);
         }
     }
-    
+
     private static class InPipe<T> extends Data.In<T> {
-        
+
         private void reset(boolean full) {
             disconnectSinks();
             if (full) {
                 clearCaches();
             }
         }
-        
+
     }
-    
-    static final class InputDescriptor extends PortDescriptor {
-        
+
+    static final class InputDescriptor extends PortDescriptor<InputDescriptor> {
+
         private final Field field;
         private final java.lang.reflect.Type type;
         private final PortInfo info;
-        
+
         private Input<?> port;
-        
+
         private InputDescriptor(String id,
                 Category category,
                 int index,
                 Field field,
                 java.lang.reflect.Type type) {
-            super(id, category, index);
+            super(InputDescriptor.class, id, category, index);
             this.field = field;
             this.type = type;
             this.info = PortInfo.create(DataPort.class,
                     PortInfo.Direction.IN,
                     PMap.of("category", TypeUtils.portCategory(type)));
         }
-        
+
         @Override
         @SuppressWarnings("unchecked")
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Input
-                    && TypeUtils.equivalent(type, ((Input<?>) previous).type)) {
-                port = (Input<?>) previous;
+        public void attach(CodeContext<?> context, InputDescriptor previous) {
+            if (previous != null && TypeUtils.equivalent(type, previous.type)) {
+                port = previous.port;
                 port.reconfigure(this);
             } else {
                 if (previous != null) {
-                    previous.disconnectAll();
+                    previous.dispose();
                 }
                 port = new Input<>(this);
             }
@@ -177,32 +176,39 @@ public abstract class DataPort<T> implements Port {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
         }
-        
+
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
-        
+
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return info;
         }
-        
+
         @Override
-        public void reset(boolean full) {
+        public void reset() {
             if (port != null) {
-                port.in.reset(full);
+                port.in.reset(false);
             }
         }
-        
+
+        @Override
+        public void stopping() {
+            if (port != null) {
+                port.in.reset(true);
+            }
+        }
+
         static InputDescriptor create(CodeConnector<?> connector, In ann, Field field) {
             return create(connector, PortDescriptor.Category.In, ann.value(), field);
         }
-        
+
         static InputDescriptor create(CodeConnector<?> connector, AuxIn ann, Field field) {
             return create(connector, PortDescriptor.Category.AuxIn, ann.value(), field);
         }
-        
+
         private static InputDescriptor create(CodeConnector<?> connector,
                 PortDescriptor.Category category, int index, Field field) {
             if (Data.In.class.equals(field.getType())) {
@@ -216,31 +222,31 @@ public abstract class DataPort<T> implements Port {
                 return null;
             }
         }
-        
+
     }
-    
+
     public final static class Output<T> extends DataPort<T> {
-        
+
         private final OutPipe<T> out;
         private final List<Input<T>> connections;
         private final List<PortListener> listeners;
-        
+
         private java.lang.reflect.Type type;
-        
+
         private Output(OutputDescriptor desc) {
             this.type = Objects.requireNonNull(desc.type);
             out = new OutPipe<>();
             connections = new ArrayList<>();
             listeners = new CopyOnWriteArrayList<>();
         }
-        
+
         private void reconfigure(OutputDescriptor desc) {
             if (!Objects.equals(type, desc.type)) {
                 type = Objects.requireNonNull(desc.type);
                 out.reset(true);
             }
         }
-        
+
         @Override
         @SuppressWarnings("unchecked")
         public void connect(Port port) throws PortConnectionException {
@@ -259,7 +265,7 @@ public abstract class DataPort<T> implements Port {
                 throw new PortConnectionException();
             }
         }
-        
+
         @Override
         @SuppressWarnings("unchecked")
         public void disconnect(Port port) {
@@ -272,71 +278,70 @@ public abstract class DataPort<T> implements Port {
                 }
             }
         }
-        
+
         @Override
         public void disconnectAll() {
             for (Input<T> port : connections()) {
                 disconnect(port);
             }
         }
-        
+
         @Override
         public List<Input<T>> connections() {
             return List.copyOf(connections);
         }
-        
+
         @Override
         public void addListener(PortListener listener) {
             listeners.add(Objects.requireNonNull(listener));
         }
-        
+
         @Override
         public void removeListener(PortListener listener) {
             listeners.remove(listener);
         }
     }
-    
+
     private static class OutPipe<T> extends Data.Out<T> {
-        
+
         private void reset(boolean full) {
             disconnectSources();
             if (full) {
                 clearCaches();
             }
         }
-        
+
     }
-    
-    static class OutputDescriptor extends PortDescriptor {
-        
+
+    static class OutputDescriptor extends PortDescriptor<OutputDescriptor> {
+
         private final Field field;
         private final java.lang.reflect.Type type;
         private final PortInfo info;
-        
+
         private Output<?> port;
-        
+
         private OutputDescriptor(String id,
                 Category category,
                 int index,
                 Field field,
                 java.lang.reflect.Type type) {
-            super(id, category, index);
+            super(OutputDescriptor.class, id, category, index);
             this.field = field;
             this.type = type;
             this.info = PortInfo.create(DataPort.class,
                     PortInfo.Direction.OUT,
                     PMap.of("category", TypeUtils.portCategory(type)));
         }
-        
+
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Output
-                    && TypeUtils.equivalent(type, ((Output<?>) previous).type)) {
-                port = (Output<?>) previous;
+        public void attach(CodeContext<?> context, OutputDescriptor previous) {
+            if (previous != null && TypeUtils.equivalent(type, previous.type)) {
+                port = previous.port;
                 port.reconfigure(this);
             } else {
                 if (previous != null) {
-                    previous.disconnectAll();
+                    previous.dispose();
                 }
                 port = new Output<>(this);
             }
@@ -346,32 +351,39 @@ public abstract class DataPort<T> implements Port {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
         }
-        
+
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
-        
+
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return info;
         }
-        
+
         @Override
-        public void reset(boolean full) {
+        public void reset() {
             if (port != null) {
-                port.out.reset(full);
+                port.out.reset(false);
             }
         }
-        
+
+        @Override
+        public void stopping() {
+            if (port != null) {
+                port.out.reset(true);
+            }
+        }
+
         static OutputDescriptor create(CodeConnector<?> connector, Out ann, Field field) {
             return create(connector, PortDescriptor.Category.Out, ann.value(), field);
         }
-        
+
         static OutputDescriptor create(CodeConnector<?> connector, AuxOut ann, Field field) {
             return create(connector, PortDescriptor.Category.AuxOut, ann.value(), field);
         }
-        
+
         private static OutputDescriptor create(CodeConnector<?> connector,
                 PortDescriptor.Category category, int index, Field field) {
             if (Data.Out.class.equals(field.getType())) {
@@ -385,17 +397,7 @@ public abstract class DataPort<T> implements Port {
                 return null;
             }
         }
-        
+
     }
-    
-    @Deprecated
-    public static class Provider implements Port.TypeProvider {
-        
-        @Override
-        public Stream<Type<?>> types() {
-            return Stream.of(new Type<>(DataPort.class));
-        }
-        
-    }
-    
+
 }

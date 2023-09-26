@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -79,9 +79,9 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
 
     @Override
     protected void configure(CodeComponent<P2DCodeDelegate> cmp, CodeContext<P2DCodeDelegate> oldCtxt) {
-        output.getPort().getPipe().addSource(processor);
+        output.port().getPipe().addSource(processor);
         for (PGLVideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
         configureOffScreen((P2DCodeContext) oldCtxt);
     }
@@ -173,7 +173,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
             del.configure(pglOut.getContext().parent(), pg, output.getWidth(), output.getHeight());
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset(false);
+                    reset();
                 }
                 try {
                     del.setup();

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,7 @@ import org.praxislive.core.PortInfo;
  * underlying port may be configured from the previous iteration or carried
  * across.
  */
-public abstract class PortDescriptor {
+public non-sealed abstract class PortDescriptor<T extends PortDescriptor<T>> extends Descriptor<T> {
 
     public static enum Category {
 
@@ -60,31 +60,22 @@ public abstract class PortDescriptor {
         AuxOut
     }
 
-    private final String id;
     private final Category category;
     private final int index;
 
     /**
      * Create a PortDescriptor.
      *
+     * @param type descriptor type
      * @param id the ID (must be a valid port ID)
      * @param category the category
      * @param index the index within the category (used for ordering - must be
      * unique)
      */
-    protected PortDescriptor(String id, Category category, int index) {
-        this.id = id;
+    protected PortDescriptor(Class<T> type, String id, Category category, int index) {
+        super(type, id);
         this.category = category;
         this.index = index;
-    }
-
-    /**
-     * Get the ID.
-     *
-     * @return id
-     */
-    public final String getID() {
-        return id;
     }
 
     /**
@@ -92,7 +83,7 @@ public abstract class PortDescriptor {
      *
      * @return category
      */
-    public Category getCategory() {
+    public Category category() {
         return category;
     }
 
@@ -101,24 +92,9 @@ public abstract class PortDescriptor {
      *
      * @return index
      */
-    public int getIndex() {
+    public int index() {
         return index;
     }
-
-    /**
-     * Configure the port for the provided context. The previous port with the
-     * same ID is provided - it may be null or of a different type. If the
-     * previous port cannot be carried over, then this method must handle
-     * disconnecting and/or reconnecting as appropriate.
-     * <p>
-     * Note : any port passed in as previous will not be disposed
-     *
-     * @param context context being attached to
-     * @param previous previous port with the same ID, may be null or different
-     * type
-     */
-    // @TODO this method should take a PortDescriptor in future versions
-    public abstract void attach(CodeContext<?> context, Port previous);
 
     /**
      * Get the wrapped port. Should only be called when attached - behaviour is
@@ -126,37 +102,26 @@ public abstract class PortDescriptor {
      *
      * @return port
      */
-    public abstract Port getPort();
+    public abstract Port port();
 
     /**
      * Get port info.
      *
      * @return info
      */
-    public abstract PortInfo getInfo();
+    public abstract PortInfo portInfo();
 
     /**
-     * Hook called to reset during attachment / detachment, or execution context
-     * state changes. Full reset happens on execution context changes.
-     *
-     * @param full true if execution context state
+     * Dispose the port descriptor. The default implementation calls
+     * {@link Port#disconnectAll()}. When overriding this method, call the super
+     * implementation or otherwise ensure that the port is disconnected.
      */
-    public void reset(boolean full) {
-    }
-
-    /**
-     * Deprecated hook - no op!
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public void stopping() {
-    }
-
-    /**
-     * Hook called on code context disposal for any port descriptors not carried
-     * over.
-     */
+    @Override
     public void dispose() {
+        var port = port();
+        if (port != null) {
+            port.disconnectAll();
+        }
     }
+
 }

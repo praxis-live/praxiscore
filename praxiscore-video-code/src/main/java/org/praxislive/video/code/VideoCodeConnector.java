@@ -92,7 +92,7 @@ public class VideoCodeConnector extends CodeConnector<VideoCodeDelegate> {
             
             P p = field.getAnnotation(P.class);
             if (p != null) {
-                ResourceProperty.Descriptor<PImage> ipd =
+                ResourceProperty.Descriptor ipd =
                         ResourceProperty.Descriptor.create(this, p, field, ImageLoader.getDefault());
                 if (ipd != null) {
                     addControl(ipd);
@@ -107,7 +107,7 @@ public class VideoCodeConnector extends CodeConnector<VideoCodeDelegate> {
         if (PFont.class.isAssignableFrom(field.getType())) {
             P p = field.getAnnotation(P.class);
             if (p != null) {
-                ResourceProperty.Descriptor<PFont> fpd =
+                ResourceProperty.Descriptor fpd =
                         ResourceProperty.Descriptor.create(this, p, field, FontLoader.getDefault());
                 if (fpd != null) {
                     addControl(fpd);

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -20,13 +20,11 @@
  * have any questions.
  *
  */
-
 package org.praxislive.video.pgl.code;
 
 import java.lang.reflect.Field;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
-import org.praxislive.core.Port;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.types.PMap;
 import org.praxislive.video.DefaultVideoInputPort;
@@ -36,68 +34,64 @@ import org.praxislive.video.pipes.impl.Placeholder;
 
 /**
  *
- * 
+ *
  */
 class PGLVideoInputPort extends DefaultVideoInputPort {
-    
+
     private Placeholder pipe;
-    
+
     private PGLVideoInputPort(Placeholder pipe) {
         super(pipe);
         this.pipe = pipe;
     }
-     
+
     VideoPipe getPipe() {
         return pipe;
     }
-       
-    
-    static class Descriptor extends PortDescriptor {
-        
+
+    static class Descriptor extends PortDescriptor<Descriptor> {
+
         private final static PortInfo INFO = PortInfo.create(VideoPort.class, PortInfo.Direction.IN, PMap.EMPTY);
-        
+
         private PGLVideoInputPort port;
         private Field field;
-        
+
         Descriptor(String id, int index) {
             this(id, index, null);
         }
-        
+
         Descriptor(String id, int index, Field field) {
-            super(id, Category.In, index);
+            super(Descriptor.class, id, Category.In, index);
             this.field = field;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof PGLVideoInputPort) {
-                PGLVideoInputPort vip = (PGLVideoInputPort) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                PGLVideoInputPort vip = previous.port;
                 if (vip.pipe.getSinkCount() == 1) {
                     vip.pipe.getSink(0).removeSource(vip.pipe);
                 }
                 port = vip;
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new PGLVideoInputPort(new Placeholder());
             }
         }
 
         @Override
-        public PGLVideoInputPort getPort() {
+        public PGLVideoInputPort port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return INFO;
         }
-        
+
         Field getField() {
             return field;
         }
-        
+
     }
-    
+
 }

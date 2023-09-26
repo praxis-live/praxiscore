@@ -357,7 +357,7 @@ public abstract class Property {
         return links.length > 0;
     }
 
-    protected void reset(boolean full) {
+    protected void reset() {
         clearLinks();
         if (animator != null) {
             animator.onDoneConsumer = null;

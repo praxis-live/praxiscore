@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -81,9 +81,9 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     @Override
     protected void configure(CodeComponent<P3DCodeDelegate> cmp, CodeContext<P3DCodeDelegate> oldCtxt) {
         super.configure(cmp, oldCtxt);
-        output.getPort().getPipe().addSource(processor);
+        output.port().getPipe().addSource(processor);
         for (PGLVideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
         P3DCodeContext oldP3DCtxt = (P3DCodeContext) oldCtxt;
         configureOffScreen(oldP3DCtxt);
@@ -196,7 +196,7 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
 //            pg.resetMatrix();
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset(false);
+                    reset();
                 }
                 p3d.style(null);
                 try {

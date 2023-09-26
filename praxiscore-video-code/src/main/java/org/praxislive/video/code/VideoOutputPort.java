@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,7 +24,6 @@ package org.praxislive.video.code;
 
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
-import org.praxislive.core.Port;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.types.PMap;
 import org.praxislive.video.DefaultVideoOutputPort;
@@ -50,39 +49,36 @@ class VideoOutputPort extends DefaultVideoOutputPort {
     }
     
     
-    static class Descriptor extends PortDescriptor {
+    static class Descriptor extends PortDescriptor<Descriptor> {
         
         private final static PortInfo INFO = PortInfo.create(VideoPort.class, PortInfo.Direction.OUT, PMap.EMPTY);
         
         private VideoOutputPort port;
         
         Descriptor(String id, int index) {
-            super(id, Category.Out, index);
+            super(Descriptor.class, id, Category.Out, index);
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof VideoOutputPort) {
-                VideoOutputPort vip = (VideoOutputPort) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                VideoOutputPort vip = previous.port;
                 if (vip.pipe.getSourceCount() == 1) {
                     vip.pipe.removeSource(vip.pipe.getSource(0));
                 }
                 port = vip;
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new VideoOutputPort(new Placeholder());
             }
         }
 
         @Override
-        public VideoOutputPort getPort() {
+        public VideoOutputPort port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return INFO;
         }
         

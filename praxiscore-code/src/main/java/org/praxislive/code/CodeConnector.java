@@ -91,14 +91,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private final CodeFactory<D> factory;
     private final LogBuilder log;
     private final D delegate;
-    private final Map<String, ControlDescriptor> controls;
-    private final Map<String, PortDescriptor> ports;
-    private final Map<String, ReferenceDescriptor> refs;
+    private final Map<String, ControlDescriptor<?>> controls;
+    private final Map<String, PortDescriptor<?>> ports;
+    private final Map<String, ReferenceDescriptor<?>> refs;
 
     private List<Plugin> plugins;
-    private Map<String, ControlDescriptor> extControls;
-    private Map<String, PortDescriptor> extPorts;
-    private Map<String, ReferenceDescriptor> extRefs;
+    private Map<String, ControlDescriptor<?>> extControls;
+    private Map<String, PortDescriptor<?>> extPorts;
+    private Map<String, ReferenceDescriptor<?>> extRefs;
     private ComponentInfo info;
     private int syntheticIdx = Integer.MIN_VALUE;
     private int internalIdx = Integer.MIN_VALUE;
@@ -158,7 +158,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of control descriptors by ID
      */
-    protected Map<String, ControlDescriptor> extractControls() {
+    protected Map<String, ControlDescriptor<?>> extractControls() {
         return extControls;
     }
 
@@ -169,7 +169,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of port descriptors by ID
      */
-    protected Map<String, PortDescriptor> extractPorts() {
+    protected Map<String, PortDescriptor<?>> extractPorts() {
         return extPorts;
     }
 
@@ -180,7 +180,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of reference descriptors by ID
      */
-    protected Map<String, ReferenceDescriptor> extractRefs() {
+    protected Map<String, ReferenceDescriptor<?>> extractRefs() {
         return extRefs;
     }
 
@@ -212,29 +212,33 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         info = buildComponentInfo(extControls, extPorts);
     }
 
-    private Map<String, ControlDescriptor> buildExternalControlMap() {
+    private Map<String, ControlDescriptor<?>> buildExternalControlMap() {
+        Comparator<ControlDescriptor<?>> cmp
+                = Comparator.comparing((ControlDescriptor<?> cd) -> cd.category())
+                        .thenComparingInt((ControlDescriptor<?> cd) -> cd.index())
+                        .thenComparing((ControlDescriptor<?> cd) -> cd.id(), String.CASE_INSENSITIVE_ORDER);
         return controls.values().stream()
-                .sorted(Comparator.comparing(ControlDescriptor::getCategory)
-                        .thenComparingInt(ControlDescriptor::getIndex)
-                        .thenComparing(ControlDescriptor::getID, String.CASE_INSENSITIVE_ORDER))
-                .collect(Collectors.toMap(ControlDescriptor::getID,
+                .sorted(cmp)
+                .collect(Collectors.toMap((ControlDescriptor<?> cd) -> cd.id(),
                         Function.identity(),
                         (cd1, cd2) -> cd2,
                         LinkedHashMap::new));
     }
 
-    private Map<String, PortDescriptor> buildExternalPortMap() {
+    private Map<String, PortDescriptor<?>> buildExternalPortMap() {
+        Comparator<PortDescriptor<?>> cmp
+                = Comparator.comparing((PortDescriptor<?> pd) -> pd.category())
+                        .thenComparingInt((PortDescriptor<?> pd) -> pd.index())
+                        .thenComparing((PortDescriptor<?> pd) -> pd.id(), String.CASE_INSENSITIVE_ORDER);
         return ports.values().stream()
-                .sorted(Comparator.comparing(PortDescriptor::getCategory)
-                        .thenComparingInt(PortDescriptor::getIndex)
-                        .thenComparing(PortDescriptor::getID, String.CASE_INSENSITIVE_ORDER))
-                .collect(Collectors.toMap(PortDescriptor::getID,
+                .sorted(cmp)
+                .collect(Collectors.toMap((PortDescriptor<?> pd) -> pd.id(),
                         Function.identity(),
                         (pd1, pd2) -> pd2,
                         LinkedHashMap::new));
     }
 
-    private Map<String, ReferenceDescriptor> buildExternalRefsMap() {
+    private Map<String, ReferenceDescriptor<?>> buildExternalRefsMap() {
         if (refs.isEmpty()) {
             return Collections.EMPTY_MAP;
         } else {
@@ -253,8 +257,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param ports map of port IDs and descriptors
      * @return component info
      */
-    protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor> controls,
-            Map<String, PortDescriptor> ports) {
+    protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor<?>> controls,
+            Map<String, PortDescriptor<?>> ports) {
         var cmp = Info.component();
         buildBaseComponentInfo(cmp);
         buildControlInfo(cmp, controls);
@@ -280,10 +284,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param cmp component info builder
      * @param controls map of control descriptors
      */
-    protected void buildControlInfo(Info.ComponentInfoBuilder cmp, Map<String, ControlDescriptor> controls) {
+    protected void buildControlInfo(Info.ComponentInfoBuilder cmp, Map<String, ControlDescriptor<?>> controls) {
         for (var e : controls.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
-                cmp.control(e.getKey(), e.getValue().getInfo());
+                cmp.control(e.getKey(), e.getValue().controlInfo());
             }
         }
     }
@@ -294,19 +298,19 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param cmp component info builder
      * @param ports map of port descriptors
      */
-    protected void buildPortInfo(Info.ComponentInfoBuilder cmp, Map<String, PortDescriptor> ports) {
+    protected void buildPortInfo(Info.ComponentInfoBuilder cmp, Map<String, PortDescriptor<?>> ports) {
         for (var e : ports.entrySet()) {
             if (!excludeFromInfo(e.getKey(), e.getValue())) {
-                cmp.port(e.getKey(), e.getValue().getInfo());
+                cmp.port(e.getKey(), e.getValue().portInfo());
             }
         }
     }
 
-    private boolean excludeFromInfo(String id, ControlDescriptor desc) {
-        return desc.getInfo() == null || id.startsWith("_");
+    private boolean excludeFromInfo(String id, ControlDescriptor<?> desc) {
+        return desc.controlInfo() == null || id.startsWith("_");
     }
 
-    private boolean excludeFromInfo(String id, PortDescriptor desc) {
+    private boolean excludeFromInfo(String id, PortDescriptor<?> desc) {
         return id.startsWith("_");
     }
 
@@ -316,7 +320,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param ctl control descriptor
      */
     public void addControl(ControlDescriptor ctl) {
-        controls.put(ctl.getID(), ctl);
+        controls.put(ctl.id(), ctl);
     }
 
     /**
@@ -325,7 +329,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param port port descriptor
      */
     public void addPort(PortDescriptor port) {
-        ports.put(port.getID(), port);
+        ports.put(port.id(), port);
     }
 
     /**
@@ -334,7 +338,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param ref reference descriptor
      */
     public void addReference(ReferenceDescriptor ref) {
-        refs.put(ref.getID(), ref);
+        refs.put(ref.id(), ref);
     }
 
     /**
@@ -364,8 +368,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param index position of control
      * @return code control descriptor
      */
-    protected ControlDescriptor createCodeControl(int index) {
-        return new CodeProperty.Descriptor<>(factory, index);
+    protected ControlDescriptor<?> createCodeControl(int index) {
+        return new CodeProperty.Descriptor(factory, index);
     }
 
     /**
@@ -512,7 +516,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         InputImpl.Descriptor odsc = InputImpl.createDescriptor(this, ann, field);
         if (odsc != null) {
             addPort(odsc);
-            addControl(InputPortControl.Descriptor.createInput(odsc.getID(), odsc.getIndex(), odsc));
+            addControl(InputPortControl.Descriptor.createInput(odsc.id(), odsc.index(), odsc));
             return true;
         }
 
@@ -535,7 +539,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         InputImpl.Descriptor odsc = InputImpl.createDescriptor(this, ann, field);
         if (odsc != null) {
             addPort(odsc);
-            addControl(InputPortControl.Descriptor.createAuxInput(odsc.getID(), odsc.getIndex(), odsc));
+            addControl(InputPortControl.Descriptor.createAuxInput(odsc.id(), odsc.index(), odsc));
             return true;
         }
 
@@ -619,7 +623,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private boolean analyseResourcePropertyField(P ann, Field field) {
         if (field.getAnnotation(Type.Resource.class) != null
                 && String.class.equals(field.getType())) {
-            ResourceProperty.Descriptor<String> rpd
+            ResourceProperty.Descriptor rpd
                     = ResourceProperty.Descriptor.create(this, ann, field, ResourceProperty.getStringLoader());
             if (rpd != null) {
                 addControl(rpd);
@@ -743,7 +747,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 = MethodInput.createDescriptor(this, ann, method);
         if (desc != null) {
             addPort(desc);
-            addControl(InputPortControl.Descriptor.createInput(desc.getID(), desc.getIndex(), desc));
+            addControl(InputPortControl.Descriptor.createInput(desc.id(), desc.index(), desc));
             return true;
         } else {
             return false;
@@ -755,7 +759,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 = MethodInput.createDescriptor(this, ann, method);
         if (desc != null) {
             addPort(desc);
-            addControl(InputPortControl.Descriptor.createAuxInput(desc.getID(), desc.getIndex(), desc));
+            addControl(InputPortControl.Descriptor.createAuxInput(desc.id(), desc.index(), desc));
             return true;
         } else {
             return false;

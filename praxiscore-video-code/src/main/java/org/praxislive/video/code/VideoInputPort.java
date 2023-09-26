@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.function.UnaryOperator;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
-import org.praxislive.core.Port;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.types.PMap;
 import org.praxislive.video.DefaultVideoInputPort;
@@ -71,7 +70,7 @@ class VideoInputPort extends DefaultVideoInputPort {
         
     }
        
-    static class Descriptor extends PortDescriptor {
+    static class Descriptor extends PortDescriptor<Descriptor> {
         
         private final static PortInfo INFO = PortInfo.create(VideoPort.class, PortInfo.Direction.IN, PMap.EMPTY);
         
@@ -84,39 +83,36 @@ class VideoInputPort extends DefaultVideoInputPort {
         }
         
         Descriptor(String id, int index, Field field) {
-            super(id, Category.In, index);
+            super(Descriptor.class, id, Category.In, index);
             this.field = field;
             field.setAccessible(true);
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof VideoInputPort) {
-                VideoInputPort vip = (VideoInputPort) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                VideoInputPort vip = previous.port;
                 if (vip.pipe.getSinkCount() == 1) {
                     vip.pipe.getSink(0).removeSource(vip.pipe);
                 }
                 port = vip;
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new VideoInputPort();
             }
         }
 
         @Override
-        public VideoInputPort getPort() {
+        public VideoInputPort port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return INFO;
         }
 
         @Override
-        public void reset(boolean full) {
+        public void reset() {
             alphaQuery = DEFAULT_QUERY;
             port.pipe.query = DEFAULT_QUERY;
         }

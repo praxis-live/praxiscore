@@ -26,7 +26,7 @@ import java.lang.reflect.Method;
 import org.praxislive.code.userapi.Proxy;
 import org.praxislive.core.services.LogLevel;
 
-final class ProxyDescriptor extends ReferenceDescriptor implements ProxyContext.Handler {
+final class ProxyDescriptor extends ReferenceDescriptor<ProxyDescriptor> implements ProxyContext.Handler {
 
     private final Field field;
     private final Object delegate;
@@ -34,21 +34,18 @@ final class ProxyDescriptor extends ReferenceDescriptor implements ProxyContext.
     private CodeContext<?> context;
 
     protected ProxyDescriptor(Field field, Object delegate) {
-        super(field.getName());
+        super(ProxyDescriptor.class, field.getName());
         this.field = field;
         this.delegate = delegate;
     }
 
     @Override
-    public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
+    public void attach(CodeContext<?> context, ProxyDescriptor previous) {
         this.context = context;
-        if (previous instanceof ProxyDescriptor) {
-            var prev = (ProxyDescriptor) previous;
-            if (!field.getType().equals(prev.field.getType())) {
-                prev.dispose();
+        if (previous != null) {
+            if (!field.getType().equals(previous.field.getType())) {
+                previous.dispose();
             }
-        } else if (previous != null) {
-            previous.dispose();
         }
         try {
             var proxy = context.getComponent().getProxyContext()

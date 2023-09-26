@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -304,24 +304,21 @@ class GStreamerVideoCapture implements VideoCapture {
         }
     }
 
-    static class Descriptor extends ReferenceDescriptor {
+    static class Descriptor extends ReferenceDescriptor<Descriptor> {
 
         private final Field field;
         private GStreamerVideoCapture capture;
 
         private Descriptor(String id, Field field) {
-            super(id);
+            super(Descriptor.class, id);
             this.field = field;
         }
 
         @Override
-        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
-            if (previous instanceof Descriptor) {
-                Descriptor prevImpl = (Descriptor) previous;
-                capture = prevImpl.capture;
-                prevImpl.capture = null;
-            } else if (previous != null) {
-                previous.dispose();
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                capture = previous.capture;
+                previous.capture = null;
             }
 
             if (capture == null) {
@@ -339,8 +336,13 @@ class GStreamerVideoCapture implements VideoCapture {
         }
 
         @Override
-        public void reset(boolean full) {
-            capture.reset(full);
+        public void reset() {
+            capture.reset(false);
+        }
+
+        @Override
+        public void stopping() {
+            capture.reset(true);
         }
 
         @Override

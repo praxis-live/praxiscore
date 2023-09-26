@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -127,7 +127,7 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
 
     }
 
-    static class Descriptor extends ControlDescriptor {
+    static class Descriptor extends ControlDescriptor<Descriptor> {
 
         private final Field field;
         private final boolean isList;
@@ -143,7 +143,7 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
                 Method onChange,
                 Method onError
         ) {
-            super(id, ControlDescriptor.Category.Property, index);
+            super(Descriptor.class, id, ControlDescriptor.Category.Property, index);
             this.field = field;
             this.isList = isList;
             this.onChange = onChange;
@@ -151,24 +151,26 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return INFO;
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public void attach(CodeContext<?> context, Control previous) {
-            if (previous instanceof TableProperty
-                    && ((TableProperty) previous).isList == isList) {
-                control = (TableProperty) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null && previous.isList == isList) {
+                control = previous.control;
             } else {
+                if (previous != null) {
+                    previous.dispose();
+                }
                 control = new TableProperty(isList);
             }
             control.attach(context, field, onChange, onError);
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 

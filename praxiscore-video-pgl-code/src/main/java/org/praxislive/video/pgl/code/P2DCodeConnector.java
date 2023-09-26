@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -96,7 +96,7 @@ public class P2DCodeConnector extends CodeConnector<P2DCodeDelegate> {
         P p = field.getAnnotation(P.class);
         if (p != null) {
             if (PImage.class.isAssignableFrom(field.getType())) {
-                ResourceProperty.Descriptor<PImage> ipd
+                ResourceProperty.Descriptor ipd
                         = ResourceProperty.Descriptor.create(this, p, field, ImageLoader.getDefault());
                 if (ipd != null) {
                     addControl(ipd);
@@ -108,7 +108,7 @@ public class P2DCodeConnector extends CodeConnector<P2DCodeDelegate> {
             }
 
             if (PFont.class.isAssignableFrom(field.getType())) {
-                ResourceProperty.Descriptor<PFont> fpd
+                ResourceProperty.Descriptor fpd
                         = ResourceProperty.Descriptor.create(this, p, field, FontLoader.getDefault());
                 if (fpd != null) {
                     addControl(fpd);
@@ -120,7 +120,7 @@ public class P2DCodeConnector extends CodeConnector<P2DCodeDelegate> {
             }
             
             if (PShape.class.isAssignableFrom(field.getType())) {
-                ResourceProperty.Descriptor<PShape> spd
+                ResourceProperty.Descriptor spd
                         = ResourceProperty.Descriptor.create(this, p, field, ShapeLoader.getDefault());
                 if (spd != null) {
                     addControl(spd);

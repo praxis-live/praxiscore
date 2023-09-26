@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -72,7 +72,7 @@ public class TriggerControl extends Trigger implements Control {
         });
     }
 
-    private void attach(CodeContext<?> context, Control previous) {
+    private void attachImpl(CodeContext<?> context, Control previous) {
         this.context = context;
         binding.attach(context);
         if (previous instanceof TriggerControl) {
@@ -209,7 +209,7 @@ public class TriggerControl extends Trigger implements Control {
 
     }
 
-    public static class Descriptor extends ControlDescriptor {
+    public static class Descriptor extends ControlDescriptor<Descriptor> {
 
         private final TriggerControl control;
         private Field triggerField;
@@ -219,19 +219,23 @@ public class TriggerControl extends Trigger implements Control {
         }
 
         public Descriptor(String id, int index, Binding binding, Field triggerField) {
-            super(id, Category.Action, index);
+            super(Descriptor.class, id, Category.Action, index);
             control = new TriggerControl(binding);
             this.triggerField = triggerField;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return INFO;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
-            control.attach(context, previous);
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                control.attachImpl(context, previous.control);
+            } else {
+                control.attachImpl(context, null);
+            }
             if (triggerField != null) {
                 try {
                     triggerField.set(context.getDelegate(), control);
@@ -242,21 +246,23 @@ public class TriggerControl extends Trigger implements Control {
         }
 
         @Override
-        public void reset(boolean full) {
+        public void reset() {
             control.clearLinks();
             control.maxIndex(Integer.MAX_VALUE);
-            if (full) {
-                control.index(0);
-            }
         }
 
         @Override
-        public Control getControl() {
+        public void starting() {
+            control.index(0);
+        }
+        
+        @Override
+        public Control control() {
             return control;
         }
 
         public PortDescriptor createPortDescriptor() {
-            return new PortDescImpl(getID(), getIndex(), control);
+            return new PortDescImpl(id(), index(), control);
         }
 
         public static Descriptor create(CodeConnector<?> connector,
@@ -287,38 +293,36 @@ public class TriggerControl extends Trigger implements Control {
 
     }
 
-    private static class PortDescImpl extends PortDescriptor implements ControlInput.Link {
+    private static class PortDescImpl extends PortDescriptor<PortDescImpl>
+            implements ControlInput.Link {
 
         private final TriggerControl control;
 
         private ControlInput port;
 
         private PortDescImpl(String id, int index, TriggerControl control) {
-            super(id, Category.Action, index);
+            super(PortDescImpl.class, id, Category.Action, index);
             this.control = control;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
+        public void attach(CodeContext<?> context, PortDescImpl previous) {
+            if (previous != null) {
+                port = previous.port;
                 port.setLink(this);
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new ControlInput(this);
             }
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             assert port != null;
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlInput.INFO;
         }
 

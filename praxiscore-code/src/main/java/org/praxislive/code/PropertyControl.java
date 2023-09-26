@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -117,15 +117,14 @@ public class PropertyControl extends Property implements Control {
         }
     }
 
-    private void attach(CodeContext<?> context, Control previous) {
+    private void attach(CodeContext<?> context, PropertyControl previous) {
         this.context = context;
-        if (previous instanceof PropertyControl) {
-            PropertyControl pc = (PropertyControl) previous;
-            binding.attach(context, pc.binding);
-            latest = pc.latest;
-            latestSet = pc.latestSet;
+        if (previous != null) {
+            binding.attach(context, previous.binding);
+            latest = previous.latest;
+            latestSet = previous.latestSet;
             try {
-                binding.set(pc.binding.get());
+                binding.set(previous.binding.get());
             } catch (Exception ex) {
                 // do nothing?
             }
@@ -266,7 +265,7 @@ public class PropertyControl extends Property implements Control {
 
     }
 
-    public static class Descriptor extends ControlDescriptor {
+    public static class Descriptor extends ControlDescriptor<Descriptor> {
 
         private final PropertyControl control;
         private final Field propertyField;
@@ -280,27 +279,31 @@ public class PropertyControl extends Property implements Control {
                 Method onChange,
                 Method onError
         ) {
-            super(id, Category.Property, index);
+            super(Descriptor.class, id, Category.Property, index);
             control = new PropertyControl(info, binding, onChange, onError);
             this.propertyField = field;
             this.synthetic = false;
         }
 
         private Descriptor(String id, int index, Binding binding, Field field) {
-            super(id, Category.Synthetic, index);
+            super(Descriptor.class, id, Category.Synthetic, index);
             control = new PropertyControl(null, binding, null, null);
             propertyField = field;
             this.synthetic = true;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return control.info;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
-            control.attach(context, previous);
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                control.attach(context, previous.control);
+            } else {
+                control.attach(context, null);
+            }
             if (propertyField != null) {
                 try {
                     propertyField.set(context.getDelegate(), control);
@@ -311,29 +314,29 @@ public class PropertyControl extends Property implements Control {
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         public PortDescriptor createPortDescriptor() {
-            return new PortDescImpl(getID(), getIndex(), control);
+            return new PortDescImpl(id(), index(), control);
         }
 
         @Override
-        public void reset(boolean full) {
-            control.reset(full);
-            if (full && synthetic) {
+        public void reset() {
+            control.reset();
+        }
+
+        @Override
+        public void stopping() {
+            control.finishAnimating();
+            if (synthetic) {
                 try {
                     control.binding.set(control.binding.getDefaultValue());
                 } catch (Exception ex) {
                     control.context.getLog().log(LogLevel.ERROR, ex);
                 }
             }
-        }
-
-        @Override
-        public void stopping() {
-            control.finishAnimating();
         }
 
         public static Descriptor create(CodeConnector<?> connector,
@@ -454,38 +457,35 @@ public class PropertyControl extends Property implements Control {
 
     }
 
-    private static class PortDescImpl extends PortDescriptor implements ControlInput.Link {
+    private static class PortDescImpl extends PortDescriptor<PortDescImpl> implements ControlInput.Link {
 
         private final PropertyControl control;
 
         private ControlInput port;
 
         private PortDescImpl(String id, int index, PropertyControl control) {
-            super(id, Category.Property, index);
+            super(PortDescImpl.class, id, Category.Property, index);
             this.control = control;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
+        public void attach(CodeContext<?> context, PortDescImpl previous) {
+            if (previous != null) {
+                port = previous.port;
                 port.setLink(this);
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new ControlInput(this);
             }
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             assert port != null;
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlInput.INFO;
         }
 

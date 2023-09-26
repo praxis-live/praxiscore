@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,7 +38,7 @@ import org.praxislive.core.types.PError;
 /**
  *
  */
-class ResponseHandler extends ControlDescriptor implements Control {
+class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Control {
 
     static final String ID = "_reply";
     private static final PError UNKNOWN_ERROR = PError.of("Unknown error");
@@ -48,16 +48,15 @@ class ResponseHandler extends ControlDescriptor implements Control {
     private CodeContext<?> context;
 
     ResponseHandler(int index) {
-        super(ID, Category.Internal, index);
+        super(ResponseHandler.class, ID, Category.Internal, index);
         this.resultMap = new HashMap<>();
     }
 
     @Override
-    public void attach(CodeContext<?> context, Control previous) {
-        if (previous instanceof ResponseHandler) {
-            ResponseHandler prev = (ResponseHandler) previous;
-            resultMap.putAll(prev.resultMap);
-            prev.resultMap.clear();
+    public void attach(CodeContext<?> context, ResponseHandler previous) {
+        if (previous != null) {
+            resultMap.putAll(previous.resultMap);
+            previous.resultMap.clear();
         }
         this.context = context;
     }
@@ -82,12 +81,12 @@ class ResponseHandler extends ControlDescriptor implements Control {
     }
 
     @Override
-    public Control getControl() {
+    public Control control() {
         return this;
     }
 
     @Override
-    public ControlInfo getInfo() {
+    public ControlInfo controlInfo() {
         return null;
     }
 

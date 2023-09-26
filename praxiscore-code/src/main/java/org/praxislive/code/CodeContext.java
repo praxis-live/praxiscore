@@ -23,6 +23,7 @@ package org.praxislive.code;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -61,9 +63,10 @@ import org.praxislive.core.types.PReference;
  */
 public abstract class CodeContext<D extends CodeDelegate> {
 
-    private final Map<String, ControlDescriptor> controls;
-    private final Map<String, PortDescriptor> ports;
-    private final Map<String, ReferenceDescriptor> refs;
+    private final Map<String, ControlDescriptor<?>> controls;
+    private final Map<String, PortDescriptor<?>> ports;
+    private final Map<String, ReferenceDescriptor<?>> refs;
+    private final List<Descriptor> descriptors;
     private final ComponentInfo info;
 
     private final D delegate;
@@ -112,6 +115,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
             this.responseHandler = Objects.requireNonNull((ResponseHandler) controls.get(ResponseHandler.ID));
+            descriptors = new ArrayList<>(controls.values());
+            descriptors.addAll(ports.values());
+            descriptors.addAll(refs.values());
         } catch (Exception e) {
 //            Logger.getLogger(CodeContext.class.getName()).log(Level.FINE, "", e);
             throw e;
@@ -143,42 +149,25 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     private void configureControls(CodeContext<D> oldCtxt) {
-        Map<String, ControlDescriptor> oldControls = oldCtxt == null
-                ? Collections.<String, ControlDescriptor>emptyMap() : oldCtxt.controls;
-        for (Map.Entry<String, ControlDescriptor> entry : controls.entrySet()) {
-            ControlDescriptor oldCD = oldControls.remove(entry.getKey());
-            if (oldCD != null) {
-                entry.getValue().attach(this, oldCD.getControl());
-            } else {
-                entry.getValue().attach(this, null);
-            }
-        }
-        for (ControlDescriptor oldCD : oldControls.values()) {
-            oldCD.dispose();
-        }
+        Map<String, ControlDescriptor<?>> oldControls = oldCtxt == null
+                ? Collections.EMPTY_MAP : oldCtxt.controls;
+        controls.forEach((id, cd) -> cd.handleAttach(this, oldControls.remove(id)));
+        oldControls.forEach((id, cd) -> cd.dispose());
     }
 
     private void configurePorts(CodeContext<D> oldCtxt) {
-        Map<String, PortDescriptor> oldPorts = oldCtxt == null
-                ? Collections.<String, PortDescriptor>emptyMap() : oldCtxt.ports;
-        for (Map.Entry<String, PortDescriptor> entry : ports.entrySet()) {
-            PortDescriptor oldPD = oldPorts.remove(entry.getKey());
-            if (oldPD != null) {
-                entry.getValue().attach(this, oldPD.getPort());
-            } else {
-                entry.getValue().attach(this, null);
-            }
-        }
-        for (PortDescriptor oldPD : oldPorts.values()) {
-            oldPD.getPort().disconnectAll();
-            oldPD.dispose();
-        }
+        Map<String, PortDescriptor<?>> oldPorts = oldCtxt == null
+                ? Collections.EMPTY_MAP : oldCtxt.ports;
+        ports.forEach((id, pd) -> pd.handleAttach(this, oldPorts.remove(id)));
+        oldPorts.forEach((id, pd) -> {
+            pd.dispose();
+        });
     }
 
     private void configureRefs(CodeContext<D> oldCtxt) {
-        Map<String, ReferenceDescriptor> oldRefs = oldCtxt == null
+        Map<String, ReferenceDescriptor<?>> oldRefs = oldCtxt == null
                 ? Collections.EMPTY_MAP : oldCtxt.refs;
-        refs.forEach((id, ref) -> ref.attach(this, oldRefs.remove(id)));
+        refs.forEach((id, ref) -> ref.handleAttach(this, oldRefs.remove(id)));
         oldRefs.forEach((id, ref) -> ref.dispose());
     }
 
@@ -225,12 +214,19 @@ public abstract class CodeContext<D extends CodeDelegate> {
             return;
         }
         if (source.getState() == ExecutionContext.State.IDLE) {
+            if (full) {
+                descriptors.forEach(Descriptor::stopping);
+            }
             stopping(source, full);
         }
-        reset(full);
+        descriptors.forEach(Descriptor::reset);
         update(source.getTime());
         execState = source.getState();
         if (execState == ExecutionContext.State.ACTIVE) {
+            descriptors.forEach(Descriptor::init);
+            if (full) {
+                descriptors.forEach(Descriptor::starting);
+            }
             starting(source, full);
         }
         flush();
@@ -308,13 +304,12 @@ public abstract class CodeContext<D extends CodeDelegate> {
      * happens on execution context state changes as opposed to code change
      * transitions. Descriptors may handle this differently - eg. clear injected
      * values or dispose references on full.
-     *
-     * @param full whether reset is full (eg. execution state change)
      */
-    protected final void reset(boolean full) {
-        controls.values().forEach(cd -> cd.reset(full));
-        ports.values().forEach(pd -> pd.reset(full));
-        refs.values().forEach(rd -> rd.reset(full));
+    protected final void reset() {
+        descriptors.forEach(Descriptor::reset);
+        if (execCtxt.getState() == ExecutionContext.State.ACTIVE) {
+            descriptors.forEach(Descriptor::init);
+        }
     }
 
     final void handleDispose() {
@@ -362,7 +357,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
      */
     protected Control getControl(String id) {
         ControlDescriptor cd = controls.get(id);
-        return cd == null ? null : cd.getControl();
+        return cd == null ? null : cd.control();
     }
 
     /**
@@ -395,7 +390,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
      */
     protected Port getPort(String id) {
         PortDescriptor pd = ports.get(id);
-        return pd == null ? null : pd.getPort();
+        return pd == null ? null : pd.port();
     }
 
     /**
@@ -438,8 +433,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
     protected ControlAddress getAddress(Control control) {
         ComponentAddress ad = cmp == null ? null : cmp.getAddress();
         if (ad != null) {
-            for (Map.Entry<String, ControlDescriptor> ce : controls.entrySet()) {
-                if (ce.getValue().getControl() == control) {
+            for (Map.Entry<String, ControlDescriptor<?>> ce : controls.entrySet()) {
+                if (ce.getValue().control() == control) {
                     return ControlAddress.of(ad, ce.getKey());
                 }
             }

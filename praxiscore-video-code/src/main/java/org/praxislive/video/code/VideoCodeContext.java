@@ -79,9 +79,9 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
     @Override
     protected void configure(CodeComponent<VideoCodeDelegate> cmp, CodeContext<VideoCodeDelegate> oldCtxt) {
-        output.getPort().getPipe().addSource(processor);
+        output.port().getPipe().addSource(processor);
         for (VideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
         configureOffScreen((VideoCodeContext) oldCtxt);
         getDelegate().context = this;
@@ -242,7 +242,7 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
         
         private void invokeSetup(VideoCodeDelegate delegate) {
             if (resetOnSetup) {
-                reset(false);
+                reset();
             }
             try {
                 delegate.setup();

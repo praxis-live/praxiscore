@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,7 @@ import org.praxislive.core.ControlInfo;
  * and reset. The underlying control may be configured from the previous
  * iteration or carried across.
  */
-public abstract class ControlDescriptor {
+public non-sealed abstract class ControlDescriptor<T extends ControlDescriptor<T>> extends Descriptor<T> {
 
     /**
      * Categories of control, which also affects broad ordering of controls.
@@ -69,31 +69,22 @@ public abstract class ControlDescriptor {
         Function
     }
 
-    private final String id;
     private final Category category;
     private final int index;
 
     /**
      * Create a ControlDescriptor.
      *
+     * @param type type of the descriptor
      * @param id the ID (must be a valid control ID)
      * @param category the category
      * @param index the index within the category (used for ordering - must be
      * unique)
      */
-    protected ControlDescriptor(String id, Category category, int index) {
-        this.id = id;
+    protected ControlDescriptor(Class<T> type, String id, Category category, int index) {
+        super(type, id);
         this.category = category;
         this.index = index;
-    }
-
-    /**
-     * Get the ID.
-     *
-     * @return id
-     */
-    public final String getID() {
-        return id;
     }
 
     /**
@@ -101,7 +92,7 @@ public abstract class ControlDescriptor {
      *
      * @return category
      */
-    public Category getCategory() {
+    public Category category() {
         return category;
     }
 
@@ -110,7 +101,7 @@ public abstract class ControlDescriptor {
      *
      * @return index
      */
-    public int getIndex() {
+    public int index() {
         return index;
     }
 
@@ -119,21 +110,7 @@ public abstract class ControlDescriptor {
      *
      * @return info
      */
-    public abstract ControlInfo getInfo();
-
-    /**
-     * Configure the control for the provided context during attachment. The
-     * previous control with the same ID is provided - it may be null or of a
-     * different type.
-     * <p>
-     * Note : any control passed in as previous will not be disposed
-     *
-     * @param context context being attached to
-     * @param previous previous control with same ID, may be null or different
-     * type
-     */
-    // @TODO this method should take a ControlDescriptor in future versions
-    public abstract void attach(CodeContext<?> context, Control previous);
+    public abstract ControlInfo controlInfo();
 
     /**
      * Get the wrapped control. Should only be called when attached - behaviour
@@ -141,31 +118,6 @@ public abstract class ControlDescriptor {
      *
      * @return control
      */
-    public abstract Control getControl();
-
-    /**
-     * Hook called to reset during attachment / detachment, or execution context
-     * state changes. Full reset happens on execution context changes.
-     *
-     * @param full true if execution context state
-     */
-    public void reset(boolean full) {
-    }
-
-    /**
-     * Deprecated hook - no op!
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public void stopping() {
-    }
-
-    /**
-     * Hook called on code context disposal for any control descriptors not
-     * carried over.
-     */
-    public void dispose() {
-    }
+    public abstract Control control();
 
 }

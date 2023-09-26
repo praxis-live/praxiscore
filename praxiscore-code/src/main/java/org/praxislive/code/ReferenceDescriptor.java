@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,55 +27,15 @@ package org.praxislive.code;
  * ports. They include an ID, but no ordering or categories.
  *
  */
-public abstract class ReferenceDescriptor {
-
-    private final String id;
+public non-sealed abstract class ReferenceDescriptor<T extends ReferenceDescriptor<T>> extends Descriptor<T> {
 
     /**
      * Create a ReferenceDescriptor with the provided ID.
      *
      * @param id reference id
      */
-    protected ReferenceDescriptor(String id) {
-        this.id = id;
-    }
-
-    /**
-     * Get the ID.
-     *
-     * @return id
-     */
-    public final String getID() {
-        return id;
-    }
-
-    /**
-     * Configure the reference for the provided context during attachment. The
-     * previous reference descriptor with the same ID is provided - it may be
-     * null or of a different type. This method should handle disposal of the
-     * previous reference descriptor in cases where necessary (eg. not same
-     * type).
-     *
-     * @param context context being attached to
-     * @param previous previous reference descriptor with same ID, may be null
-     * or different type
-     */
-    public abstract void attach(CodeContext<?> context, ReferenceDescriptor previous);
-
-    /**
-     * Hook called to reset during attachment / detachment, or execution context
-     * state changes. Full reset happens on execution context changes.
-     *
-     * @param full true if execution context state
-     */
-    public void reset(boolean full) {
-    }
-
-    /**
-     * Hook called on code context disposal for any references descriptor not
-     * carried over.
-     */
-    public void dispose() {
+    protected ReferenceDescriptor(Class<T> type, String id) {
+        super(type, id);
     }
 
 }

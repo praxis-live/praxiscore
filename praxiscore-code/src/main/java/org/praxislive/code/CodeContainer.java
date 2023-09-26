@@ -406,58 +406,60 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     }
 
-    private static class ContainerControlDescriptor extends ControlDescriptor {
+    private static class ContainerControlDescriptor
+            extends ControlDescriptor<ContainerControlDescriptor> {
 
         private final ControlInfo info;
 
         private Control control;
 
         ContainerControlDescriptor(String id, ControlInfo info, int index) {
-            super(id, Category.Internal, index);
+            super(ContainerControlDescriptor.class, id, Category.Internal, index);
             this.info = info;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
-            control = ((CodeContainer) context.getComponent()).getContainerControl(getID());
+        public void attach(CodeContext<?> context, ContainerControlDescriptor previous) {
+            control = ((CodeContainer) context.getComponent()).getContainerControl(id());
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
 
     }
 
-    private static class PortProxiesControlDescriptor extends ControlDescriptor {
+    private static class PortProxiesControlDescriptor
+            extends ControlDescriptor<PortProxiesControlDescriptor> {
 
         private final ControlInfo info;
 
         private Control control;
 
         PortProxiesControlDescriptor(String id, int index) {
-            super(id, Category.Internal, index);
+            super(PortProxiesControlDescriptor.class, id, Category.Internal, index);
             info = Info.control().property()
                     .input(PMap.class).defaultValue(PMap.EMPTY).build();
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, PortProxiesControlDescriptor previous) {
             control = ((CodeContainer) context.getComponent()).proxyProperty;
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
 

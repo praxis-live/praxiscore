@@ -29,7 +29,7 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * 
+ *
  */
 class DataSink<T> extends Data.Sink<T> {
 
@@ -37,87 +37,82 @@ class DataSink<T> extends Data.Sink<T> {
     public Lookup getLookup() {
         return Lookup.EMPTY;
     }
-    
-    static class Descriptor extends ReferenceDescriptor {
-        
+
+    static class Descriptor extends ReferenceDescriptor<Descriptor> {
+
         private final Field sinkField;
 
         private CodeContext<?> context;
         private DataSink<?> sink;
-        
+
         public Descriptor(String id, Field sinkField) {
-            super(id);
+            super(Descriptor.class, id);
             this.sinkField = sinkField;
         }
 
         @Override
-        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
-            
+        public void attach(CodeContext<?> context, Descriptor previous) {
+
             this.context = context;
-            
-            if (previous instanceof Descriptor) {
-                Descriptor pd = (Descriptor) previous;
-                if (isCompatible(pd)) {
-                    sink = pd.sink;
-                    pd.sink = null;
+
+            if (previous != null) {
+                if (isCompatible(previous)) {
+                    sink = previous.sink;
+                    previous.sink = null;
                 } else {
-                    pd.dispose();
+                    previous.dispose();
                 }
-            } else if (previous != null) {
-                previous.dispose();
             }
-            
+
             if (sink == null) {
                 sink = new DataSink<>();
             }
-            
+
             sink.attach(context);
-            
+
             try {
                 sinkField.set(context.getDelegate(), sink);
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
-            
+
         }
-        
+
         private boolean isCompatible(Descriptor other) {
             return sinkField.getGenericType().equals(other.sinkField.getGenericType());
         }
 
         @Override
-        public void reset(boolean full) {
-            if (full) {
-                if (sink != null) {
-                    // dispose?
-                }
-                sink = new DataSink<>();
-                sink.attach(context);
-                try {
-                    sinkField.set(context.getDelegate(), sink);
-                } catch (Exception ex) {
-                    context.getLog().log(LogLevel.ERROR, ex);
-                }
-            } else {
-                if (sink != null) {
-                    sink.reset();
-                }
+        public void init() {
+//                if (sink != null) {
+//                    // dispose?
+//                }
+            sink = new DataSink<>();
+            sink.attach(context);
+            try {
+                sinkField.set(context.getDelegate(), sink);
+            } catch (Exception ex) {
+                context.getLog().log(LogLevel.ERROR, ex);
             }
-
         }
-        
+
+        @Override
+        public void reset() {
+            if (sink != null) {
+                sink.reset();
+            }
+        }
+
         static Descriptor create(CodeConnector<?> connector, Field field) {
-            if (Data.Sink.class.equals(field.getType()) &&
-                    field.getGenericType() instanceof ParameterizedType) {
+            if (Data.Sink.class.equals(field.getType())
+                    && field.getGenericType() instanceof ParameterizedType) {
                 field.setAccessible(true);
                 return new Descriptor(field.getName(), field);
             } else {
                 return null;
             }
         }
-        
+
     }
-    
-    
-    
+
 }

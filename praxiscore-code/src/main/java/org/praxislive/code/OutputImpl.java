@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -78,25 +78,22 @@ class OutputImpl extends Output {
         return new Descriptor(id, category, index, field);
     }
     
-    static class Descriptor extends PortDescriptor {
+    static class Descriptor extends PortDescriptor<Descriptor> {
 
         private ControlOutput port;
         private Field field;
 
         private Descriptor(String id, Category category, int index, Field field) {
-            super(id, category, index);
+            super(Descriptor.class, id, category, index);
             assert field != null;
             this.field = field;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlOutput) {
-                port = (ControlOutput) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                port = previous.port;
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new ControlOutput();
             }
             try {
@@ -108,12 +105,12 @@ class OutputImpl extends Output {
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlOutput.INFO;
         }
 

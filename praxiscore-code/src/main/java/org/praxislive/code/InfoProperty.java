@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,27 +41,27 @@ public class InfoProperty implements Control {
         }
     }
 
-    public static class Descriptor extends ControlDescriptor {
+    public static class Descriptor extends ControlDescriptor<Descriptor> {
 
         private final InfoProperty control;
 
         public Descriptor(int index) {
-            super(ComponentProtocol.INFO, Category.Internal, index);
+            super(Descriptor.class, ComponentProtocol.INFO, Category.Internal, index);
             control = new InfoProperty();
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return ComponentProtocol.INFO_INFO;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, Descriptor previous) {
             control.context = context;
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
