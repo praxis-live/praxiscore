@@ -112,7 +112,7 @@ class VideoInputPort extends DefaultVideoInputPort {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             alphaQuery = DEFAULT_QUERY;
             port.pipe.query = DEFAULT_QUERY;
         }

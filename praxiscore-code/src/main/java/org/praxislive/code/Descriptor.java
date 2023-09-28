@@ -57,7 +57,7 @@ public sealed abstract class Descriptor<T extends Descriptor<T>>
      * with the same ID and type is provided, if it exists. The implementation
      * should handle disposal of the previous descriptor if required.
      * <p>
-     * The {@link #init()} hook will be called after attachment if the code
+     * The {@link #onInit()} hook will be called after attachment if the code
      * context is active, or when the code context becomes active.
      *
      * @param context code context
@@ -70,25 +70,25 @@ public sealed abstract class Descriptor<T extends Descriptor<T>>
      * or after anything triggers a reset while active. The default
      * implementation does nothing.
      */
-    public void init() {
+    public void onInit() {
 
     }
 
     /**
      * Hook called when the code context becomes active due to the execution
-     * context state changing. The {@link #init()} hook will have been called
+     * context state changing. The {@link #onInit()} hook will have been called
      * prior to this hook. The default implementation does nothing.
      */
-    public void starting() {
+    public void onStart() {
 
     }
 
     /**
      * Hook called when the code context becomes inactive due to the execution
      * context state changing. This hook will be called before the
-     * {@link #reset()} hook. The default implementation does nothing.
+     * {@link #onReset()} hook. The default implementation does nothing.
      */
-    public void stopping() {
+    public void onStop() {
 
     }
 
@@ -97,7 +97,7 @@ public sealed abstract class Descriptor<T extends Descriptor<T>>
      * swap, or if anything else triggers a reset while active. The default
      * implementation does nothing.
      */
-    public void reset() {
+    public void onReset() {
 
     }
 

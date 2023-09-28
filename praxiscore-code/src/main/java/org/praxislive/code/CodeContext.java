@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,7 +32,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Stream;
 import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -213,75 +212,57 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (execState == source.getState()) {
             return;
         }
-        if (source.getState() == ExecutionContext.State.IDLE) {
-            if (full) {
-                descriptors.forEach(Descriptor::stopping);
-            }
-            stopping(source, full);
+        if (full && source.getState() == ExecutionContext.State.IDLE
+                && execState != ExecutionContext.State.NEW) {
+            onStop();
+            descriptors.forEach(Descriptor::onStop);
         }
-        descriptors.forEach(Descriptor::reset);
+        onReset();
+        descriptors.forEach(Descriptor::onReset);
         update(source.getTime());
         execState = source.getState();
         if (execState == ExecutionContext.State.ACTIVE) {
-            descriptors.forEach(Descriptor::init);
+            descriptors.forEach(Descriptor::onInit);
             if (full) {
-                descriptors.forEach(Descriptor::starting);
+                descriptors.forEach(Descriptor::onStart);
             }
-            starting(source, full);
+            onInit();
+            if (full) {
+                onStart();
+            }
         }
         flush();
     }
 
     /**
-     * Hook called when the execution context is started (moves to state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is added to a
-     * component within an active execution context. Full start will be true in
-     * the former case when the execution context itself is changing state.
-     * <p>
-     * This method may be overridden in subclasses. The default implementation
-     * delegates to {@link #starting(org.praxislive.core.ExecutionContext)}.
-     *
-     * @param source execution context
-     * @param fullStart whether the context itself is transitioning state
+     * Hook called when the code context becomes active, either as a result of
+     * the execution context becoming active or the code context being attached
+     * to a component within an active execution context.
      */
-    protected void starting(ExecutionContext source, boolean fullStart) {
-        starting(source);
+    protected void onInit() {
+
     }
 
     /**
-     * Hook called when the execution context is started (moves to state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is added to a
-     * component within an active execution context.
-     *
-     * @param source execution context
+     * Hook called when the execution context becomes active. The
+     * {@link #onInit()} hook will always have been called before this hook.
      */
-    protected void starting(ExecutionContext source) {
+    protected void onStart() {
+
     }
 
     /**
-     * Hook called when the execution context is stopped (moves away from state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is removed from a
-     * component within an active execution context. Full stop will be true in
-     * the former case when the execution context itself is changing state.
-     * <p>
-     * This method may be overridden in subclasses. The default implementation
-     * delegates to {@link #stopping(org.praxislive.core.ExecutionContext)}.
-     *
-     * @param source execution context
-     * @param fullStop whether the context itself is transitioning state
+     * Hook called when the execution context is stopping.
      */
-    protected void stopping(ExecutionContext source, boolean fullStop) {
-        stopping(source);
+    protected void onStop() {
+
     }
 
     /**
-     * Hook called when the execution context is stopped (moves away from state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is removed from a
-     * component within an active execution context.
-     *
-     * @param source execution context
+     * Hook called when the context is being reset.
      */
-    protected void stopping(ExecutionContext source) {
+    protected void onReset() {
+
     }
 
     final void handleTick(ExecutionContext source) {
@@ -300,15 +281,14 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     /**
-     * Reset all control, port and reference descriptors. A full reset generally
-     * happens on execution context state changes as opposed to code change
-     * transitions. Descriptors may handle this differently - eg. clear injected
-     * values or dispose references on full.
+     * Reset and (if active) reinitialize all control, port and reference
+     * descriptors. This does not call the {@link #onReset()} or
+     * {@link #onInit()} hooks.
      */
-    protected final void reset() {
-        descriptors.forEach(Descriptor::reset);
+    protected final void resetAndInitialize() {
+        descriptors.forEach(Descriptor::onReset);
         if (execCtxt.getState() == ExecutionContext.State.ACTIVE) {
-            descriptors.forEach(Descriptor::init);
+            descriptors.forEach(Descriptor::onInit);
         }
     }
 

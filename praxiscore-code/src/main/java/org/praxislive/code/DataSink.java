@@ -83,7 +83,7 @@ class DataSink<T> extends Data.Sink<T> {
         }
 
         @Override
-        public void init() {
+        public void onInit() {
 //                if (sink != null) {
 //                    // dispose?
 //                }
@@ -97,7 +97,7 @@ class DataSink<T> extends Data.Sink<T> {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             if (sink != null) {
                 sink.reset();
             }

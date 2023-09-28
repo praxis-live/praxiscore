@@ -22,7 +22,7 @@
  */
 package org.praxislive.tinkerforge;
 
-import org.praxislive.code.AbstractBasicProperty;
+import org.praxislive.base.AbstractProperty;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.ControlDescriptor;
 import org.praxislive.core.Value;
@@ -35,7 +35,7 @@ import org.praxislive.core.types.PString;
 /**
  *
  */
-class DeviceProperty extends AbstractBasicProperty {
+class DeviceProperty extends AbstractProperty {
 
     private final static ControlInfo INFO = ControlInfo.createPropertyInfo(
             ArgumentInfo.of(PString.class,

@@ -246,13 +246,13 @@ public class TriggerControl extends Trigger implements Control {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             control.clearLinks();
             control.maxIndex(Integer.MAX_VALUE);
         }
 
         @Override
-        public void starting() {
+        public void onStart() {
             control.index(0);
         }
         

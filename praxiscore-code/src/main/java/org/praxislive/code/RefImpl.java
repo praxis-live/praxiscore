@@ -165,20 +165,20 @@ class RefImpl<T> extends Ref<T> {
         }
 
         @Override
-        public void init() {
+        public void onInit() {
             checkPublishing();
             checkSubscription();
         }
         
         @Override
-        public void reset() {
+        public void onReset() {
             if (ref != null) {
                 ref.reset();
             }
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             if (ref != null) {
                 ref.dispose();
                 removePublishing();

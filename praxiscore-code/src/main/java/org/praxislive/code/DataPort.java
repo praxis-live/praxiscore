@@ -188,14 +188,14 @@ public abstract class DataPort<T> implements Port {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             if (port != null) {
                 port.in.reset(false);
             }
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             if (port != null) {
                 port.in.reset(true);
             }
@@ -363,14 +363,14 @@ public abstract class DataPort<T> implements Port {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             if (port != null) {
                 port.out.reset(false);
             }
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             if (port != null) {
                 port.out.reset(true);
             }

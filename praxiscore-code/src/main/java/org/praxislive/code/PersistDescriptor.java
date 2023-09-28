@@ -71,7 +71,7 @@ class PersistDescriptor extends ReferenceDescriptor<PersistDescriptor> {
     }
 
     @Override
-    public void stopping() {
+    public void onStop() {
         if (autoReset) {
             try {
                 if (autoClose) {

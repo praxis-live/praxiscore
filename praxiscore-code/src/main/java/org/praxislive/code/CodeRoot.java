@@ -196,17 +196,15 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         @Override
-        protected void starting(ExecutionContext source, boolean fullStart) {
-            if (fullStart && driverDesc != null) {
+        protected void onStart() {
+            if (driverDesc != null) {
                 getComponent().root.installDelegate(driverDesc);
             }
         }
 
         @Override
-        protected void stopping(ExecutionContext source, boolean fullStop) {
-            if (fullStop) {
-                getComponent().root.uninstallDelegate();
-            }
+        protected void onStop() {
+            getComponent().root.uninstallDelegate();
         }
 
     }

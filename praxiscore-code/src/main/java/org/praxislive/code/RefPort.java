@@ -193,7 +193,7 @@ public abstract class RefPort<T> implements Port {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             port.refInput.clearLinks();
         }
 

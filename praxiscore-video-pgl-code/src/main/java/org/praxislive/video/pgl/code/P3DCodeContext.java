@@ -105,7 +105,7 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     }
 
     @Override
-    public void starting(ExecutionContext source) {
+    public void onInit() {
         setupRequired = true;
 //        processor.dispose3D();
         try {
@@ -116,7 +116,12 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
+    protected void onReset() {
+        processor.dispose3D();
+    }
+
+    @Override
+    protected void onStop() {
         processor.dispose3D();
         offscreen.forEach((id, osgi) -> osgi.release());
     }
@@ -196,7 +201,7 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
 //            pg.resetMatrix();
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset();
+                    resetAndInitialize();
                 }
                 p3d.style(null);
                 try {

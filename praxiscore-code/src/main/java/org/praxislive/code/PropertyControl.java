@@ -323,12 +323,12 @@ public class PropertyControl extends Property implements Control {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             control.reset();
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             control.finishAnimating();
             if (synthetic) {
                 try {
@@ -424,8 +424,6 @@ public class PropertyControl extends Property implements Control {
                 binding = BooleanBinding.create(connector, field);
             } else if (ValueBinding.isBindableFieldType(type)) {
                 binding = ValueBinding.create(connector, field);
-            } else if (BytesBinding.isBindableFieldType(type)) {
-                binding = BytesBinding.create(connector, field);
             }
 
             if (binding == null && Property.class.isAssignableFrom(type)) {

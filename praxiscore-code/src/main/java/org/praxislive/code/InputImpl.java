@@ -103,7 +103,7 @@ class InputImpl extends Input {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             input.clearLinks();
         }
 

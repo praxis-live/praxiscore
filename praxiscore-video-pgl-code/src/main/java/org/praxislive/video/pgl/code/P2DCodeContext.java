@@ -94,7 +94,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
     }
 
     @Override
-    protected void starting(ExecutionContext source) {
+    protected void onInit() {
         setupRequired = true;
         try {
             getDelegate().init();
@@ -104,7 +104,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
+    protected void onStop() {
         offscreen.forEach((id, osgi) -> osgi.release());
     }
     
@@ -173,7 +173,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
             del.configure(pglOut.getContext().parent(), pg, output.getWidth(), output.getHeight());
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset();
+                    resetAndInitialize();
                 }
                 try {
                     del.setup();

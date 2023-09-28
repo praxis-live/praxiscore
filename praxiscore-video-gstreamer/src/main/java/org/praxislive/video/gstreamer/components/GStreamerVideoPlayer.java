@@ -440,12 +440,12 @@ class GStreamerVideoPlayer implements VideoPlayer {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             player.reset(false);
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             player.reset(true);
         }
 

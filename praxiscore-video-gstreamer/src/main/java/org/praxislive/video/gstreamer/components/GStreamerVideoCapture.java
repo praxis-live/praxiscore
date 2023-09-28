@@ -336,12 +336,12 @@ class GStreamerVideoCapture implements VideoCapture {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             capture.reset(false);
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             capture.reset(true);
         }
 

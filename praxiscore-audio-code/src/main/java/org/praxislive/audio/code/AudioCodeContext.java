@@ -62,12 +62,12 @@ public class AudioCodeContext extends CodeContext<AudioCodeDelegate> {
     }
 
     @Override
-    protected void starting(ExecutionContext source) {
+    protected void onInit() {
         setupDelegate();
     }
 
     @Override
-    protected void stopping(ExecutionContext source) {
+    protected void onReset() {
         resetPorts();
     }
 

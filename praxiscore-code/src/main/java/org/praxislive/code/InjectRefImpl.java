@@ -75,7 +75,7 @@ class InjectRefImpl<T> extends Ref<T> {
             }
 
             ref.attach(context);
-            init();
+            onInit();
 
         }
 
@@ -85,7 +85,7 @@ class InjectRefImpl<T> extends Ref<T> {
 
         @Override
         @SuppressWarnings("unchecked")
-        public void init() {
+        public void onInit() {
             try {
                 initializer.initialize((Ref) ref);
                 field.set(context.getDelegate(), ref.get());
@@ -95,12 +95,12 @@ class InjectRefImpl<T> extends Ref<T> {
         }
 
         @Override
-        public void reset() {
+        public void onReset() {
             ref.reset();
         }
 
         @Override
-        public void stopping() {
+        public void onStop() {
             dispose();
         }
 
