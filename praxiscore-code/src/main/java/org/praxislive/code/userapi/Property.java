@@ -195,27 +195,6 @@ public abstract class Property {
         return this;
     }
 
-    @Deprecated(forRemoval = true)
-    public Property link(DoubleConsumer... consumers) {
-        for (DoubleConsumer consumer : consumers) {
-            link(consumer);
-        }
-        return this;
-    }
-
-    /**
-     * Return a new {@link Linkable.Double} for observing changing values. The
-     * double value will be as if calling {@link #getDouble()}.
-     * <p>
-     * This method is deprecated. Switch to {@link #doubles} instead.
-     *
-     * @return Linkable.Double of values.
-     */
-    @Deprecated(forRemoval = true)
-    public Linkable.Double values() {
-        return new DoubleLink();
-    }
-
     /**
      * Return a new {@link Linkable.Double} for observing changing values. The
      * double value will be as if calling {@link #getDouble()}.
