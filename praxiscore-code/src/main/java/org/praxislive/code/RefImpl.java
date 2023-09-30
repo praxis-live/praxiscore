@@ -49,14 +49,6 @@ class RefImpl<T> extends Ref<T> {
     }
 
     @Override
-    @Deprecated
-    public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
-        var async = context.async(key, k -> (T) function.apply(k));
-        setAsync(async);
-        return this;
-    }
-
-    @Override
     protected void reset() {
         super.reset();
     }
