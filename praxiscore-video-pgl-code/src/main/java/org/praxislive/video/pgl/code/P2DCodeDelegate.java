@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,7 +23,6 @@
 package org.praxislive.video.pgl.code;
 
 import java.util.Optional;
-import org.praxislive.code.DefaultCodeDelegate;
 import org.praxislive.video.pgl.code.userapi.Constants;
 import org.praxislive.video.pgl.code.userapi.PFont;
 import org.praxislive.video.pgl.code.userapi.PGraphics2D;
@@ -32,7 +31,7 @@ import org.praxislive.video.pgl.code.userapi.PShader;
 import org.praxislive.video.pgl.code.userapi.PShape;
 import processing.core.PApplet;
 
-public class P2DCodeDelegate extends DefaultCodeDelegate {
+public class P2DCodeDelegate extends PGLCodeDelegate {
 
     public int width;
     public int height;
@@ -542,57 +541,4 @@ public class P2DCodeDelegate extends DefaultCodeDelegate {
         pg.filter(shader);
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public double noise(double x) {
-        return super.noise(x);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public double noise(double x, double y) {
-        return super.noise(x, y);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public double noise(double x, double y, double z) {
-        return super.noise(x, y, z);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void noiseDetail(int lod) {
-        super.noiseDetail(lod);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void noiseDetail(int lod, double falloff) {
-        super.noiseDetail(lod, falloff);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void noiseSeed(long what) {
-        super.noiseSeed(what);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void arrayCopy(Object src, Object dst) {
-        super.arrayCopy(src, dst);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void arrayCopy(Object src, Object dst, int length) {
-        super.arrayCopy(src, dst, length);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void arrayCopy(Object src, int srcPosition, Object dst, int dstPosition, int length) {
-        super.arrayCopy(src, srcPosition, dst, dstPosition, length);
-    }
 }
