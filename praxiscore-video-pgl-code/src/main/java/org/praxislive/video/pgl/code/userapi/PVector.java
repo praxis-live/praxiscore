@@ -1,5 +1,5 @@
 /*
-  Copyright 2018 Neil C Smith  
+  Copyright 2023 Neil C Smith  
 
   Derived from the Processing project - http://processing.org
 
@@ -21,7 +21,7 @@
   Free Software Foundation, Inc., 59 Temple Place, Suite 330,
   Boston, MA  02111-1307  USA
  */
-package org.praxislive.code.userapi;
+package org.praxislive.video.pgl.code.userapi;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -70,7 +70,6 @@ import org.praxislive.core.DataObject;
  *
  * @webref math
  */
-@Deprecated(forRemoval = true)
 public class PVector implements Serializable, DataObject {
 
     /**
