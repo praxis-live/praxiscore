@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -356,10 +357,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
      *
      * @return control IDs
      */
-    @Deprecated
-    protected String[] getControlIDs() {
-        Set<String> keySet = controls.keySet();
-        return keySet.toArray(new String[keySet.size()]);
+    protected Stream<String> controlIDs() {
+        return controls.keySet().stream();
     }
 
     /**
@@ -388,10 +387,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
      *
      * @return port IDs
      */
-    @Deprecated
-    protected String[] getPortIDs() {
-        Set<String> keySet = ports.keySet();
-        return keySet.toArray(new String[keySet.size()]);
+    protected Stream<String> portIDs() {
+        return ports.keySet().stream();
     }
 
     /**

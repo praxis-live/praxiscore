@@ -63,14 +63,10 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
         List<VideoInputPort.Descriptor> ins = new ArrayList<>();
 
-        for (String id : getPortIDs()) {
-            PortDescriptor pd = getPortDescriptor(id);
-            if (pd instanceof VideoInputPort.Descriptor) {
-                ins.add((VideoInputPort.Descriptor) pd);
-            }
-        }
-
-        inputs = ins.toArray(new VideoInputPort.Descriptor[ins.size()]);
+        inputs = portIDs().map(this::getPortDescriptor)
+                .filter(VideoInputPort.Descriptor.class::isInstance)
+                .map(VideoInputPort.Descriptor.class::cast)
+                .toArray(VideoInputPort.Descriptor[]::new);
 
         offscreen = connector.extractOffScreenInfo();
 

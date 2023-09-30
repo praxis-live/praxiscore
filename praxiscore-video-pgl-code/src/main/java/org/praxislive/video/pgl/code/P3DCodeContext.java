@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
-import org.praxislive.code.PortDescriptor;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.pgl.PGLContext;
@@ -64,14 +63,10 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
 
         List<PGLVideoInputPort.Descriptor> ins = new ArrayList<>();
 
-        for (String id : getPortIDs()) {
-            PortDescriptor pd = getPortDescriptor(id);
-            if (pd instanceof PGLVideoInputPort.Descriptor) {
-                ins.add((PGLVideoInputPort.Descriptor) pd);
-            }
-        }
-
-        inputs = ins.toArray(new PGLVideoInputPort.Descriptor[ins.size()]);
+        inputs = portIDs().map(this::getPortDescriptor)
+                .filter(PGLVideoInputPort.Descriptor.class::isInstance)
+                .map(PGLVideoInputPort.Descriptor.class::cast)
+                .toArray(PGLVideoInputPort.Descriptor[]::new);
 
         offscreen = connector.extractOffScreenInfo();
 
