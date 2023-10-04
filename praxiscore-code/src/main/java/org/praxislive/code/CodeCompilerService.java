@@ -46,13 +46,6 @@ public class CodeCompilerService implements Service {
             .control(COMPILE, COMPILE_INFO)
     );
     
-    // parameter keys
-    @Deprecated
-    public static final String KEY_CLASS_BODY_CONTEXT = "class-body-context";
-    
-    @Deprecated
-    public static final String KEY_CODE = "code";
-    
     public static final String KEY_SOURCES = "sources";
     
     public static final String KEY_SHARED_CLASSES = "shared-classes";

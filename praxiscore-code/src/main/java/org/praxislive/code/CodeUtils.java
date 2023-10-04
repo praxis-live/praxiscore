@@ -23,7 +23,9 @@ package org.praxislive.code;
 
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Stream;
 
 /**
  *
@@ -50,8 +52,8 @@ public class CodeUtils {
         return r;
     }
     
-    public static String[] defaultImports() {
-        return DefaultCodeDelegate.IMPORTS.clone();
+    public static List<String> defaultImports() {
+        return DefaultCodeDelegate.DEFAULT_IMPORTS;
     }
     
 }

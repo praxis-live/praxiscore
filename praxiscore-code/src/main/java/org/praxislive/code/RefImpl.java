@@ -49,14 +49,6 @@ class RefImpl<T> extends Ref<T> {
     }
 
     @Override
-    @Deprecated
-    public <K> Ref<T> asyncCompute(K key, Function<K, ? extends T> function) {
-        var async = context.async(key, k -> (T) function.apply(k));
-        setAsync(async);
-        return this;
-    }
-
-    @Override
     protected void reset() {
         super.reset();
     }
@@ -95,7 +87,7 @@ class RefImpl<T> extends Ref<T> {
         }
     }
 
-    static class Descriptor extends ReferenceDescriptor {
+    static class Descriptor extends ReferenceDescriptor<Descriptor> {
 
         private final Field refField;
         private final Type refType;
@@ -108,7 +100,7 @@ class RefImpl<T> extends Ref<T> {
         private RefPort.OutputDescriptor outputPort;
 
         private Descriptor(CodeConnector<?> connector, String id, Field refField, Type refType) {
-            super(id);
+            super(Descriptor.class, id);
             this.refField = refField;
             this.refType = refType;
             Ref.Publish pub = refField.getAnnotation(Ref.Publish.class);
@@ -128,22 +120,19 @@ class RefImpl<T> extends Ref<T> {
         }
 
         @Override
-        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
-            if (previous instanceof RefImpl.Descriptor) {
-                RefImpl.Descriptor pd = (RefImpl.Descriptor) previous;
-                if (isCompatible(pd)) {
-                    ref = pd.ref;
-                    pd.removePublishing();
-                    pd.removeSubscription();
-                    if (pd.subscribeTo != null && subscribeTo == null) {
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                if (isCompatible(previous)) {
+                    ref = previous.ref;
+                    previous.removePublishing();
+                    previous.removeSubscription();
+                    if (previous.subscribeTo != null && subscribeTo == null) {
                         ref.clear();
                     }
-                    pd.ref = null;
+                    previous.ref = null;
                 } else {
-                    pd.dispose();
+                    previous.dispose();
                 }
-            } else if (previous != null) {
-                previous.dispose();
             }
 
             if (ref == null) {
@@ -168,17 +157,24 @@ class RefImpl<T> extends Ref<T> {
         }
 
         @Override
-        public void reset(boolean full) {
+        public void onInit() {
+            checkPublishing();
+            checkSubscription();
+        }
+        
+        @Override
+        public void onReset() {
             if (ref != null) {
-                if (full) {
-                    ref.dispose();
-                    removePublishing();
-                    removeSubscription();
-                } else {
-                    ref.reset();
-                }
-                checkPublishing();
-                checkSubscription();
+                ref.reset();
+            }
+        }
+
+        @Override
+        public void onStop() {
+            if (ref != null) {
+                ref.dispose();
+                removePublishing();
+                removeSubscription();
             }
         }
 

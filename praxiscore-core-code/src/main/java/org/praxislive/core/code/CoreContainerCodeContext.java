@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,35 +31,35 @@ import org.praxislive.core.services.LogLevel;
  * A {@link CodeContext} for core containers.
  */
 class CoreContainerCodeContext extends CodeContainer.Context<CoreContainerDelegate> {
-    
+
     CoreContainerCodeContext(CoreContainerCodeConnector connector) {
         super(connector);
     }
 
     @Override
-    protected void starting(ExecutionContext source, boolean fullStart) {
+    protected void onInit() {
         try {
             getDelegate().init();
         } catch (Exception e) {
             getLog().log(LogLevel.ERROR, e, "Exception thrown during init()");
         }
-        if (fullStart) {
-            try {
-                getDelegate().starting();
-            } catch (Exception e) {
-                getLog().log(LogLevel.ERROR, e, "Exception thrown during starting()");
-            }
+    }
+
+    @Override
+    protected void onStart() {
+        try {
+            getDelegate().starting();
+        } catch (Exception e) {
+            getLog().log(LogLevel.ERROR, e, "Exception thrown during starting()");
         }
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
-        if (fullStop) {
-            try {
-                getDelegate().stopping();
-            } catch (Exception e) {
-                getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
-            }
+    protected void onStop() {
+        try {
+            getDelegate().stopping();
+        } catch (Exception e) {
+            getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
         }
     }
 

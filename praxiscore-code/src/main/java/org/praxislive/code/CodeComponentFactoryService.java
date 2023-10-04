@@ -22,8 +22,6 @@
 
 package org.praxislive.code;
 
-import java.util.stream.Stream;
-import org.praxislive.core.Protocol;
 import org.praxislive.core.services.ComponentFactoryService;
 
 /**
@@ -32,15 +30,5 @@ import org.praxislive.core.services.ComponentFactoryService;
  */
 public class CodeComponentFactoryService extends ComponentFactoryService {
     
-    
-    @Deprecated
-    public static class Provider implements Protocol.TypeProvider {
-
-        @Override
-        public Stream<Type> types() {
-            return Stream.of(new Protocol.Type<>(CodeComponentFactoryService.class));
-        }
         
-    }
-    
 }

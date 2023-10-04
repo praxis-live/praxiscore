@@ -143,7 +143,7 @@ public abstract class RefPort<T> implements Port {
 
     }
 
-    static final class InputDescriptor extends PortDescriptor {
+    static final class InputDescriptor extends PortDescriptor<InputDescriptor> {
 
         private final Field field;
         private final java.lang.reflect.Type type;
@@ -156,7 +156,7 @@ public abstract class RefPort<T> implements Port {
                 int index,
                 Field field,
                 java.lang.reflect.Type type) {
-            super(id, category, index);
+            super(InputDescriptor.class, id, category, index);
             this.field = field;
             this.type = type;
             this.info = PortInfo.create(RefPort.class,
@@ -165,14 +165,13 @@ public abstract class RefPort<T> implements Port {
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Input
-                    && TypeUtils.equivalent(type, ((Input<?>) previous).type)) {
-                port = (Input<?>) previous;
+        public void attach(CodeContext<?> context, InputDescriptor previous) {
+            if (previous != null && TypeUtils.equivalent(type, previous.type)) {
+                port = previous.port;
                 port.reconfigure(this);
             } else {
                 if (previous != null) {
-                    previous.disconnectAll();
+                    previous.dispose();
                 }
                 port = new Input<>(this);
             }
@@ -184,17 +183,17 @@ public abstract class RefPort<T> implements Port {
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return info;
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
 
         @Override
-        public void reset(boolean full) {
+        public void onReset() {
             port.refInput.clearLinks();
         }
 
@@ -302,7 +301,7 @@ public abstract class RefPort<T> implements Port {
 
     }
 
-    static final class OutputDescriptor extends PortDescriptor {
+    static final class OutputDescriptor extends PortDescriptor<OutputDescriptor> {
 
         private final RefImpl.Descriptor refDesc;
         private final PortInfo info;
@@ -313,7 +312,7 @@ public abstract class RefPort<T> implements Port {
                 Category category,
                 int index,
                 RefImpl.Descriptor refDesc) {
-            super(id, category, index);
+            super(OutputDescriptor.class, id, category, index);
             this.refDesc = refDesc;
             this.info = PortInfo.create(RefPort.class,
                     PortInfo.Direction.OUT,
@@ -321,27 +320,26 @@ public abstract class RefPort<T> implements Port {
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof Output
-                    && TypeUtils.equivalent(refDesc.getRefType(),
-                            ((Output<?>) previous).refDesc.getRefType())) {
-                port = (Output<?>) previous;
+        public void attach(CodeContext<?> context, OutputDescriptor previous) {
+            if (previous != null && TypeUtils.equivalent(refDesc.getRefType(),
+                    previous.refDesc.getRefType())) {
+                port = previous.port;
                 port.reconfigure(this);
             } else {
                 if (previous != null) {
-                    previous.disconnectAll();
+                    previous.dispose();
                 }
                 port = new Output<>(this);
             }
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return info;
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
 

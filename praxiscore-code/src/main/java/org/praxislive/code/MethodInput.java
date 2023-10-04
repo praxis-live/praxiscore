@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -94,39 +94,36 @@ abstract class MethodInput {
         return new Descriptor(id, category, index, input);
     }
 
-    static class Descriptor extends PortDescriptor implements ControlInput.Link {
+    static class Descriptor extends PortDescriptor<Descriptor> implements ControlInput.Link {
 
         private final MethodInput input;
 
         private ControlInput port;
 
         private Descriptor(String id, Category category, int index, MethodInput input) {
-            super(id, category, index);
+            super(Descriptor.class, id, category, index);
             this.input = input;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                port = previous.port;
                 port.setLink(this);
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new ControlInput(this);
             }
             input.attach(context);
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             assert port != null;
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlInput.INFO;
         }
 

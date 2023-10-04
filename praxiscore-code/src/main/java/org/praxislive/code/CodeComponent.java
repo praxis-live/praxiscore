@@ -81,9 +81,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     }
 
     private void disconnectAll() {
-        for (String portID : codeCtxt.getPortIDs()) {
-            getPort(portID).disconnectAll();
-        }
+        codeCtxt.portIDs().map(codeCtxt::getPort).forEach(Port::disconnectAll);
     }
 
     @Override

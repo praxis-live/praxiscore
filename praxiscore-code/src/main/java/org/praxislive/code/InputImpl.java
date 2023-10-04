@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -72,7 +72,7 @@ class InputImpl extends Input {
         return new Descriptor(id, category, index, field);
     }
     
-    static class Descriptor extends PortDescriptor 
+    static class Descriptor extends PortDescriptor<Descriptor> 
             implements ControlInput.Link {
 
         private final Field field;
@@ -80,20 +80,17 @@ class InputImpl extends Input {
         private ControlInput port;
 
         private Descriptor(String id, Category category, int index, Field field) {
-            super(id, category, index);
+            super(Descriptor.class, id, category, index);
             this.input = new InputImpl();
             this.field = field;
         }
         
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                port = previous.port;
                 port.setLink(this);
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new ControlInput(this);
             }
             try {
@@ -106,17 +103,17 @@ class InputImpl extends Input {
         }
 
         @Override
-        public void reset(boolean full) {
+        public void onReset() {
             input.clearLinks();
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlInput.INFO;
         }
 

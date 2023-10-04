@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -54,13 +54,13 @@ class InputPortControl implements Control {
         router.route(call.reply());
     }
     
-    static class Descriptor extends ControlDescriptor {
+    static class Descriptor extends ControlDescriptor<Descriptor> {
         
         private final InputPortControl control;
         private final ControlInfo info;
         
         private Descriptor(String id, Category category, int index, ControlInput.Link link) {
-            super(id, category, index);
+            super(Descriptor.class, id, category, index);
             control = new InputPortControl(link);
             info = ControlInfo.createFunctionInfo(
                     List.of(ArgumentInfo.of(Value.class)),
@@ -70,16 +70,16 @@ class InputPortControl implements Control {
         }
         
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
         
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, Descriptor previous) {
         }
         
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
         

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -53,10 +53,10 @@ import org.praxislive.video.gstreamer.VideoPlayer;
 
 /**
  *
- * 
+ *
  */
 class GStreamerVideoPlayer implements VideoPlayer {
-    
+
     private volatile State state;
 
     private final PlayBin playbin;
@@ -408,24 +408,21 @@ class GStreamerVideoPlayer implements VideoPlayer {
         }
     }
 
-    static class Descriptor extends ReferenceDescriptor {
+    static class Descriptor extends ReferenceDescriptor<Descriptor> {
 
         private final Field field;
         private GStreamerVideoPlayer player;
 
         private Descriptor(String id, Field field) {
-            super(id);
+            super(Descriptor.class, id);
             this.field = field;
         }
 
         @Override
-        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
-            if (previous instanceof Descriptor) {
-                Descriptor prevImpl = (Descriptor) previous;
-                player = prevImpl.player;
-                prevImpl.player = null;
-            } else if (previous != null) {
-                previous.dispose();
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                player = previous.player;
+                previous.player = null;
             }
 
             if (player == null) {
@@ -443,8 +440,13 @@ class GStreamerVideoPlayer implements VideoPlayer {
         }
 
         @Override
-        public void reset(boolean full) {
-            player.reset(full);
+        public void onReset() {
+            player.reset(false);
+        }
+
+        @Override
+        public void onStop() {
+            player.reset(true);
         }
 
         @Override

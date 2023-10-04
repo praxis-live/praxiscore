@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
-import org.praxislive.code.PortDescriptor;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.pgl.PGLContext;
@@ -64,14 +63,10 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
 
         List<PGLVideoInputPort.Descriptor> ins = new ArrayList<>();
 
-        for (String id : getPortIDs()) {
-            PortDescriptor pd = getPortDescriptor(id);
-            if (pd instanceof PGLVideoInputPort.Descriptor) {
-                ins.add((PGLVideoInputPort.Descriptor) pd);
-            }
-        }
-
-        inputs = ins.toArray(new PGLVideoInputPort.Descriptor[ins.size()]);
+        inputs = portIDs().map(this::getPortDescriptor)
+                .filter(PGLVideoInputPort.Descriptor.class::isInstance)
+                .map(PGLVideoInputPort.Descriptor.class::cast)
+                .toArray(PGLVideoInputPort.Descriptor[]::new);
 
         offscreen = connector.extractOffScreenInfo();
 
@@ -81,9 +76,9 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     @Override
     protected void configure(CodeComponent<P3DCodeDelegate> cmp, CodeContext<P3DCodeDelegate> oldCtxt) {
         super.configure(cmp, oldCtxt);
-        output.getPort().getPipe().addSource(processor);
+        output.port().getPipe().addSource(processor);
         for (PGLVideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
         P3DCodeContext oldP3DCtxt = (P3DCodeContext) oldCtxt;
         configureOffScreen(oldP3DCtxt);
@@ -105,7 +100,7 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     }
 
     @Override
-    public void starting(ExecutionContext source) {
+    public void onInit() {
         setupRequired = true;
 //        processor.dispose3D();
         try {
@@ -116,7 +111,12 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
+    protected void onReset() {
+        processor.dispose3D();
+    }
+
+    @Override
+    protected void onStop() {
         processor.dispose3D();
         offscreen.forEach((id, osgi) -> osgi.release());
     }
@@ -196,7 +196,7 @@ public class P3DCodeContext extends CodeContext<P3DCodeDelegate> {
 //            pg.resetMatrix();
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset(false);
+                    resetAndInitialize();
                 }
                 p3d.style(null);
                 try {

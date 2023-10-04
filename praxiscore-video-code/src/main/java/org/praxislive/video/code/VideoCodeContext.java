@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,12 +40,12 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * 
+ *
  */
-public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D> {
+public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
     private final static UnaryOperator<Boolean> DEFAULT_RENDER_QUERY = b -> b;
-    
+
     private final VideoOutputPort.Descriptor output;
     private final VideoInputPort.Descriptor[] inputs;
     private final Map<String, OffScreenGraphicsInfo> offscreen;
@@ -55,47 +55,43 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
     private boolean setupRequired;
     private UnaryOperator<Boolean> renderQuery = DEFAULT_RENDER_QUERY;
 
-    public VideoCodeContext(VideoCodeConnector<D> connector) {
+    public VideoCodeContext(VideoCodeConnector connector) {
         super(connector, connector.hasUpdate());
         setupRequired = true;
         output = connector.extractOutput();
         resetOnSetup = !connector.hasInit();
-        
+
         List<VideoInputPort.Descriptor> ins = new ArrayList<>();
 
-        for (String id : getPortIDs()) {
-            PortDescriptor pd = getPortDescriptor(id);
-            if (pd instanceof VideoInputPort.Descriptor) {
-                ins.add((VideoInputPort.Descriptor) pd);
-            }
-        }
+        inputs = portIDs().map(this::getPortDescriptor)
+                .filter(VideoInputPort.Descriptor.class::isInstance)
+                .map(VideoInputPort.Descriptor.class::cast)
+                .toArray(VideoInputPort.Descriptor[]::new);
 
-        inputs = ins.toArray(new VideoInputPort.Descriptor[ins.size()]);
-        
         offscreen = connector.extractOffScreenInfo();
-        
+
         processor = new Processor(inputs.length);
     }
 
     @Override
-    protected void configure(CodeComponent<D> cmp, CodeContext<D> oldCtxt) {
-        output.getPort().getPipe().addSource(processor);
+    protected void configure(CodeComponent<VideoCodeDelegate> cmp, CodeContext<VideoCodeDelegate> oldCtxt) {
+        output.port().getPipe().addSource(processor);
         for (VideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
-        configureOffScreen((VideoCodeContext<D>) oldCtxt);
+        configureOffScreen((VideoCodeContext) oldCtxt);
         getDelegate().context = this;
     }
-    
-    private void configureOffScreen(VideoCodeContext<D> oldCtxt) {
+
+    private void configureOffScreen(VideoCodeContext oldCtxt) {
         Map<String, OffScreenGraphicsInfo> oldOffscreen = oldCtxt == null
                 ? Collections.EMPTY_MAP : oldCtxt.offscreen;
-        offscreen.forEach( (id, osgi) -> osgi.attach(this, oldOffscreen.remove(id)));
-        oldOffscreen.forEach( (id, osgi) -> osgi.release());
+        offscreen.forEach((id, osgi) -> osgi.attach(this, oldOffscreen.remove(id)));
+        oldOffscreen.forEach((id, osgi) -> osgi.release());
     }
 
     @Override
-    protected void starting(ExecutionContext source, boolean fullStart) {
+    protected void onInit() {
         setupRequired = true;
         renderQuery = DEFAULT_RENDER_QUERY;
         try {
@@ -113,10 +109,8 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
-        if (fullStop) {
-            offscreen.forEach((id, osgi) -> osgi.release());
-        }
+    protected void onStop() {
+        offscreen.forEach((id, osgi) -> osgi.release());
     }
 
     @Override
@@ -127,11 +121,11 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
             getLog().log(LogLevel.ERROR, e, "Exception thrown during update()");
         }
     }
-    
+
     void attachRenderQuery(UnaryOperator<Boolean> renderQuery) {
         this.renderQuery = Objects.requireNonNull(renderQuery);
     }
-    
+
     void attachRenderQuery(String source, UnaryOperator<Boolean> renderQuery) {
         PortDescriptor pd = getPortDescriptor(source);
         if (pd instanceof VideoInputPort.Descriptor) {
@@ -140,7 +134,7 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
             getLog().log(LogLevel.ERROR, "No source found to attach render query : " + source);
         }
     }
-    
+
     void attachAlphaQuery(String source, UnaryOperator<Boolean> alphaQuery) {
         PortDescriptor pd = getPortDescriptor(source);
         if (pd instanceof VideoInputPort.Descriptor) {
@@ -149,9 +143,9 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
             getLog().log(LogLevel.ERROR, "No source found to attach alpha query : " + source);
         }
     }
-    
+
     private class Processor extends AbstractProcessPipe {
-        
+
         private SurfacePGraphics pg;
         private SurfacePImage[] images;
 
@@ -169,7 +163,7 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
         protected void callSources(Surface output, long time) {
             validateImages(output);
             int count = getSourceCount();
-            for (int i=0; i < count; i++) {
+            for (int i = 0; i < count; i++) {
                 callSource(getSource(i), images[i].surface, time);
             }
         }
@@ -200,7 +194,7 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
             releaseImages();
             flush();
         }
-        
+
         private void validateImages(Surface output) {
             VideoCodeDelegate del = getDelegate();
             for (int i = 0; i < images.length; i++) {
@@ -217,13 +211,13 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
                 }
             }
         }
-        
+
         private void releaseImages() {
             for (SurfacePImage image : images) {
                 image.surface.release();
             }
         }
-        
+
         private void setImageField(VideoCodeDelegate delegate, Field field, PImage image) {
             try {
                 field.set(delegate, image);
@@ -231,18 +225,18 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
                 getLog().log(LogLevel.ERROR, ex);
             }
         }
-        
+
         private void validateOffscreen(Surface output) {
             offscreen.forEach((id, osgi) -> osgi.validate(output));
         }
-        
+
         private void endOffscreen() {
             offscreen.forEach((id, osgi) -> osgi.endFrame());
         }
-        
+
         private void invokeSetup(VideoCodeDelegate delegate) {
             if (resetOnSetup) {
-                reset(false);
+                resetAndInitialize();
             }
             try {
                 delegate.setup();
@@ -250,7 +244,7 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
                 getLog().log(LogLevel.ERROR, ex, "Exception thrown from setup()");
             }
         }
-        
+
         private void invokeDraw(VideoCodeDelegate delegate) {
             try {
                 delegate.draw();
@@ -258,8 +252,6 @@ public class VideoCodeContext<D extends VideoCodeDelegate> extends CodeContext<D
                 getLog().log(LogLevel.ERROR, ex, "Exception thrown from draw()");
             }
         }
-
-        
 
     }
 

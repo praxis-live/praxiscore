@@ -67,7 +67,7 @@ public class ClassBodyWrapper {
 
     private ClassBodyWrapper() {
         defaultImports = List.of();
-        className = ClassBodyCompiler.DEFAULT_CLASS_NAME;
+        className = "$";
         implementedTypes = List.of();
     }
 

@@ -27,11 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.praxislive.core.Component;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Lookup;
-import org.praxislive.core.Root;
 import org.praxislive.core.services.ComponentFactoryService;
 import org.praxislive.core.services.RootFactoryService;
 
@@ -40,8 +38,16 @@ import org.praxislive.core.services.RootFactoryService;
  */
 public class AbstractComponentFactory implements ComponentFactory {
 
-    private final Map<ComponentType, MetaData> componentMap;
-    private final Map<ComponentType, RootMetaData> rootMap;
+    private static final ComponentFactory.Redirect COMPONENT_REDIRECT
+            = new ComponentFactory.Redirect(CodeComponentFactoryService.class,
+                    ComponentFactoryService.NEW_INSTANCE);
+
+    private static final ComponentFactory.Redirect ROOT_REDIRECT
+            = new ComponentFactory.Redirect(CodeRootFactoryService.class,
+                    RootFactoryService.NEW_ROOT_INSTANCE);
+
+    private final Map<ComponentType, Lookup> componentMap;
+    private final Map<ComponentType, Lookup> rootMap;
 
     protected AbstractComponentFactory() {
         componentMap = new LinkedHashMap<>();
@@ -49,45 +55,45 @@ public class AbstractComponentFactory implements ComponentFactory {
     }
 
     @Override
-    public Stream<ComponentType> componentTypes() {
+    public final Stream<ComponentType> componentTypes() {
         return componentMap.keySet().stream();
     }
 
     @Override
-    public Stream<ComponentType> rootTypes() {
+    public final Stream<ComponentType> rootTypes() {
         return rootMap.keySet().stream();
     }
 
     @Override
-    public ComponentFactory.MetaData<? extends Component> getMetaData(ComponentType type) {
+    public final Lookup componentData(ComponentType type) {
         return componentMap.get(type);
     }
 
     @Override
-    public ComponentFactory.MetaData<? extends Root> getRootMetaData(ComponentType type) {
+    public final Lookup rootData(ComponentType type) {
         return rootMap.get(type);
     }
 
     @Override
-    public Class<? extends ComponentFactoryService> getFactoryService() {
-        return CodeComponentFactoryService.class;
+    public final Optional<Redirect> componentRedirect() {
+        return Optional.of(COMPONENT_REDIRECT);
     }
 
     @Override
-    public Class<? extends RootFactoryService> getRootFactoryService() {
-        return CodeRootFactoryService.class;
+    public final Optional<Redirect> rootRedirect() {
+        return Optional.of(ROOT_REDIRECT);
     }
-    
+
     protected void add(Data info) {
-        componentMap.put(info.factory.componentType(), info.toMetaData());
+        componentMap.put(info.factory.componentType(), info.toLookup());
     }
-    
+
     protected void add(CodeFactory<?> factory) {
-        componentMap.put(factory.componentType(), new MetaData(factory));
+        componentMap.put(factory.componentType(), Lookup.of(factory));
     }
-    
+
     protected void addRoot(CodeFactory<? extends CodeRootDelegate> factory) {
-        rootMap.put(factory.componentType(), new RootMetaData(factory));
+        rootMap.put(factory.componentType(), Lookup.of(factory));
     }
 
     protected Data data(CodeFactory<?> factory) {
@@ -98,65 +104,10 @@ public class AbstractComponentFactory implements ComponentFactory {
         return CodeUtils.load(getClass(), location);
     }
 
-    private static class MetaData extends ComponentFactory.MetaData<Component> {
-
-        private final boolean deprecated;
-        private final ComponentType replacement;
-        private final Lookup lookup;
-
-        private MetaData(
-                boolean deprecated,
-                ComponentType replacement,
-                Lookup lookup) {
-            this.deprecated = deprecated;
-            this.replacement = replacement;
-            this.lookup = lookup;
-        }
-        
-        private MetaData(CodeFactory<?> codeFactory) {
-            this.lookup = Lookup.of(codeFactory);
-            this.replacement = null;
-            this.deprecated = false;
-        }
-
-        @Override
-        public boolean isDeprecated() {
-            return deprecated;
-        }
-
-        @Override
-        public Optional<ComponentType> findReplacement() {
-            return Optional.ofNullable(replacement);
-        }
-
-        @Override
-        public Lookup getLookup() {
-            return lookup;
-        }
-
-    }
-
-    private static class RootMetaData extends ComponentFactory.MetaData<Root> {
-
-        private final Lookup lookup;
-
-        private RootMetaData(CodeFactory<? extends CodeRootDelegate> codeFactory) {
-            this.lookup = Lookup.of(codeFactory);
-        }
-
-        @Override
-        public Lookup getLookup() {
-            return lookup;
-        }
-
-    }
-    
     public static class Data {
 
         private final CodeFactory<?> factory;
         private final List<Object> lookupList;
-        private boolean deprecated;
-        private ComponentType replacement;
 
         private Data(CodeFactory<?> factory) {
             this.factory = factory;
@@ -165,13 +116,12 @@ public class AbstractComponentFactory implements ComponentFactory {
         }
 
         public Data deprecated() {
-            deprecated = true;
+            lookupList.add(new ComponentFactory.Deprecated());
             return this;
         }
 
         public Data replacement(String type) {
-            replacement = ComponentType.of(type);
-            deprecated = true;
+            lookupList.add(new ComponentFactory.Deprecated(ComponentType.of(type)));
             return this;
         }
 
@@ -180,9 +130,8 @@ public class AbstractComponentFactory implements ComponentFactory {
             return this;
         }
 
-        private MetaData toMetaData() {
-            return new MetaData(deprecated, replacement,
-                    Lookup.of(lookupList.toArray()));
+        private Lookup toLookup() {
+            return Lookup.of(lookupList.toArray());
         }
     }
 }

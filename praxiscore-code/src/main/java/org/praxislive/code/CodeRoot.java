@@ -54,7 +54,7 @@ import org.praxislive.core.types.PError;
  * @param <D> wrapped delegate type
  */
 public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> implements Root {
-    
+
     private static final String SHARED_CODE = "shared-code";
 
     private final RootImpl root;
@@ -62,7 +62,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     private final Control stopControl;
     private final Control isRunningControl;
     private final SharedCodeProperty sharedCode;
-    
+
     private Lookup lookup;
 
     CodeRoot() {
@@ -196,17 +196,15 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         @Override
-        protected void starting(ExecutionContext source, boolean fullStart) {
-            if (fullStart && driverDesc != null) {
+        protected void onStart() {
+            if (driverDesc != null) {
                 getComponent().root.installDelegate(driverDesc);
             }
         }
 
         @Override
-        protected void stopping(ExecutionContext source, boolean fullStop) {
-            if (fullStop) {
-                getComponent().root.uninstallDelegate();
-            }
+        protected void onStop() {
+            getComponent().root.uninstallDelegate();
         }
 
     }
@@ -341,24 +339,25 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
     }
 
-    private static class RootControlDescriptor extends ControlDescriptor {
+    private static class RootControlDescriptor
+            extends ControlDescriptor<RootControlDescriptor> {
 
         private final String controlID;
 
         private CodeRoot<?> root;
 
         private RootControlDescriptor(String controlID, int index) {
-            super(controlID, Category.Internal, index);
+            super(RootControlDescriptor.class, controlID, Category.Internal, index);
             this.controlID = controlID;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, RootControlDescriptor previous) {
             root = (CodeRoot<?>) context.getComponent();
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             switch (controlID) {
                 case StartableProtocol.START:
                     return root.startControl;
@@ -373,7 +372,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             switch (controlID) {
                 case StartableProtocol.START:
                     return StartableProtocol.START_INFO;
@@ -389,7 +388,8 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
     }
 
-    private static class DriverDescriptor extends ReferenceDescriptor implements ProxyContext.Handler {
+    private static class DriverDescriptor extends ReferenceDescriptor<DriverDescriptor>
+            implements ProxyContext.Handler {
 
         private final Field field;
         private final Object driver;
@@ -398,22 +398,19 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         private DriverDescriptor next;
 
         private DriverDescriptor(Field field, Object delegate) {
-            super(field.getName());
+            super(DriverDescriptor.class, field.getName());
             this.field = field;
             this.driver = delegate;
         }
 
         @Override
-        public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
+        public void attach(CodeContext<?> context, DriverDescriptor previous) {
             this.context = (Context<?>) context;
-            if (previous instanceof DriverDescriptor) {
-                var prev = (DriverDescriptor) previous;
-                if (!field.getType().equals(prev.field.getType())) {
-                    prev.dispose();
+            if (previous != null) {
+                if (!field.getType().equals(previous.field.getType())) {
+                    previous.dispose();
                 }
-                prev.next = this;
-            } else if (previous != null) {
-                previous.dispose();
+                previous.next = this;
             }
             try {
                 var proxy = context.getComponent().getProxyContext()

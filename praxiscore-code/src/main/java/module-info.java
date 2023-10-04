@@ -19,6 +19,5 @@ module org.praxislive.code {
             org.praxislive.code.internal.CodeProtocolsProvider;
     
     uses org.praxislive.code.CodeConnector.Plugin;
-    uses org.praxislive.code.TypeConverter.Provider;
     
 }

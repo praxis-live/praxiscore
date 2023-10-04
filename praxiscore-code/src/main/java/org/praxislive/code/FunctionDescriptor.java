@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -39,7 +39,7 @@ import org.praxislive.core.types.PMap;
 /**
  *
  */
-class FunctionDescriptor extends ControlDescriptor {
+class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
 
     private final ControlInfo info;
     private final FunctionControl control;
@@ -50,26 +50,26 @@ class FunctionDescriptor extends ControlDescriptor {
             ControlInfo info,
             List<ValueMapper<?>> parameterMappers,
             ValueMapper<?> returnMapper) {
-        super(id, Category.Function, index);
+        super(FunctionDescriptor.class, id, Category.Function, index);
         this.info = info;
         this.control = new DirectFunctionControl(method, parameterMappers, returnMapper);
     }
 
     @Override
-    public void attach(CodeContext<?> context, Control previous) {
-        if (previous instanceof FunctionControl) {
-            ((FunctionControl) previous).detach();
+    public void attach(CodeContext<?> context, FunctionDescriptor previous) {
+        if (previous != null) {
+            previous.control.detach();
         }
         control.attach(context);
     }
 
     @Override
-    public Control getControl() {
+    public Control control() {
         return control;
     }
 
     @Override
-    public ControlInfo getInfo() {
+    public ControlInfo controlInfo() {
         return info;
     }
 

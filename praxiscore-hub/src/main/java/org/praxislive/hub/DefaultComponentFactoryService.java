@@ -103,10 +103,11 @@ class DefaultComponentFactoryService extends AbstractRoot
         protected Call processInvoke(Call call) throws Exception {
             ComponentType type = ComponentType.from(call.args().get(0)).orElseThrow();
             ComponentFactory factory = registry.getComponentFactory(type);
-            if (factory.getFactoryService() != ComponentFactoryService.class) {
+            ComponentFactory.Redirect redirect = factory.componentRedirect().orElse(null);
+            if (redirect != null) {
                 ControlAddress altFactory = getLookup().find(Services.class)
-                        .flatMap(srvs -> srvs.locate(factory.getFactoryService()))
-                        .map(cmp -> ControlAddress.of(cmp, ComponentFactoryService.NEW_INSTANCE))
+                        .flatMap(srvs -> srvs.locate(redirect.service()))
+                        .map(cmp -> ControlAddress.of(cmp, redirect.control()))
                         .orElseThrow(() -> new IllegalStateException("Alternative factory service not found"));
 
                 return Call.create(altFactory,
@@ -132,10 +133,11 @@ class DefaultComponentFactoryService extends AbstractRoot
         protected Call processInvoke(Call call) throws Exception {
             ComponentType type = ComponentType.from(call.args().get(0)).orElseThrow();
             ComponentFactory factory = registry.getRootComponentFactory(type);
-            if (factory.getRootFactoryService() != RootFactoryService.class) {
+            ComponentFactory.Redirect redirect = factory.rootRedirect().orElse(null);
+            if (redirect != null) {
                 ControlAddress altFactory = getLookup().find(Services.class)
-                        .flatMap(srvs -> srvs.locate(factory.getRootFactoryService()))
-                        .map(cmp -> ControlAddress.of(cmp, RootFactoryService.NEW_ROOT_INSTANCE))
+                        .flatMap(srvs -> srvs.locate(redirect.service()))
+                        .map(cmp -> ControlAddress.of(cmp, redirect.control()))
                         .orElseThrow(() -> new IllegalStateException("Alternative factory service not found"));
 
                 return Call.create(altFactory,
@@ -143,7 +145,7 @@ class DefaultComponentFactoryService extends AbstractRoot
                         call.time(),
                         call.args());
             } else {
-                Root root = factory.createRootComponent(type);
+                Root root = factory.createRoot(type);
                 return call.reply(PReference.of(root));
             }
         }

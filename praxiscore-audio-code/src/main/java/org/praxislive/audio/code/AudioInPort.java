@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,7 +31,6 @@ import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
 import org.praxislive.code.userapi.AuxIn;
 import org.praxislive.code.userapi.In;
-import org.praxislive.core.Port;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.types.PMap;
 import org.jaudiolibs.pipes.Buffer;
@@ -49,7 +48,7 @@ class AudioInPort extends DefaultAudioInputPort {
         super(in);
         this.in = in;
     }
-    
+
     AudioInPipe getPipe() {
         return in;
     }
@@ -81,7 +80,7 @@ class AudioInPort extends DefaultAudioInputPort {
 
     }
 
-    static class Descriptor extends PortDescriptor {
+    static class Descriptor extends PortDescriptor<Descriptor> {
 
         private final static PortInfo INFO = PortInfo.create(AudioPort.class, PortInfo.Direction.IN, PMap.EMPTY);
 
@@ -92,19 +91,16 @@ class AudioInPort extends DefaultAudioInputPort {
                 PortDescriptor.Category category,
                 int index,
                 Field field) {
-            super(id, category, index);
+            super(Descriptor.class, id, category, index);
             field.setAccessible(true);
             this.field = field;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof AudioInPort) {
-                port = (AudioInPort) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null) {
+                port = previous.port;
             } else {
-                if (previous != null) {
-                    previous.disconnectAll();
-                }
                 port = new AudioInPort(new AudioInPipe());
             }
             try {
@@ -115,12 +111,12 @@ class AudioInPort extends DefaultAudioInputPort {
         }
 
         @Override
-        public AudioInPort getPort() {
+        public AudioInPort port() {
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return INFO;
         }
 

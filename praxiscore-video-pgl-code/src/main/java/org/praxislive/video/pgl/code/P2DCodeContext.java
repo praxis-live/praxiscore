@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
-import org.praxislive.code.PortDescriptor;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.video.pgl.PGLContext;
@@ -63,14 +62,10 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
 
         List<PGLVideoInputPort.Descriptor> ins = new ArrayList<>();
 
-        for (String id : getPortIDs()) {
-            PortDescriptor pd = getPortDescriptor(id);
-            if (pd instanceof PGLVideoInputPort.Descriptor) {
-                ins.add((PGLVideoInputPort.Descriptor) pd);
-            }
-        }
-
-        inputs = ins.toArray(new PGLVideoInputPort.Descriptor[ins.size()]);
+        inputs = portIDs().map(this::getPortDescriptor)
+                .filter(PGLVideoInputPort.Descriptor.class::isInstance)
+                .map(PGLVideoInputPort.Descriptor.class::cast)
+                .toArray(PGLVideoInputPort.Descriptor[]::new);
         
         offscreen = connector.extractOffScreenInfo();
         
@@ -79,9 +74,9 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
 
     @Override
     protected void configure(CodeComponent<P2DCodeDelegate> cmp, CodeContext<P2DCodeDelegate> oldCtxt) {
-        output.getPort().getPipe().addSource(processor);
+        output.port().getPipe().addSource(processor);
         for (PGLVideoInputPort.Descriptor vidp : inputs) {
-            processor.addSource(vidp.getPort().getPipe());
+            processor.addSource(vidp.port().getPipe());
         }
         configureOffScreen((P2DCodeContext) oldCtxt);
     }
@@ -94,7 +89,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
     }
 
     @Override
-    protected void starting(ExecutionContext source) {
+    protected void onInit() {
         setupRequired = true;
         try {
             getDelegate().init();
@@ -104,7 +99,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
+    protected void onStop() {
         offscreen.forEach((id, osgi) -> osgi.release());
     }
     
@@ -173,7 +168,7 @@ public class P2DCodeContext extends CodeContext<P2DCodeDelegate> {
             del.configure(pglOut.getContext().parent(), pg, output.getWidth(), output.getHeight());
             if (setupRequired) {
                 if (resetOnSetup) {
-                    reset(false);
+                    resetAndInitialize();
                 }
                 try {
                     del.setup();

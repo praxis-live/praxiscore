@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,15 +40,20 @@ import org.jaudiolibs.pipes.units.AudioTable;
 /**
  *
  */
-public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnector<D> {
+public class AudioCodeConnector extends CodeConnector<AudioCodeDelegate> {
 
     private final Class<? extends AudioCodeDelegate> previousClass;
     private final List<AudioInPort.Descriptor> ins;
     private final List<AudioOutPort.Descriptor> outs;
     private final List<UGenDescriptor> ugens;
-    
-    public AudioCodeConnector(CodeFactory.Task<D> task,
-            D delegate,
+
+    public AudioCodeConnector(CodeFactory.Task<AudioCodeDelegate> task,
+            AudioCodeDelegate delegate) {
+        this(task, delegate, task.getPrevious());
+    }
+
+    public AudioCodeConnector(CodeFactory.Task<AudioCodeDelegate> task,
+            AudioCodeDelegate delegate,
             Class<? extends AudioCodeDelegate> previousClass) {
         super(task, delegate);
         this.previousClass = previousClass;
@@ -60,12 +65,12 @@ public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnect
     @Override
     @SuppressWarnings("deprecation")
     protected void analyseField(Field field) {
-        
+
         if (AudioIn.class.isAssignableFrom(field.getType())) {
             In in = field.getAnnotation(In.class);
             if (in != null) {
-                AudioInPort.Descriptor aid =
-                        AudioInPort.createDescriptor(this, in, field);
+                AudioInPort.Descriptor aid
+                        = AudioInPort.createDescriptor(this, in, field);
                 if (aid != null) {
                     addPort(aid);
                     ins.add(aid);
@@ -73,12 +78,12 @@ public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnect
                 }
             }
         }
-        
+
         if (AudioOut.class.isAssignableFrom(field.getType())) {
             Out out = field.getAnnotation(Out.class);
             if (out != null) {
-                AudioOutPort.Descriptor aod =
-                        AudioOutPort.createDescriptor(this, out, field);
+                AudioOutPort.Descriptor aod
+                        = AudioOutPort.createDescriptor(this, out, field);
                 if (aod != null) {
                     addPort(aod);
                     outs.add(aod);
@@ -86,21 +91,21 @@ public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnect
                 }
             }
         }
-        
-        if (field.isAnnotationPresent(UGen.class) &&
-                Pipe.class.isAssignableFrom(field.getType())) {
+
+        if (field.isAnnotationPresent(UGen.class)
+                && Pipe.class.isAssignableFrom(field.getType())) {
             UGenDescriptor ugd = UGenDescriptor.create(this, field);
             if (ugd != null) {
                 ugens.add(ugd);
                 return;
             }
         }
-        
+
         if (AudioTable.class.isAssignableFrom(field.getType())) {
             P p = field.getAnnotation(P.class);
             if (p != null) {
-                ResourceProperty.Descriptor<AudioTable> ipd =
-                        ResourceProperty.Descriptor.create(this, p, field, TableLoader.getDefault());
+                ResourceProperty.Descriptor ipd
+                        = ResourceProperty.Descriptor.create(this, p, field, TableLoader.getDefault());
                 if (ipd != null) {
                     addControl(ipd);
                     if (shouldAddPort(field)) {
@@ -110,24 +115,24 @@ public class AudioCodeConnector<D extends AudioCodeDelegate> extends CodeConnect
                 }
             }
         }
-        
+
         super.analyseField(field);
     }
-    
+
     UGenDescriptor[] extractUGens() {
         return ugens.toArray(new UGenDescriptor[ugens.size()]);
     }
-    
+
     AudioInPort.Descriptor[] extractIns() {
         return ins.toArray(new AudioInPort.Descriptor[ins.size()]);
     }
-    
+
     AudioOutPort.Descriptor[] extractOuts() {
         return outs.toArray(new AudioOutPort.Descriptor[outs.size()]);
     }
-    
+
     Class<? extends AudioCodeDelegate> getPreviousClass() {
         return previousClass;
     }
-    
+
 }

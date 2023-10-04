@@ -31,38 +31,38 @@ import org.praxislive.core.services.LogLevel;
  * A {@link CodeContext} for core root containers.
  */
 class CoreRootContainerCodeContext extends CodeRootContainer.Context<CoreRootContainerDelegate> {
-    
+
     CoreRootContainerCodeContext(CoreRootContainerCodeConnector connector) {
         super(connector);
     }
 
     @Override
-    protected void starting(ExecutionContext source, boolean fullStart) {
-        super.starting(source, fullStart);
+    protected void onInit() {
         try {
             getDelegate().init();
         } catch (Exception e) {
             getLog().log(LogLevel.ERROR, e, "Exception thrown during init()");
         }
-        if (fullStart) {
-            try {
-                getDelegate().starting();
-            } catch (Exception e) {
-                getLog().log(LogLevel.ERROR, e, "Exception thrown during starting()");
-            }
-        }
     }
 
     @Override
-    protected void stopping(ExecutionContext source, boolean fullStop) {
-        if (fullStop) {
-            try {
-                getDelegate().stopping();
-            } catch (Exception e) {
-                getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
-            }
+    protected void onStart() {
+        try {
+            getDelegate().starting();
+        } catch (Exception e) {
+            getLog().log(LogLevel.ERROR, e, "Exception thrown during starting()");
         }
-        super.stopping(source, fullStop);
+        super.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            getDelegate().stopping();
+        } catch (Exception e) {
+            getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
+        }
+        super.onStop();
     }
 
     @Override

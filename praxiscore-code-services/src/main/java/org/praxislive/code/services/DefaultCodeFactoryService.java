@@ -228,8 +228,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         private CodeFactory<CodeDelegate> findCodeFactory() throws Exception {
             ComponentType type = ComponentType.from(getActiveCall().args().get(0)).orElseThrow();
             ComponentFactory cmpFactory = registry.getComponentFactory(type);
-            return cmpFactory.getMetaData(type).getLookup()
-                    .find(CodeFactory.class).orElse(null);
+            return cmpFactory.componentData(type).find(CodeFactory.class).orElse(null);
         }
 
         private CodeComponent<CodeDelegate> createComponent(
@@ -279,8 +278,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         private CodeFactory<CodeDelegate> findCodeFactory() throws Exception {
             ComponentType type = ComponentType.from(getActiveCall().args().get(0)).orElseThrow();
             ComponentFactory cmpFactory = registry.getComponentFactory(type);
-            return cmpFactory.getRootMetaData(type).getLookup()
-                    .find(CodeFactory.class).orElse(null);
+            return cmpFactory.rootData(type).find(CodeFactory.class).orElse(null);
         }
 
         private CodeComponent<CodeDelegate> createComponent(

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,10 @@
 package org.praxislive.tinkerforge.components;
 
 import org.praxislive.code.AbstractComponentFactory;
-import org.praxislive.core.ComponentType;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
+import org.praxislive.tinkerforge.TFCode;
 import org.praxislive.tinkerforge.TFCodeDelegate;
-import org.praxislive.tinkerforge.TFCodeFactory;
 
 /**
  *
@@ -68,7 +67,7 @@ public class TFComponents implements ComponentFactoryProvider {
         }
 
         private void add(String type, Class<? extends TFCodeDelegate> cls, String path) {
-            add(data(new TFCodeFactory(ComponentType.of(type), cls, source(path))));
+            add(TFCode.base().create(type, cls, source(path)));
         }
         
     }

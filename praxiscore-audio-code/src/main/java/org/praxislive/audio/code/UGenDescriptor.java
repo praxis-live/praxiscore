@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -43,7 +43,7 @@ class UGenDescriptor {
         this.ugen = ugen;
     }
     
-    void attach(AudioCodeContext<?> context, CodeContext<?> previous) {
+    void attach(AudioCodeContext context, CodeContext<?> previous) {
         if (ugen == null) {
             try {
                 ugen = (Pipe) previousField.get(previous.getDelegate());

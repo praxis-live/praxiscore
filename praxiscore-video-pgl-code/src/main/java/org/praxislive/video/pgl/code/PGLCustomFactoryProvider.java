@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,23 +19,21 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.video.pgl.code;
 
 import org.praxislive.code.AbstractComponentFactory;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 
-
 /**
  *
- * 
+ *
  */
 public class PGLCustomFactoryProvider implements ComponentFactoryProvider {
 
+    private static final Factory instance = new Factory();
 
-    private static Factory instance = new Factory();
-
+    @Override
     public ComponentFactory getFactory() {
         return instance;
     }
@@ -47,8 +45,10 @@ public class PGLCustomFactoryProvider implements ComponentFactoryProvider {
         }
 
         private void build() {
-            add(data(new P2DCodeFactory("video:gl:p2d")));
-            add(data(new P3DCodeFactory("video:gl:p3d")));
+            add(PGLCode.base2D().create("video:gl:p2d", P2DCodeDelegate.class,
+                    source("resources/p2d_template.pxj")));
+            add(PGLCode.base3D().create("video:gl:p3d", P3DCodeDelegate.class,
+                    source("resources/p3d_template.pxj")));
         }
 
     }

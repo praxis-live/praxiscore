@@ -193,25 +193,23 @@ class CodeProperty<D extends CodeDelegate>
                 sourceArgs.get(0).toString(), getDelegateClass());
     }
 
-    static class Descriptor<D extends CodeDelegate>
-            extends ControlDescriptor {
+    static class Descriptor extends ControlDescriptor<CodeProperty.Descriptor> {
 
-        private final CodeFactory<D> factory;
+        private final CodeFactory<?> factory;
         private final ControlInfo info;
         private CodeProperty<?> control;
 
-        public Descriptor(CodeFactory<D> factory, int index) {
-            super("code", Category.Internal, index);
+        public Descriptor(CodeFactory<?> factory, int index) {
+            super(Descriptor.class, "code", Category.Internal, index);
             this.factory = factory;
             this.info = createInfo(factory);
         }
 
-        private ControlInfo createInfo(CodeFactory<D> factory) {
+        private ControlInfo createInfo(CodeFactory<?> factory) {
             return ControlInfo.createPropertyInfo(
                     ArgumentInfo.of(PString.class,
                             PMap.of(PString.KEY_MIME_TYPE, MIME_TYPE,
-                                    ArgumentInfo.KEY_TEMPLATE, factory.getSourceTemplate(),
-                                    ClassBodyContext.KEY, factory.getClassBodyContextName(),
+                                    ArgumentInfo.KEY_TEMPLATE, factory.sourceTemplate(),
                                     CodeFactory.BASE_CLASS_KEY, factory.baseClass().getName(),
                                     CodeFactory.BASE_IMPORTS_KEY,
                                     factory.baseImports().stream().map(PString::of).collect(PArray.collector()))
@@ -221,24 +219,25 @@ class CodeProperty<D extends CodeDelegate>
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public void attach(CodeContext<?> context, Control previous) {
-            if (previous instanceof CodeProperty
-                    && ((CodeProperty<?>) previous).factory == factory) {
-                control = (CodeProperty<?>) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null && previous.factory == factory) {
+                control = previous.control;
             } else {
+                if (previous != null) {
+                    previous.dispose();
+                }
                 control = new CodeProperty<>(factory);
             }
             control.attach(context);
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
 

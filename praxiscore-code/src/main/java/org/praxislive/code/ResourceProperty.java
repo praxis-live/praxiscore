@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,7 +41,6 @@ import org.praxislive.core.Value;
 import org.praxislive.core.Control;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Port;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.services.TaskService;
@@ -216,24 +215,24 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
 
     }
 
-    public static class Descriptor<V> extends ControlDescriptor {
+    public static class Descriptor extends ControlDescriptor<Descriptor> {
 
-        private final Loader<V> loader;
+        private final Loader<?> loader;
         private final Field field;
         private final Method onChange, onError;
         private final ControlInfo info;
 
-        private ResourceProperty<V> control;
+        private ResourceProperty<?> control;
 
         private Descriptor(
                 String id,
                 int index,
                 Field field,
-                Loader<V> loader,
+                Loader<?> loader,
                 Method onChange,
                 Method onError
         ) {
-            super(id, Category.Property, index);
+            super(Descriptor.class, id, Category.Property, index);
             this.loader = loader;
             this.field = field;
             this.onChange = onChange;
@@ -243,33 +242,35 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public void attach(CodeContext<?> context, Control previous) {
-            if (previous instanceof ResourceProperty
-                    && ((ResourceProperty) previous).loader.getType() == loader.getType()) {
-                control = (ResourceProperty<V>) previous;
+        public void attach(CodeContext<?> context, Descriptor previous) {
+            if (previous != null && previous.loader.getType() == loader.getType()) {
+                control = previous.control;
             } else {
+                if (previous != null) {
+                    previous.dispose();
+                }
                 control = new ResourceProperty<>(loader);
             }
             control.attach(context, field, onChange, onError);
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         public PortDescriptor createPortDescriptor() {
-            return new PortDescImpl(getID(), getIndex(), this);
+            return new PortDescImpl(id(), index(), this);
         }
 
-        public static <V> Descriptor<V> create(CodeConnector<?> connector, P ann,
-                Field field, Loader<V> loader) {
+        public static Descriptor create(CodeConnector<?> connector, P ann,
+                Field field, Loader<?> loader) {
             if (!field.getType().isAssignableFrom(loader.getType())) {
                 return null;
             }
@@ -286,7 +287,7 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
             if (onErrorAnn != null) {
                 onError = extractMethod(connector, onErrorAnn.value());
             }
-            return new Descriptor<>(id, index, field, loader, onChange, onError);
+            return new Descriptor(id, index, field, loader, onChange, onError);
         }
 
         private static Method extractMethod(CodeConnector<?> connector, String methodName) {
@@ -302,38 +303,39 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
 
     }
 
-    private static class PortDescImpl extends PortDescriptor implements ControlInput.Link {
+    private static class PortDescImpl extends PortDescriptor<PortDescImpl>
+            implements ControlInput.Link {
 
-        private final Descriptor<?> dsc;
+        private final Descriptor dsc;
 
         private ControlInput port;
 
-        private PortDescImpl(String id, int index, Descriptor<?> dsc) {
-            super(id, PortDescriptor.Category.Property, index);
+        private PortDescImpl(String id, int index, Descriptor dsc) {
+            super(PortDescImpl.class, id, PortDescriptor.Category.Property, index);
             this.dsc = dsc;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Port previous) {
-            if (previous instanceof ControlInput) {
-                port = (ControlInput) previous;
+        public void attach(CodeContext<?> context, PortDescImpl previous) {
+            if (previous != null) {
+                port = previous.port;
                 port.setLink(this);
             } else {
                 if (previous != null) {
-                    previous.disconnectAll();
+                    previous.dispose();
                 }
                 port = new ControlInput(this);
             }
         }
 
         @Override
-        public Port getPort() {
+        public Port port() {
             assert port != null;
             return port;
         }
 
         @Override
-        public PortInfo getInfo() {
+        public PortInfo portInfo() {
             return ControlInput.INFO;
         }
 

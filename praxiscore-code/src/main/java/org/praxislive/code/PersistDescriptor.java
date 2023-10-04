@@ -26,7 +26,7 @@ import java.util.Map;
 import org.praxislive.code.userapi.Persist;
 import org.praxislive.core.services.LogLevel;
 
-class PersistDescriptor extends ReferenceDescriptor {
+class PersistDescriptor extends ReferenceDescriptor<PersistDescriptor> {
 
     private static final Map<Class<?>, Object> PRIMITIVE_DEFAULTS = Map.of(
             int.class, Integer.valueOf(0),
@@ -46,36 +46,33 @@ class PersistDescriptor extends ReferenceDescriptor {
     private CodeContext<?> context;
 
     PersistDescriptor(Field field, boolean autoReset, boolean autoDispose) {
-        super(field.getName());
+        super(PersistDescriptor.class, field.getName());
         this.field = field;
         this.autoReset = autoReset;
         this.autoClose = autoDispose;
     }
 
     @Override
-    public void attach(CodeContext<?> context, ReferenceDescriptor previous) {
+    public void attach(CodeContext<?> context, PersistDescriptor previous) {
         this.context = context;
-        if (previous instanceof PersistDescriptor) {
-            var prev = (PersistDescriptor) previous;
-            if (field.getGenericType().equals(prev.field.getGenericType())
-                    && prev.context != null) {
+        if (previous != null) {
+            if (field.getGenericType().equals(previous.field.getGenericType())
+                    && previous.context != null) {
                 try {
                     field.set(context.getDelegate(),
-                            prev.field.get(prev.context.getDelegate()));
+                            previous.field.get(previous.context.getDelegate()));
                 } catch (Exception ex) {
                     context.getLog().log(LogLevel.ERROR, ex);
                 }
             } else {
-                prev.dispose();
+                previous.dispose();
             }
-        } else if (previous != null) {
-            previous.dispose();
         }
     }
 
     @Override
-    public void reset(boolean full) {
-        if (full && autoReset) {
+    public void onStop() {
+        if (autoReset) {
             try {
                 if (autoClose) {
                     handleAutoClose();
@@ -122,5 +119,5 @@ class PersistDescriptor extends ReferenceDescriptor {
             return null;
         }
     }
-    
+
 }

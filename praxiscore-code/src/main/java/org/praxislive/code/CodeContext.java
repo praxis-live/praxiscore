@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@ package org.praxislive.code;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 import org.praxislive.code.userapi.Async;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -61,9 +63,10 @@ import org.praxislive.core.types.PReference;
  */
 public abstract class CodeContext<D extends CodeDelegate> {
 
-    private final Map<String, ControlDescriptor> controls;
-    private final Map<String, PortDescriptor> ports;
-    private final Map<String, ReferenceDescriptor> refs;
+    private final Map<String, ControlDescriptor<?>> controls;
+    private final Map<String, PortDescriptor<?>> ports;
+    private final Map<String, ReferenceDescriptor<?>> refs;
+    private final List<Descriptor> descriptors;
     private final ComponentInfo info;
 
     private final D delegate;
@@ -112,6 +115,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
             this.responseHandler = Objects.requireNonNull((ResponseHandler) controls.get(ResponseHandler.ID));
+            descriptors = new ArrayList<>(controls.values());
+            descriptors.addAll(ports.values());
+            descriptors.addAll(refs.values());
         } catch (Exception e) {
 //            Logger.getLogger(CodeContext.class.getName()).log(Level.FINE, "", e);
             throw e;
@@ -143,42 +149,25 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     private void configureControls(CodeContext<D> oldCtxt) {
-        Map<String, ControlDescriptor> oldControls = oldCtxt == null
-                ? Collections.<String, ControlDescriptor>emptyMap() : oldCtxt.controls;
-        for (Map.Entry<String, ControlDescriptor> entry : controls.entrySet()) {
-            ControlDescriptor oldCD = oldControls.remove(entry.getKey());
-            if (oldCD != null) {
-                entry.getValue().attach(this, oldCD.getControl());
-            } else {
-                entry.getValue().attach(this, null);
-            }
-        }
-        for (ControlDescriptor oldCD : oldControls.values()) {
-            oldCD.dispose();
-        }
+        Map<String, ControlDescriptor<?>> oldControls = oldCtxt == null
+                ? Collections.EMPTY_MAP : oldCtxt.controls;
+        controls.forEach((id, cd) -> cd.handleAttach(this, oldControls.remove(id)));
+        oldControls.forEach((id, cd) -> cd.dispose());
     }
 
     private void configurePorts(CodeContext<D> oldCtxt) {
-        Map<String, PortDescriptor> oldPorts = oldCtxt == null
-                ? Collections.<String, PortDescriptor>emptyMap() : oldCtxt.ports;
-        for (Map.Entry<String, PortDescriptor> entry : ports.entrySet()) {
-            PortDescriptor oldPD = oldPorts.remove(entry.getKey());
-            if (oldPD != null) {
-                entry.getValue().attach(this, oldPD.getPort());
-            } else {
-                entry.getValue().attach(this, null);
-            }
-        }
-        for (PortDescriptor oldPD : oldPorts.values()) {
-            oldPD.getPort().disconnectAll();
-            oldPD.dispose();
-        }
+        Map<String, PortDescriptor<?>> oldPorts = oldCtxt == null
+                ? Collections.EMPTY_MAP : oldCtxt.ports;
+        ports.forEach((id, pd) -> pd.handleAttach(this, oldPorts.remove(id)));
+        oldPorts.forEach((id, pd) -> {
+            pd.dispose();
+        });
     }
 
     private void configureRefs(CodeContext<D> oldCtxt) {
-        Map<String, ReferenceDescriptor> oldRefs = oldCtxt == null
+        Map<String, ReferenceDescriptor<?>> oldRefs = oldCtxt == null
                 ? Collections.EMPTY_MAP : oldCtxt.refs;
-        refs.forEach((id, ref) -> ref.attach(this, oldRefs.remove(id)));
+        refs.forEach((id, ref) -> ref.handleAttach(this, oldRefs.remove(id)));
         oldRefs.forEach((id, ref) -> ref.dispose());
     }
 
@@ -224,68 +213,57 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (execState == source.getState()) {
             return;
         }
-        if (source.getState() == ExecutionContext.State.IDLE) {
-            stopping(source, full);
+        if (full && source.getState() == ExecutionContext.State.IDLE
+                && execState != ExecutionContext.State.NEW) {
+            onStop();
+            descriptors.forEach(Descriptor::onStop);
         }
-        reset(full);
+        onReset();
+        descriptors.forEach(Descriptor::onReset);
         update(source.getTime());
         execState = source.getState();
         if (execState == ExecutionContext.State.ACTIVE) {
-            starting(source, full);
+            descriptors.forEach(Descriptor::onInit);
+            if (full) {
+                descriptors.forEach(Descriptor::onStart);
+            }
+            onInit();
+            if (full) {
+                onStart();
+            }
         }
         flush();
     }
 
     /**
-     * Hook called when the execution context is started (moves to state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is added to a
-     * component within an active execution context. Full start will be true in
-     * the former case when the execution context itself is changing state.
-     * <p>
-     * This method may be overridden in subclasses. The default implementation
-     * delegates to {@link #starting(org.praxislive.core.ExecutionContext)}.
-     *
-     * @param source execution context
-     * @param fullStart whether the context itself is transitioning state
+     * Hook called when the code context becomes active, either as a result of
+     * the execution context becoming active or the code context being attached
+     * to a component within an active execution context.
      */
-    protected void starting(ExecutionContext source, boolean fullStart) {
-        starting(source);
+    protected void onInit() {
+
     }
 
     /**
-     * Hook called when the execution context is started (moves to state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is added to a
-     * component within an active execution context.
-     *
-     * @param source execution context
+     * Hook called when the execution context becomes active. The
+     * {@link #onInit()} hook will always have been called before this hook.
      */
-    protected void starting(ExecutionContext source) {
+    protected void onStart() {
+
     }
 
     /**
-     * Hook called when the execution context is stopped (moves away from state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is removed from a
-     * component within an active execution context. Full stop will be true in
-     * the former case when the execution context itself is changing state.
-     * <p>
-     * This method may be overridden in subclasses. The default implementation
-     * delegates to {@link #stopping(org.praxislive.core.ExecutionContext)}.
-     *
-     * @param source execution context
-     * @param fullStop whether the context itself is transitioning state
+     * Hook called when the execution context is stopping.
      */
-    protected void stopping(ExecutionContext source, boolean fullStop) {
-        stopping(source);
+    protected void onStop() {
+
     }
 
     /**
-     * Hook called when the execution context is stopped (moves away from state
-     * {@link ExecutionContext.State#ACTIVE}) or the context is removed from a
-     * component within an active execution context.
-     *
-     * @param source execution context
+     * Hook called when the context is being reset.
      */
-    protected void stopping(ExecutionContext source) {
+    protected void onReset() {
+
     }
 
     final void handleTick(ExecutionContext source) {
@@ -304,17 +282,15 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     /**
-     * Reset all control, port and reference descriptors. A full reset generally
-     * happens on execution context state changes as opposed to code change
-     * transitions. Descriptors may handle this differently - eg. clear injected
-     * values or dispose references on full.
-     *
-     * @param full whether reset is full (eg. execution state change)
+     * Reset and (if active) reinitialize all control, port and reference
+     * descriptors. This does not call the {@link #onReset()} or
+     * {@link #onInit()} hooks.
      */
-    protected final void reset(boolean full) {
-        controls.values().forEach(cd -> cd.reset(full));
-        ports.values().forEach(pd -> pd.reset(full));
-        refs.values().forEach(rd -> rd.reset(full));
+    protected final void resetAndInitialize() {
+        descriptors.forEach(Descriptor::onReset);
+        if (execCtxt.getState() == ExecutionContext.State.ACTIVE) {
+            descriptors.forEach(Descriptor::onInit);
+        }
     }
 
     final void handleDispose() {
@@ -362,7 +338,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
      */
     protected Control getControl(String id) {
         ControlDescriptor cd = controls.get(id);
-        return cd == null ? null : cd.getControl();
+        return cd == null ? null : cd.control();
     }
 
     /**
@@ -381,10 +357,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
      *
      * @return control IDs
      */
-    @Deprecated
-    protected String[] getControlIDs() {
-        Set<String> keySet = controls.keySet();
-        return keySet.toArray(new String[keySet.size()]);
+    protected Stream<String> controlIDs() {
+        return controls.keySet().stream();
     }
 
     /**
@@ -395,7 +369,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
      */
     protected Port getPort(String id) {
         PortDescriptor pd = ports.get(id);
-        return pd == null ? null : pd.getPort();
+        return pd == null ? null : pd.port();
     }
 
     /**
@@ -413,10 +387,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
      *
      * @return port IDs
      */
-    @Deprecated
-    protected String[] getPortIDs() {
-        Set<String> keySet = ports.keySet();
-        return keySet.toArray(new String[keySet.size()]);
+    protected Stream<String> portIDs() {
+        return ports.keySet().stream();
     }
 
     /**
@@ -438,8 +410,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
     protected ControlAddress getAddress(Control control) {
         ComponentAddress ad = cmp == null ? null : cmp.getAddress();
         if (ad != null) {
-            for (Map.Entry<String, ControlDescriptor> ce : controls.entrySet()) {
-                if (ce.getValue().getControl() == control) {
+            for (Map.Entry<String, ControlDescriptor<?>> ce : controls.entrySet()) {
+                if (ce.getValue().control() == control) {
                     return ControlAddress.of(ad, ce.getKey());
                 }
             }

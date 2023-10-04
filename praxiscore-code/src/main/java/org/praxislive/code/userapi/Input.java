@@ -53,17 +53,6 @@ public abstract class Input {
      *
      * @return Linkable.Double of input
      */
-    @Deprecated(forRemoval = true)
-    public Linkable.Double values() {
-        return new DoubleLink();
-    }
-
-    /**
-     * Return a {@link Linkable.Double} for reacting on inputs. None numeric
-     * inputs will be ignored.
-     *
-     * @return Linkable.Double of input
-     */
     public Linkable.Double doubles() {
         return new DoubleLink();
     }

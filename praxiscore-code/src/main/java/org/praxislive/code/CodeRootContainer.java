@@ -218,30 +218,31 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
 
     }
 
-    private static class ContainerControlDescriptor extends ControlDescriptor {
+    private static class ContainerControlDescriptor
+            extends ControlDescriptor<ContainerControlDescriptor> {
 
         private final ControlInfo info;
 
         private Control control;
 
         ContainerControlDescriptor(String id, ControlInfo info, int index) {
-            super(id, ControlDescriptor.Category.Internal, index);
+            super(ContainerControlDescriptor.class, id, ControlDescriptor.Category.Internal, index);
             this.info = info;
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, ContainerControlDescriptor previous) {
             control = ((CodeRootContainer<?>) context.getComponent())
-                    .getContainerControl(getID());
+                    .getContainerControl(id());
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return info;
         }
 

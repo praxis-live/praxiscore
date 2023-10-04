@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,7 @@
  */
 package org.praxislive.tinkerforge;
 
-import org.praxislive.code.AbstractBasicProperty;
+import org.praxislive.base.AbstractProperty;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.ControlDescriptor;
 import org.praxislive.core.Value;
@@ -35,7 +35,7 @@ import org.praxislive.core.types.PString;
 /**
  *
  */
-class DeviceProperty extends AbstractBasicProperty {
+class DeviceProperty extends AbstractProperty {
 
     private final static ControlInfo INFO = ControlInfo.createPropertyInfo(
             ArgumentInfo.of(PString.class,
@@ -63,27 +63,27 @@ class DeviceProperty extends AbstractBasicProperty {
     }
     
 
-    static class Descriptor extends ControlDescriptor {
+    static class Descriptor extends ControlDescriptor<Descriptor> {
 
         private final DeviceProperty control;
 
         Descriptor(String id, int index) {
-            super(id, Category.Property, index);
+            super(Descriptor.class, id, Category.Property, index);
             control = new DeviceProperty();
         }
 
         @Override
-        public ControlInfo getInfo() {
+        public ControlInfo controlInfo() {
             return control.getInfo();
         }
 
         @Override
-        public void attach(CodeContext<?> context, Control previous) {
+        public void attach(CodeContext<?> context, Descriptor previous) {
             control.context = (TFCodeContext) context;
         }
 
         @Override
-        public Control getControl() {
+        public Control control() {
             return control;
         }
 
