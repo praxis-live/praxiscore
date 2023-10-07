@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,13 +21,13 @@
  */
 package org.praxislive.core.types;
 
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
+import org.praxislive.core.OrderedMap;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 
@@ -39,7 +39,7 @@ public final class PMap extends Value {
     /**
      * An empty PMap.
      */
-    public final static PMap EMPTY = new PMap(List.of(), Map.of());
+    public final static PMap EMPTY = new PMap(OrderedMap.of());
 
     /**
      * An operator for use with
@@ -58,21 +58,15 @@ public final class PMap extends Value {
     public final static BinaryOperator<Value> REPLACE = (Value oldValue, Value newValue)
             -> newValue == null || newValue.isEmpty() ? null : newValue;
 
-    private final List<String> keys;
-    private final Map<String, Value> map;
+    private final OrderedMap<String, Value> map;
     private volatile String str;
 
-    private PMap(Map<String, Value> map) {
-        this(map.keySet(), map, null);
+    private PMap(OrderedMap<String, Value> map) {
+        this(map, null);
     }
 
-    private PMap(Collection<String> keys, Map<String, Value> map) {
-        this(keys, map, null);
-    }
-
-    private PMap(Collection<String> keys, Map<String, Value> map, String str) {
-        this.keys = List.copyOf(keys);
-        this.map = Map.copyOf(map);
+    private PMap(OrderedMap<String, Value> map, String str) {
+        this.map = map;
         this.str = str;
     }
 
@@ -163,15 +157,24 @@ public final class PMap extends Value {
      * @return map keys
      */
     public List<String> keys() {
-        return keys;
+        return map.keys();
+    }
+
+    /**
+     * An unmodifiable {@link OrderedMap} view of this PMap.
+     *
+     * @return map view
+     */
+    public OrderedMap<String, Value> asMap() {
+        return map;
     }
 
     @Override
     public String toString() {
         if (str == null) {
-            if (!keys.isEmpty()) {
+            if (!map.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
-                for (String key : keys) {
+                for (String key : map.keys()) {
                     if (sb.length() > 0) {
                         sb.append(' ');
                     }
@@ -206,10 +209,10 @@ public final class PMap extends Value {
         }
         try {
             PMap other = PMap.coerce(arg);
-            if (!keys.equals(other.keys)) {
+            if (!map.keys().equals(other.map.keys())) {
                 return false;
             }
-            for (String key : keys) {
+            for (String key : map.keys()) {
                 if (!Utils.equivalent(map.get(key), other.map.get(key))) {
                     return false;
                 }
@@ -222,7 +225,7 @@ public final class PMap extends Value {
 
     @Override
     public int hashCode() {
-        return Objects.hash(keys, map);
+        return Objects.hash(map.keys(), map);
     }
 
     @Override
@@ -230,9 +233,8 @@ public final class PMap extends Value {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof PMap) {
-            PMap other = (PMap) obj;
-            return keys.equals(other.keys) && map.equals(other.map);
+        if (obj instanceof PMap other) {
+            return map.keys().equals(other.map.keys()) && map.equals(other.map);
         }
         return false;
     }
@@ -246,11 +248,7 @@ public final class PMap extends Value {
      * @return new PMap
      */
     public static PMap of(String key, Object value) {
-        Map<String, Value> map = Map.of(
-                key, Value.ofObject(value)
-        );
-        List<String> keys = List.of(key);
-        return new PMap(keys, map);
+        return new PMap(OrderedMap.of(key, Value.ofObject(value)));
     }
 
     /**
@@ -265,12 +263,10 @@ public final class PMap extends Value {
      */
     public static PMap of(String key1, Object value1,
             String key2, Object value2) {
-        Map<String, Value> map = Map.of(
+        return new PMap(OrderedMap.of(
                 key1, Value.ofObject(value1),
                 key2, Value.ofObject(value2)
-        );
-        List<String> keys = List.of(key1, key2);
-        return new PMap(keys, map);
+        ));
     }
 
     /**
@@ -288,13 +284,11 @@ public final class PMap extends Value {
     public static PMap of(String key1, Object value1,
             String key2, Object value2,
             String key3, Object value3) {
-        Map<String, Value> map = Map.of(
+        return new PMap(OrderedMap.of(
                 key1, Value.ofObject(value1),
                 key2, Value.ofObject(value2),
                 key3, Value.ofObject(value3)
-        );
-        List<String> keys = List.of(key1, key2, key3);
-        return new PMap(keys, map);
+        ));
     }
 
     /**
@@ -315,14 +309,12 @@ public final class PMap extends Value {
             String key2, Object value2,
             String key3, Object value3,
             String key4, Object value4) {
-        Map<String, Value> map = Map.of(
+        return new PMap(OrderedMap.of(
                 key1, Value.ofObject(value1),
                 key2, Value.ofObject(value2),
                 key3, Value.ofObject(value3),
                 key4, Value.ofObject(value4)
-        );
-        List<String> keys = List.of(key1, key2, key3, key4);
-        return new PMap(keys, map);
+        ));
     }
 
     /**
@@ -346,15 +338,51 @@ public final class PMap extends Value {
             String key3, Object value3,
             String key4, Object value4,
             String key5, Object value5) {
-        Map<String, Value> map = Map.of(
+        return new PMap(OrderedMap.of(
                 key1, Value.ofObject(value1),
                 key2, Value.ofObject(value2),
                 key3, Value.ofObject(value3),
                 key4, Value.ofObject(value4),
                 key5, Value.ofObject(value5)
-        );
-        List<String> keys = List.of(key1, key2, key3, key4, key5);
-        return new PMap(keys, map);
+        ));
+    }
+
+    /**
+     * Create a PMap of the provided mappings. Use
+     * {@link #entry(java.lang.String, java.lang.Object)} to create entries.
+     *
+     * @param entries map entries
+     * @return new PMap
+     */
+    public static PMap ofEntries(Entry... entries) {
+        return new PMap(OrderedMap.ofEntries(entries));
+    }
+
+    /**
+     * Create a {@link PMap.Entry} for creating a PMap. Values that are not
+     * {@link Value} types will be converted automatically.
+     *
+     * @param key map key
+     * @param value map value
+     * @return map entry
+     */
+    public static PMap.Entry entry(String key, Object value) {
+        return new PMap.Entry(key, Value.ofObject(value));
+    }
+
+    /**
+     * Create a PMap from the provided {@link Map}. The order of keys in the
+     * PMap will be based on the iteration order of the map.
+     * <p>
+     * If the provided map is an {@link OrderedMap} then no copy of the map will
+     * be made and the map returned by {@link #asMap()} will be the map passed
+     * in to this method.
+     *
+     * @param map map to copy
+     * @return new PMap
+     */
+    public static PMap ofMap(Map<String, ? extends Value> map) {
+        return new PMap((OrderedMap<String, Value>) OrderedMap.copyOf(map));
     }
 
     /**
@@ -428,8 +456,8 @@ public final class PMap extends Value {
         }
         Objects.requireNonNull(operator);
         LinkedHashMap<String, Value> result = new LinkedHashMap<>();
-        base.keys.forEach(key -> result.put(key, base.map.get(key)));
-        additional.keys.forEach(key -> {
+        base.keys().forEach(key -> result.put(key, base.map.get(key)));
+        additional.keys().forEach(key -> {
             Value baseValue = result.get(key);
             Value addValue = additional.get(key);
             Value resultValue = operator.apply(baseValue, addValue);
@@ -439,7 +467,7 @@ public final class PMap extends Value {
                 result.put(key, resultValue);
             }
         });
-        return new PMap(result);
+        return new PMap(OrderedMap.copyOf(result));
     }
 
     /**
@@ -544,11 +572,55 @@ public final class PMap extends Value {
          * @return new PMap
          */
         public PMap build() {
-            return new PMap(data);
+            return new PMap(OrderedMap.copyOf(data));
         }
 
         private PMap build(String str) {
-            return new PMap(data.keySet(), data, str);
+            return new PMap(OrderedMap.copyOf(data), str);
+        }
+
+    }
+
+    public static final class Entry implements Map.Entry<String, Value> {
+
+        private final String key;
+        private final Value value;
+
+        private Entry(String key, Value value) {
+            this.key = Objects.requireNonNull(key);
+            this.value = Objects.requireNonNull(value);
+        }
+
+        @Override
+        public String getKey() {
+            return key;
+        }
+
+        @Override
+        public Value getValue() {
+            return value;
+        }
+
+        @Override
+        public int hashCode() {
+            return key.hashCode() ^ value.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Map.Entry<?, ?> entry
+                    && key.equals(entry.getKey())
+                    && value.equals(entry.getValue());
+        }
+
+        @Override
+        public Value setValue(Value value) {
+            throw new UnsupportedOperationException("PMap.Entry is immutable");
+        }
+
+        @Override
+        public String toString() {
+            return key + "=" + value;
         }
 
     }
