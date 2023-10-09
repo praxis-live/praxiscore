@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.ArgumentInfo;
+import org.praxislive.core.ValueMapper;
 import org.praxislive.core.syntax.Token;
 import org.praxislive.core.syntax.Tokenizer;
 
@@ -173,6 +174,55 @@ public final class PArray extends Value implements Iterable<Value> {
      */
     public List<Value> asList() {
         return data;
+    }
+
+    /**
+     * Access an unmodifiable {@link List} view of this PArray as a list of the
+     * provided value type.
+     * <p>
+     * If the provided type is {@link Value} then this method acts the same as
+     * calling {@link #asList()}.
+     * <p>
+     * If the provided type is a Value subclass and all values in the list
+     * returned by {@link #asList()} are of this type, then the list is cast and
+     * returned.
+     * <p>
+     * If the provided type is a Value subclass or any other type supported by
+     * {@link ValueMapper} then a new list will be returned with the values
+     * converted to the required type.
+     * <p>
+     * This method throws an {@link IllegalArgumentException} if no value mapper
+     * exists for the provided type, of if not all list values can be converted
+     * to the provided type.
+     *
+     * @param <T> value type
+     * @param type class of the value type
+     * @return list view of the provided value type
+     * @throws IllegalArgumentException if there is no mapper for the provided
+     * type, or if all values cannot be converted to the provided type
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> asListOf(Class<T> type) {
+        if (Value.class == type) {
+            return (List<T>) data;
+        }
+        if (Value.class.isAssignableFrom(type)
+                && data.stream().allMatch(v -> type.isInstance(v))) {
+            return (List<T>) data;
+        }
+        var mapper = ValueMapper.find(type);
+        if (mapper == null) {
+            throw new IllegalArgumentException("No mapper found for type : " + type);
+        }
+        var lst = new ArrayList<T>(data.size());
+        for (var value : data) {
+            var asT = mapper.fromValue(value);
+            if (asT == null) {
+                throw new IllegalArgumentException();
+            }
+            lst.add(asT);
+        }
+        return List.copyOf(lst);
     }
 
     /**
