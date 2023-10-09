@@ -30,6 +30,7 @@ import java.util.function.BinaryOperator;
 import org.praxislive.core.OrderedMap;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
+import org.praxislive.core.ValueMapper;
 
 /**
  * An ordered map of Strings to Values.
@@ -167,6 +168,55 @@ public final class PMap extends Value {
      */
     public OrderedMap<String, Value> asMap() {
         return map;
+    }
+
+    /**
+     * Access an unmodifiable {@link OrderedMap} view of this PMap as a map of
+     * the provided value type.
+     * <p>
+     * If the provided type is {@link Value} then this method acts the same as
+     * calling {@link #asMap()}.
+     * <p>
+     * If the provided type is a Value subclass and all values in the map
+     * returned by {@link #asMap()} are of this type, then the map is cast and
+     * returned.
+     * <p>
+     * If the provided type is a Value subclass or any other type supported by
+     * {@link ValueMapper} then a new map will be returned with the values
+     * converted to the required type.
+     * <p>
+     * This method throws an {@link IllegalArgumentException} if no value mapper
+     * exists for the provided type, of if not all map values can be converted
+     * to the provided type.
+     *
+     * @param <T> value type
+     * @param type class of the value type
+     * @return ordered map view of the provided value type
+     * @throws IllegalArgumentException if there is no mapper for the provided
+     * type, or if all values cannot be converted to the provided type
+     */
+    @SuppressWarnings("unchecked")
+    public <T> OrderedMap<String, T> asMapOf(Class<T> type) {
+        if (Value.class == type) {
+            return (OrderedMap<String, T>) map;
+        }
+        if (Value.class.isAssignableFrom(type)
+                && map.values().stream().allMatch(v -> type.isInstance(v))) {
+            return (OrderedMap<String, T>) map;
+        }
+        var mapper = ValueMapper.find(type);
+        if (mapper == null) {
+            throw new IllegalArgumentException("No mapper found for type : " + type);
+        }
+        var lhm = new LinkedHashMap<String, T>(map.size());
+        for (var entry : map.entrySet()) {
+            var value = mapper.fromValue(entry.getValue());
+            if (value == null) {
+                throw new IllegalArgumentException();
+            }
+            lhm.put(entry.getKey(), value);
+        }
+        return OrderedMap.copyOf(lhm);
     }
 
     @Override
@@ -381,6 +431,7 @@ public final class PMap extends Value {
      * @param map map to copy
      * @return new PMap
      */
+    @SuppressWarnings("unchecked")
     public static PMap ofMap(Map<String, ? extends Value> map) {
         return new PMap((OrderedMap<String, Value>) OrderedMap.copyOf(map));
     }

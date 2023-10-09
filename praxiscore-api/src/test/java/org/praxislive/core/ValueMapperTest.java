@@ -68,6 +68,7 @@ public class ValueMapperTest {
         assertNotNull(mapper);
         assertEquals(mapper, ValueMapper.find(boolean.class));
         assertTrue(mapper.fromValue(PBoolean.TRUE));
+        assertThrows(IllegalArgumentException.class, () -> mapper.fromValue(PString.of("FOO")));
         assertEquals(PBoolean.TRUE, mapper.toValue(true));
         assertEquals(PBoolean.FALSE, mapper.toValue(false));
         assertEquals(PBoolean.FALSE, mapper.toValue(null));

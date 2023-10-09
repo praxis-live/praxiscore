@@ -8,6 +8,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 
 import static org.junit.Assert.*;
@@ -146,6 +148,42 @@ public class PMapTest {
         PMap m5 = PMap.ofMap(lhm);
 
         assertEquals(m4, m5);
+
+    }
+
+    @Test
+    public void testAsMapOf() {
+        var m1 = PMap.of("key1", "value1", "key2", 2, "key3", true);
+        var m1AsValue = m1.asMapOf(Value.class);
+        assertSame(m1.asMap(), m1AsValue);
+        assertThrows(IllegalArgumentException.class, () -> {
+            var errMap = m1.asMapOf(Boolean.class);
+        });
+
+        var m2 = PMap.of("Key1", 1, "Key2", 2, "Key3", 3, "Key4", 4);
+        var m2AsPNumber = m2.asMapOf(PNumber.class);
+        assertSame(m2.asMap(), m2AsPNumber);
+        var m2AsInteger = m2.asMapOf(Integer.class);
+        assertNotSame(m2.asMap(), m2AsInteger);
+        assertEquals(List.of(1, 2, 3, 4), m2AsInteger.values().stream().toList());
+
+        var m3 = PMap.of("Key1", 1, "Key2", 2, "Key3", "3", "Key4", "4");
+        assertTrue(m2.equivalent(m3));
+        var m3AsPNumber = m3.asMapOf(PNumber.class);
+        assertNotSame(m3.asMap(), m3AsPNumber);
+        var m3AsNumber = m3.asMapOf(Integer.class);
+        assertEquals(List.of(1, 2, 3, 4), m3AsNumber.values().stream().toList());
+
+        var controlMap = PMap.of("control1", Info.control().action().build(),
+                "control2", PString.EMPTY);
+        assertThrows(IllegalArgumentException.class, () -> {
+            var err = controlMap.asMapOf(ControlInfo.class);
+        });
+        var controlMap2 = PMap.merge(controlMap, PMap.of("control2",
+                Info.control().function().build()), PMap.REPLACE);
+        var controlMapExtract = controlMap2.asMapOf(ControlInfo.class);
+        assertSame(controlMap2.asMap(), controlMapExtract);
+        assertEquals(List.of("control1", "control2"), controlMapExtract.keys());
 
     }
 

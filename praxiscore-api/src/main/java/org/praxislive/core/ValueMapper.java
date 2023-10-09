@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -177,7 +177,7 @@ public abstract class ValueMapper<T> {
             if (value.isEmpty()) {
                 return emptyValue;
             } else {
-                return converter.apply(value).orElse(null);
+                return converter.apply(value).orElseThrow(IllegalArgumentException::new);
             }
         }
 
@@ -226,7 +226,8 @@ public abstract class ValueMapper<T> {
 
         @Override
         public Boolean fromValue(Value value) {
-            return PBoolean.from(value).map(PBoolean::value).orElse(false);
+            return PBoolean.from(value).map(PBoolean::value)
+                    .orElseThrow(IllegalArgumentException::new);
         }
 
         @Override
