@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.core.types;
 
 import java.net.URI;
@@ -36,11 +35,16 @@ import org.praxislive.core.ArgumentInfo;
  *
  */
 public final class PResource extends Value implements Comparable<PResource> {
-    
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Resource";
+
     public final static String KEY_ALLOW_EMPTY = ArgumentInfo.KEY_ALLOW_EMPTY;
 
     private final URI uri;
-    
+
     private PResource(URI uri) {
         this.uri = uri;
     }
@@ -48,7 +52,7 @@ public final class PResource extends Value implements Comparable<PResource> {
     public URI value() {
         return uri;
     }
-    
+
     @Override
     public String toString() {
         return uri.toString();
@@ -70,14 +74,14 @@ public final class PResource extends Value implements Comparable<PResource> {
         }
         return false;
     }
-    
+
     public static PResource of(URI uri) {
         if (uri.isAbsolute()) {
             return new PResource(uri);
         }
         throw new IllegalArgumentException();
     }
-    
+
     public static PResource parse(String str) throws ValueFormatException {
         try {
             URI uri = new URI(str);
@@ -89,7 +93,7 @@ public final class PResource extends Value implements Comparable<PResource> {
             throw new ValueFormatException(ex);
         }
     }
-    
+
     private static PResource coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PResource) {
             return (PResource) arg;
@@ -97,7 +101,7 @@ public final class PResource extends Value implements Comparable<PResource> {
             return parse(arg.toString());
         }
     }
-    
+
     public static Optional<PResource> from(Value arg) {
         try {
             return Optional.of(coerce(arg));
@@ -105,7 +109,7 @@ public final class PResource extends Value implements Comparable<PResource> {
             return Optional.empty();
         }
     }
-    
+
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PResource.class, null);
     }
@@ -123,7 +127,7 @@ public final class PResource extends Value implements Comparable<PResource> {
     public int compareTo(PResource o) {
         return uri.compareTo(o.uri);
     }
-    
+
     public List<URI> resolve(Lookup lookup) {
         Resolver res = lookup.find(Resolver.class).orElse(null);
         if (res != null) {
@@ -132,11 +136,11 @@ public final class PResource extends Value implements Comparable<PResource> {
             return Collections.singletonList(uri);
         }
     }
-    
+
     public static interface Resolver {
-        
+
         public List<URI> resolve(PResource resource);
-        
+
     }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.core.types;
 
 import java.util.Optional;
@@ -31,16 +30,21 @@ import org.praxislive.core.ArgumentInfo;
  *
  */
 public final class PBoolean extends Value {
-    
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Boolean";
+
     public static final PBoolean TRUE = new PBoolean(true);
     public static final PBoolean FALSE = new PBoolean(false);
-    
+
     private boolean value;
-    
+
     private PBoolean(boolean value) {
         this.value = value;
     }
-    
+
     public boolean value() {
         return value;
     }
@@ -62,12 +66,11 @@ public final class PBoolean extends Value {
         }
         return false;
     }
-    
+
     public static PBoolean of(boolean value) {
         return value ? TRUE : FALSE;
     }
-    
-    
+
     public static PBoolean parse(String str) throws ValueFormatException {
         if (str.equals("true")) {
             return TRUE;
@@ -77,7 +80,7 @@ public final class PBoolean extends Value {
             return PNumber.parse(str).value() > 0.5 ? TRUE : FALSE;
         }
     }
-    
+
     private static PBoolean coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PBoolean) {
             return (PBoolean) arg;
@@ -87,7 +90,7 @@ public final class PBoolean extends Value {
             return parse(arg.toString());
         }
     }
-    
+
     public static Optional<PBoolean> from(Value arg) {
         try {
             return Optional.of(coerce(arg));
@@ -95,7 +98,7 @@ public final class PBoolean extends Value {
             return Optional.empty();
         }
     }
-    
+
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PBoolean.class, null);
     }

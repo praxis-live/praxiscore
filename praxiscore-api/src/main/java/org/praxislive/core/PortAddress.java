@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,11 @@ import static org.praxislive.core.ComponentAddress.cache;
  *
  */
 public class PortAddress extends Value {
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "PortAddress";
 
     public static final String SEPERATOR = "!";
     private static final String SEP_REGEX = "\\!";

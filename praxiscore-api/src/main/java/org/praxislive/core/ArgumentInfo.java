@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,99 +21,104 @@
  */
 package org.praxislive.core;
 
-import java.util.Objects;
 import java.util.Optional;
-import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
-import org.praxislive.core.types.PString;
 
 /**
  * Info object used to define the valid input and output arguments of a Control.
- * 
- * As well as giving the type of the argument, an ArgumentInfo can have an optional
- * set of properties. This might be used for defining the "minimum" and "maximum"
- * values of a PNumber argument, for example.
+ * <p>
+ * As well as giving the type of the argument, an ArgumentInfo can have an
+ * optional set of properties. This might be used for defining the "minimum" and
+ * "maximum" values of a PNumber argument, for example.
  *
  */
-public final class ArgumentInfo extends Value {
+public final class ArgumentInfo extends PMap.MapBasedValue {
 
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ArgumentInfo";
+
+    /**
+     * Map key for Value type name. The map value should be the String from
+     * {@link Value.Type#name()}.
+     */
+    public static final String KEY_TYPE = "type";
+
+    /**
+     * Map key for optional list of allowed values.
+     */
     public static final String KEY_ALLOWED_VALUES = "allowed-values";
+
+    /**
+     * Map key for optional list of suggested values. A user interface may show
+     * these as values to select, but must also allow other values to be
+     * entered.
+     */
     public static final String KEY_SUGGESTED_VALUES = "suggested-values";
+
+    /**
+     * Map key for optional flag that an empty value will be accepted even when
+     * the type has no empty representation.
+     */
     public static final String KEY_ALLOW_EMPTY = "allow-empty";
+
+    /**
+     * Map key for optional flag that an empty value will be treated as a
+     * default.
+     */
     public static final String KEY_EMPTY_IS_DEFAULT = "empty-is-default";
+
+    /**
+     * Map key for optional text template. A user interface might show the
+     * template when the value is otherwise empty.
+     */
     public static final String KEY_TEMPLATE = "template";
+
+    /**
+     * Map key for optional mime type of the value.
+     */
     public static final String KEY_MIME_TYPE = "mime-type";
+
+    /**
+     * Map key to mark an argument as optional. The value may be omitted in
+     * input arguments or not returned in outputs arguments.
+     */
     public static final String KEY_OPTIONAL = "optional";
+
+    /**
+     * Map key to mark an argument as varargs. The input or output arguments may
+     * include any number of matching values.
+     */
     public static final String KEY_VARARGS = "varargs";
 
-    static enum Presence {
+    private final String type;
 
-        Always, Optional, Variable
-    }
-
-    private final Value.Type<? extends Value> type;
-    private final PMap properties;
-
-    private volatile String string;
-
-    ArgumentInfo(Value.Type<? extends Value> type,
-            PMap properties,
-            String string) {
+    private ArgumentInfo(String type, PMap data) {
+        super(data);
         this.type = type;
-        this.properties = properties;
-        this.string = string;
     }
- 
-    public Value.Type<? extends Value> argumentType() {
+
+    /**
+     * The value type name of the argument. See {@link Value.Type#name()}.
+     *
+     * @return value type name
+     */
+    public String argumentType() {
         return type;
     }
 
     /**
+     * Access the map of properties. The map includes the value type, as well as
+     * any custom or optional properties.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
      *
-     * @return PMap properties
+     * @return property map
      */
     public PMap properties() {
-        return properties;
-    }
-    
-
-    @Override
-    public String toString() {
-        String str = string;
-        if (str == null) {
-            str = PArray.of(
-                    PString.of(type.name()),
-                    // @TODO remove when legacy parsing not required
-                    PString.of(Presence.Always.name()),
-                    properties
-            
-            ).toString();
-            string = str;
-        }
-        return str;
-    }
-//
-//    @Override
-//    public boolean isEquivalent(Value arg) {
-//        return equals(arg);
-//    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof ArgumentInfo) {
-            ArgumentInfo o = (ArgumentInfo) obj;
-            return type.equals(o.type)
-                    && properties.equals(o.properties);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 53 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 53 * hash + (this.properties != null ? this.properties.hashCode() : 0);
-        return hash;
+        return dataMap();
     }
 
     /**
@@ -124,10 +129,10 @@ public final class ArgumentInfo extends Value {
      * @return ArgumentInfo
      */
     public static ArgumentInfo of(Class<? extends Value> argClass) {
-        return create(argClass, PMap.EMPTY);
+        return of(argClass, null);
 
     }
-    
+
     /**
      * Create an ArgumentInfo from the Value class and optional PMap of
      * additional properties.
@@ -138,82 +143,55 @@ public final class ArgumentInfo extends Value {
      */
     public static ArgumentInfo of(Class<? extends Value> argClass,
             PMap properties) {
-        return create(argClass, properties);
+        return create(Value.Type.of(argClass).name(), properties);
 
+    }
+
+    static ArgumentInfo create(String argumentType, PMap properties) {
+        PMap map = PMap.of(KEY_TYPE, argumentType);
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new ArgumentInfo(argumentType, map);
     }
 
     /**
-     * Create an ArgumentInfo from the Value class and optional PMap of
-     * additional properties.
+     * Coerce the provided Value into an ArgumentInfo if possible.
      *
-     * @param argClass
-     * @param properties
-     * @return ArgumentInfo
+     * @param arg value of unknown type
+     * @return argument info or empty optional
      */
-    private static ArgumentInfo create(Class<? extends Value> argClass,
-            PMap properties) {
-        Objects.requireNonNull(argClass);
-        if (properties == null) {
-            properties = PMap.EMPTY;
-        }
-        return new ArgumentInfo(Value.Type.of(argClass), properties, null);
-
-    }
-
-    /**
-     * Coerce the given Value into an ArgumentInfo object.
-     *
-     * @param arg Value to be coerced.
-     * @return ArgumentInfo
-     * @throws ValueFormatException if Value cannot be coerced.
-     */
-    private static ArgumentInfo coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof ArgumentInfo) {
-            return (ArgumentInfo) arg;
-        } else {
-            return parse(arg.toString());
-        }
-    }
-    
     public static Optional<ArgumentInfo> from(Value arg) {
-        try {
-            return Optional.of(coerce(arg));
-        } catch (ValueFormatException ex) {
-            return Optional.empty();
+        if (arg instanceof ArgumentInfo info) {
+            return Optional.of(info);
+        } else {
+            try {
+                return PMap.from(arg).map(ArgumentInfo::fromMap);
+            } catch (Exception ex) {
+                return Optional.empty();
+            }
         }
     }
 
+    /**
+     * Parse the provided String into an ArgumentInfo if possible.
+     *
+     * @param string text to parse
+     * @return argument info
+     * @throws ValueFormatException if parsing fails
+     */
     public static ArgumentInfo parse(String string) throws ValueFormatException {
-        PArray arr = PArray.parse(string);
+        var data = PMap.parse(string);
         try {
-            if (arr.size() > 2) {
-                // legacy format
-                Value.Type<? extends Value> type =
-                        Value.Type.fromName(arr.get(0).toString()).orElseThrow();
-                Presence presence = Presence.valueOf(arr.get(1).toString());
-                PMap properties = PMap.from(arr.get(2)).orElseThrow();
-                if (presence != Presence.Always) {
-                    var b = PMap.builder(properties.size() + 1);
-                    for (var key : properties.keys()) {
-                        b.put(key, properties.get(key));
-                    }
-                    if (presence == Presence.Optional) {
-                        b.put(KEY_OPTIONAL, true);
-                    } else {
-                        b.put(KEY_VARARGS, true);
-                    }
-                    properties = b.build();
-                }
-                return new ArgumentInfo(type, properties, string);
-            } else {
-                Value.Type<? extends Value> type =
-                        Value.Type.fromName(arr.get(0).toString()).orElseThrow();
-                PMap properties = PMap.from(arr.get(1)).orElseThrow();
-                return new ArgumentInfo(type, properties, string);
-            }
+            return fromMap(data);
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }
     }
-    
+
+    private static ArgumentInfo fromMap(PMap data) {
+        String argumentType = data.get(KEY_TYPE).toString();
+        return new ArgumentInfo(argumentType, data);
+    }
+
 }

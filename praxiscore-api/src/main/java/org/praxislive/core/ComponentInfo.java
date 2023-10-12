@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,275 +21,224 @@
  */
 package org.praxislive.core;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Stream;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 
 /**
- *
+ * Information about the controls, ports, protocols and properties of a
+ * Component.
  */
-public class ComponentInfo extends Value {
+public class ComponentInfo extends PMap.MapBasedValue {
 
-    public final static String KEY_COMPONENT_TYPE = "component-type";
-    public final static String KEY_DYNAMIC = "dynamic";
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ComponentInfo";
 
-    private final static String INFO_PREFIX = "INFO:";
+    /**
+     * Map key for the controls map.
+     */
+    public static final String KEY_CONTROLS = "controls";
 
-//    private Class<? extends Component> type;
-    private final PArray protocols;
-    private final PMap controls;
-    private final PMap ports;
-    private final PMap properties;
+    /**
+     * Map key for the ports map.
+     */
+    public static final String KEY_PORTS = "ports";
 
-    private volatile String string;
+    /**
+     * Map key for the protocols list.
+     */
+    public static final String KEY_PROTOCOLS = "protocols";
 
-    ComponentInfo(PArray protocols,
-            PMap controls,
-            PMap ports,
-            PMap properties,
-            String string
-    ) {
-//        this.type = type;
+    /**
+     * Optional key for storing the {@link ComponentType} of the Component in
+     * the properties map. value must be a valid component type.
+     */
+    public static final String KEY_COMPONENT_TYPE = "component-type";
+
+    /**
+     * Optional key marking the fact that the response from
+     * {@link Component#getInfo()} or {@link ComponentProtocol} may change
+     * during the lifetime of the component. Value must currently be a boolean.
+     */
+    public static final String KEY_DYNAMIC = "dynamic";
+
+    private final OrderedMap<String, ControlInfo> controls;
+    private final OrderedMap<String, PortInfo> ports;
+    private final List<String> protocols;
+
+    private ComponentInfo(
+            OrderedMap<String, ControlInfo> controls,
+            OrderedMap<String, PortInfo> ports,
+            List<String> protocols,
+            PMap data) {
+        super(data);
         this.protocols = protocols;
         this.controls = controls;
         this.ports = ports;
-        this.properties = properties;
-        this.string = string;
     }
 
-    public Stream<Class<? extends Protocol>> protocols() {
-        return protocols.stream().map(p ->
-                Protocol.Type.fromName(p.toString()))
-                .filter(Optional::isPresent)
-                .map(o -> o.get().asClass());
+    /**
+     * The list of {@link Protocol}s supported by the related component.
+     *
+     * @return list of protocols
+     */
+    public List<String> protocols() {
+        return protocols;
     }
-    
+
+    /**
+     * Query whether the related component has the provided protocol.
+     *
+     * @param protocol protocol class
+     * @return true if component has protocol
+     */
     public boolean hasProtocol(Class<? extends Protocol> protocol) {
         String name = Protocol.Type.of(protocol).name();
-        for (int i = 0; i < protocols.size(); i++) {
-            if (protocols.get(i).toString().equals(name)) {
-                return true;
-            }
-        }
-        return false;
+        return protocols.contains(name);
     }
 
+    /**
+     * The list of controls on the related component. To access the
+     * {@link ControlInfo} for a control, use
+     * {@link #controlInfo(java.lang.String)}.
+     *
+     * @return list of controls
+     */
     public List<String> controls() {
         return controls.keys();
     }
-    
+
+    /**
+     * Access the {@link ControlInfo} for the given control.
+     *
+     * @param control name of control
+     * @return control info (or null if not in the list of controls)
+     */
     public ControlInfo controlInfo(String control) {
-        var info = controls.get(control);
-        if (info == null) {
-            return null;
-        }
-        return ControlInfo.from(controls.get(control)).orElse(null);
+        return controls.get(control);
     }
-    
+
+    /**
+     * The list of ports on the related component. To access the
+     * {@link PortInfo} for a port, use {@link #portInfo(java.lang.String)}.
+     *
+     * @return list of ports
+     */
     public List<String> ports() {
         return ports.keys();
     }
-    
+
+    /**
+     * Access the {@link PortInfo} for the given port.
+     *
+     * @param port name of port
+     * @return port info (or null if not in the list of ports)
+     */
     public PortInfo portInfo(String port) {
-        var info = ports.get(port);
-        if (info == null) {
-            return null;
-        }
-        return PortInfo.from(ports.get(port)).orElse(null);
+        return ports.get(port);
     }
 
+    /**
+     * Access the map of properties. The map includes all the controls, ports
+     * and protocols, as well as any custom or optional properties.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return property map
+     */
     public PMap properties() {
-        return properties;
-    }
-    
-    @Override
-    public String toString() {
-        String str = string;
-        if (str == null) {
-            str = buildString();
-            string = str;
-        }
-        return str;
-    }
-
-    private String buildString() {
-        PArray arr = PArray.of(
-                PString.of(INFO_PREFIX),
-                controls,
-                ports,
-                protocols,
-                properties
-        );
-        return arr.toString();           
-    }
-
-    @Override
-    public boolean equivalent(Value arg) {
-        try {
-            if (this == arg) {
-                return true;
-            }
-            ComponentInfo other = ComponentInfo.coerce(arg);
-            return protocols.equals(other.protocols)
-                    && controls.equivalent(other.controls)
-                    && ports.equivalent(other.ports)
-                    && properties.equivalent(other.properties);
-        } catch (ValueFormatException ex) {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof ComponentInfo) {
-            ComponentInfo o = (ComponentInfo) obj;
-            return protocols.equals(o.protocols)
-                    && controls.equals(o.controls)
-                    && ports.equals(o.ports)
-                    && properties.equals(o.properties);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-//        hash = 79 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 79 * hash + protocols.hashCode();
-        hash = 79 * hash + (this.controls != null ? this.controls.hashCode() : 0);
-        hash = 79 * hash + (this.ports != null ? this.ports.hashCode() : 0);
-        hash = 79 * hash + (this.properties != null ? this.properties.hashCode() : 0);
-        return hash;
+        return dataMap();
     }
 
     static ComponentInfo create(
             Map<String, ControlInfo> controls,
             Map<String, PortInfo> ports,
-            Set<Class<? extends Protocol>> protocols,
+            Set<String> protocols,
             PMap properties) {
 
-        PMap ctrls;
-        if (controls == null || controls.isEmpty()) {
-            ctrls = PMap.EMPTY;
-        } else {
-            PMap.Builder cBld = PMap.builder(controls.size());
-            for (Map.Entry<String, ControlInfo> control : controls.entrySet()) {
-                cBld.put(control.getKey(), control.getValue());
-            }
-            ctrls = cBld.build();
-        }
-        PMap prts;
-        if (ports == null || ports.isEmpty()) {
-            prts = PMap.EMPTY;
-        } else {
-            PMap.Builder pBld = PMap.builder(ports.size());
-            for (Map.Entry<String, PortInfo> port : ports.entrySet()) {
-                pBld.put(port.getKey(), port.getValue());
-            }
-            prts = pBld.build();
-        }
-        PArray protos = protocols.stream()
-                .map(p -> Protocol.Type.of(p).name())
-                .map(PString::of)
-                .collect(PArray.collector());
+        var ctrls = OrderedMap.copyOf(controls);
+        var prts = OrderedMap.copyOf(ports);
+        var protos = List.copyOf(protocols);
 
-        return new ComponentInfo(protos, ctrls, prts, properties, null);
+        PMap data = PMap.of(KEY_CONTROLS, PMap.ofMap(controls),
+                KEY_PORTS, PMap.ofMap(ports),
+                KEY_PROTOCOLS, protos.stream().map(PString::of).collect(PArray.collector())
+        );
+
+        if (properties != null && !properties.isEmpty()) {
+            data = PMap.merge(data, properties, PMap.IF_ABSENT);
+        }
+
+        return new ComponentInfo(ctrls, prts, protos, data);
 
     }
 
-    private static ComponentInfo coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof ComponentInfo) {
-            return (ComponentInfo) arg;
-        } else {
-            return parse(arg.toString());
-        }
-    }
-    
+    /**
+     * Coerce the provided Value into a ComponentInfo if possible.
+     *
+     * @param arg value of unknown type
+     * @return component info or empty optional
+     */
     public static Optional<ComponentInfo> from(Value arg) {
-        try {
-            return Optional.of(coerce(arg));
-        } catch (ValueFormatException ex) {
-            return Optional.empty();
+        if (arg instanceof ComponentInfo info) {
+            return Optional.of(info);
+        } else {
+            try {
+                return PMap.from(arg).map(ComponentInfo::fromMap);
+            } catch (Exception ex) {
+                return Optional.empty();
+            }
         }
     }
 
-    public static ArgumentInfo info() {
-        return ArgumentInfo.of(ComponentInfo.class);
-    }
-
+    /**
+     * Parse the provided String into a ComponentInfo if possible.
+     *
+     * @param string text to parse
+     * @return component info
+     * @throws ValueFormatException if parsing fails
+     */
     public static ComponentInfo parse(String string) throws ValueFormatException {
+        var data = PMap.parse(string);
         try {
-            PArray arr = PArray.parse(string);
-            // @TODO size? interfaces optional?
-            if (arr.size() < 4 || !INFO_PREFIX.equals(arr.get(0).toString())) {
-                throw new ValueFormatException();
-            }
-            // arr(1) is controls
-            PArray ctrls = PArray.from(arr.get(1)).orElseThrow();
-            int len = ctrls.size();
-            PMap controls;
-            if (len == 0) {
-                controls = PMap.EMPTY;
-            } else {
-                PMap.Builder cBld = PMap.builder(ctrls.size() / 2);
-                for (int i = 0; i < len; i += 2) {
-                    String id = ctrls.get(i).toString();
-                    if (!ControlAddress.isValidID(id)) {
-                        throw new ValueFormatException("Invalid control ID " + id);
-                    }
-                    cBld.put(id, ControlInfo.from(ctrls.get(i + 1))
-                            .orElseThrow(ValueFormatException::new));
-                }
-                controls = cBld.build();
-            }
-
-            // arr(2) is ports
-            PArray pts = PArray.from(arr.get(2)).orElseThrow();
-            len = pts.size();
-            PMap ports;
-            if (len == 0) {
-                ports = PMap.EMPTY;
-            } else {
-                PMap.Builder pBld = PMap.builder(pts.size() / 2);
-                for (int i = 0; i < len; i += 2) {
-                    String id = pts.get(i).toString();
-                    if (!PortAddress.isValidID(id)) {
-                        throw new ValueFormatException("Invalid port ID: " + id);
-                    }
-                    pBld.put(id, PortInfo.from(pts.get(i + 1))
-                            .orElseThrow(ValueFormatException::new));
-                }
-                ports = pBld.build();
-            }
-
-            // optional arr(3) is interfaces
-            PArray protocols = PArray.EMPTY;
-            if (arr.size() > 3) {
-                protocols = PArray.from(arr.get(3)).orElseThrow();
-            }
-
-            // optional arr(4) is properties
-            PMap properties;
-            if (arr.size() > 4) {
-                properties = PMap.from(arr.get(4)).orElseThrow();
-            } else {
-                properties = PMap.EMPTY;
-            }
-
-            return new ComponentInfo(protocols, controls, ports, properties, null);
+            return fromMap(data);
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }
     }
+
+    /**
+     * Convenience method to create an {@link ArgumentInfo} for a ComponentInfo
+     * argument.
+     *
+     * @return argument info for ComponentInfo
+     */
+    public static ArgumentInfo info() {
+        return ArgumentInfo.of(ComponentInfo.class);
+    }
+
+    private static ComponentInfo fromMap(PMap data) {
+        var controls = Optional.ofNullable(data.get(KEY_CONTROLS))
+                .flatMap(PMap::from)
+                .map(m -> m.asMapOf(ControlInfo.class))
+                .orElseGet(() -> OrderedMap.of());
+        var ports = Optional.ofNullable(data.get(KEY_PORTS))
+                .flatMap(PMap::from)
+                .map(m -> m.asMapOf(PortInfo.class))
+                .orElseGet(() -> OrderedMap.of());
+        var protocols = Optional.ofNullable(data.get(KEY_PROTOCOLS))
+                .flatMap(PArray::from)
+                .map(l -> l.asListOf(String.class))
+                .orElseGet(() -> List.of());
+        return new ComponentInfo(controls, ports, protocols, data);
+    }
+
 }

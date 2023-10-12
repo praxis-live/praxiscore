@@ -3,10 +3,8 @@ package org.praxislive.core;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PMap;
@@ -40,14 +38,14 @@ public class ComponentInfoTest {
     
     @Before
     public void setUp() {
-        Set<Class<? extends Protocol>> interfaces = new LinkedHashSet<>(2);
-        interfaces.add(ComponentProtocol.class);
-        interfaces.add(StartableProtocol.class);
+        Set<String> interfaces = new LinkedHashSet<>(2);
+        interfaces.add(Protocol.Type.of(ComponentProtocol.class).name());
+        interfaces.add(Protocol.Type.of(StartableProtocol.class).name());
         
         Map<String, ControlInfo> controls = new LinkedHashMap<>();
         controls.put("p1", ControlInfo.createPropertyInfo(PNumber.info(0, 1), PNumber.ONE, PMap.of(ControlInfo.KEY_TRANSIENT, true)));
-        controls.put("p1", ControlInfo.createPropertyInfo(ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){")), PString.EMPTY, PMap.EMPTY));
-        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(PNumber.info(0, 1), PMap.of(ControlInfo.KEY_TRANSIENT, true)));
+        controls.put("p2", ControlInfo.createPropertyInfo(ArgumentInfo.of(PString.class, PMap.of("template", "public void draw(){")), PString.EMPTY, PMap.EMPTY));
+        controls.put("ro1", ControlInfo.createReadOnlyPropertyInfo(PNumber.info(0, 1), PMap.EMPTY));
         controls.put("t1", ControlInfo.createActionInfo(PMap.of("key", "value")));
         
         Map<String, PortInfo> ports = new LinkedHashMap<>();
@@ -69,7 +67,7 @@ public class ComponentInfoTest {
      */
     @Test
     public void testFrom() throws Exception {
-        System.out.println("coerce");
+        System.out.println("From");
         String ci = info.toString();
         System.out.println(ci);
         ComponentInfo info2 = ComponentInfo.from(PString.of(ci)).orElseThrow();
@@ -86,16 +84,6 @@ public class ComponentInfoTest {
 //        assertTrue(info.controlInfo("ro1").getOutputsInfo()[0].equivalent(info2.controlInfo("ro1").getOutputsInfo()[0]));
         assertTrue(info.controlInfo("ro1").outputs().get(0).equivalent(info2.controlInfo("ro1").outputs().get(0)));
         assertTrue(info.portInfo("in").equivalent(info2.portInfo("in")));
-    }
-
-    
-    @Test
-    public void testProtocols() {
-        List<Class<? extends Protocol>> protocols = info.protocols().collect(Collectors.toList());
-        assertEquals(2, protocols.size());
-        assertEquals(ComponentProtocol.class, protocols.get(0));
-        assertEquals(StartableProtocol.class, protocols.get(1));
-        
     }
    
 }

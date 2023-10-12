@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,9 +21,11 @@
  */
 package org.praxislive.core;
 
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -126,14 +128,19 @@ public class Info {
      */
     public final static class ComponentInfoBuilder {
 
-        private final PMap.Builder controls;
-        private final PMap.Builder ports;
-        private Set<PString> protocols;
+        private static final List<String> RESERVED_KEYS = List.of(
+                ComponentInfo.KEY_CONTROLS, ComponentInfo.KEY_PORTS,
+                ComponentInfo.KEY_PROTOCOLS);
+
+        private final Map<String, ControlInfo> controls;
+        private final Map<String, PortInfo> ports;
+        private final Set<String> protocols;
         private PMap.Builder properties;
 
         ComponentInfoBuilder() {
-            controls = PMap.builder();
-            ports = PMap.builder();
+            controls = new LinkedHashMap<>();
+            ports = new LinkedHashMap<>();
+            protocols = new LinkedHashSet<>();
         }
 
         /**
@@ -196,6 +203,9 @@ public class Info {
          * @return this
          */
         public ComponentInfoBuilder property(String key, Object value) {
+            if (RESERVED_KEYS.contains(key)) {
+                throw new IllegalArgumentException("Reserved key");
+            }
             if (properties == null) {
                 properties = PMap.builder();
             }
@@ -210,10 +220,19 @@ public class Info {
          * @return this
          */
         public ComponentInfoBuilder protocol(Class<? extends Protocol> protocol) {
-            if (protocols == null) {
-                protocols = new CopyOnWriteArraySet<>();
+            return protocol(Protocol.Type.of(protocol).name());
+        }
+
+        /**
+         * Add a protocol.
+         *
+         * @param protocol protocol name
+         * @return this
+         */
+        public ComponentInfoBuilder protocol(String protocol) {
+            if (!protocols.contains(protocol)) {
+                protocols.add(protocol);
             }
-            protocols.add(PString.of(Protocol.Type.of(protocol).name()));
             return this;
         }
 
@@ -231,18 +250,17 @@ public class Info {
                 ports.put(id, info.portInfo(id));
             }
             for (String key : info.properties().keys()) {
-                property(key, info.properties().get(key));
+                if (!RESERVED_KEYS.contains(key)) {
+                    property(key, info.properties().get(key));
+                }
             }
             info.protocols().forEach(this::protocol);
             return this;
         }
 
         public ComponentInfo build() {
-            return new ComponentInfo(protocols == null ? PArray.EMPTY : PArray.of(protocols),
-                    controls.build(),
-                    ports.build(),
-                    properties == null ? PMap.EMPTY : properties.build(),
-                    null);
+            return ComponentInfo.create(controls, ports, protocols,
+                    properties == null ? PMap.EMPTY : properties.build());
         }
 
     }
@@ -300,6 +318,11 @@ public class Info {
      */
     public static abstract class ControlInfoBuilder<T extends ControlInfoBuilder<T>> {
 
+        private static final List<String> RESERVED_KEYS = List.of(
+                ControlInfo.KEY_TYPE, ControlInfo.KEY_INPUTS,
+                ControlInfo.KEY_OUTPUTS, ControlInfo.KEY_DEFAULTS
+        );
+
         private final ControlInfo.Type type;
         private PMap.Builder properties;
 
@@ -323,6 +346,9 @@ public class Info {
          */
         @SuppressWarnings("unchecked")
         public T property(String key, Object value) {
+            if (RESERVED_KEYS.contains(key)) {
+                throw new IllegalArgumentException("Reserved key");
+            }
             if (properties == null) {
                 properties = PMap.builder();
             }
@@ -330,9 +356,10 @@ public class Info {
             return (T) this;
         }
 
-        public ControlInfo build() {
-            return new ControlInfo(inputs, outputs, defaults, type,
-                    properties == null ? PMap.EMPTY : properties.build(), null);
+        public abstract ControlInfo build();
+
+        PMap buildProperties() {
+            return properties == null ? PMap.EMPTY : properties.build();
         }
 
     }
@@ -390,6 +417,11 @@ public class Info {
             return this;
         }
 
+        @Override
+        public ControlInfo build() {
+            return ControlInfo.createPropertyInfo(inputs, defaults, buildProperties());
+        }
+
     }
 
     /**
@@ -431,6 +463,11 @@ public class Info {
          */
         public ReadOnlyPropertyInfoBuilder output(Function<ArgumentInfoChooser, ArgumentInfoBuilder<?>> a) {
             return output(Info.argument(a));
+        }
+
+        @Override
+        public ControlInfo build() {
+            return ControlInfo.createReadOnlyPropertyInfo(outputs, buildProperties());
         }
 
     }
@@ -489,6 +526,11 @@ public class Info {
             return outputs(Stream.of(outputs).map(f -> Info.argument(f)).toArray(ArgumentInfo[]::new));
         }
 
+        @Override
+        public ControlInfo build() {
+            return ControlInfo.createFunctionInfo(inputs, outputs, buildProperties());
+        }
+
     }
 
     /**
@@ -498,6 +540,11 @@ public class Info {
 
         ActionInfoBuilder() {
             super(ControlInfo.Type.Action);
+        }
+
+        @Override
+        public ControlInfo build() {
+            return ControlInfo.createActionInfo(buildProperties());
         }
 
     }
@@ -517,7 +564,17 @@ public class Info {
          * @return builder
          */
         public ValueInfoBuilder type(Class<? extends Value> cls) {
-            return new ValueInfoBuilder(Value.Type.of(cls));
+            return type(Value.Type.of(cls).name());
+        }
+
+        /**
+         * Create a ValueInfoBuilder for the provided value type.
+         *
+         * @param type name of value type
+         * @return builder
+         */
+        public ValueInfoBuilder type(String type) {
+            return new ValueInfoBuilder(type);
         }
 
         /**
@@ -547,10 +604,10 @@ public class Info {
      */
     public static abstract class ArgumentInfoBuilder<T extends ArgumentInfoBuilder<T>> {
 
-        private final Value.Type<?> type;
+        private final String type;
         private PMap.Builder properties;
 
-        ArgumentInfoBuilder(Value.Type<?> type) {
+        ArgumentInfoBuilder(String type) {
             this.type = type;
         }
 
@@ -563,6 +620,9 @@ public class Info {
          */
         @SuppressWarnings("unchecked")
         public T property(String key, Value value) {
+            if (ArgumentInfo.KEY_TYPE.equals(key)) {
+                throw new IllegalArgumentException("Reserved key");
+            }
             if (properties == null) {
                 properties = PMap.builder();
             }
@@ -571,8 +631,8 @@ public class Info {
         }
 
         public ArgumentInfo build() {
-            return new ArgumentInfo(type,
-                    properties == null ? PMap.EMPTY : properties.build(), null);
+            return ArgumentInfo.create(type,
+                    properties == null ? PMap.EMPTY : properties.build());
         }
 
     }
@@ -582,7 +642,7 @@ public class Info {
      */
     public static final class ValueInfoBuilder extends ArgumentInfoBuilder<ValueInfoBuilder> {
 
-        ValueInfoBuilder(Value.Type<?> type) {
+        ValueInfoBuilder(String type) {
             super(type);
         }
 
@@ -593,10 +653,8 @@ public class Info {
      */
     public static final class NumberInfoBuilder extends ArgumentInfoBuilder<NumberInfoBuilder> {
 
-        private final static Value.Type<PNumber> TYPE = Value.Type.of(PNumber.class);
-
         NumberInfoBuilder() {
-            super(TYPE);
+            super(PNumber.TYPE_NAME);
         }
 
         /**
@@ -636,10 +694,8 @@ public class Info {
      */
     public static final class StringInfoBuilder extends ArgumentInfoBuilder<StringInfoBuilder> {
 
-        private final static Value.Type<PString> TYPE = Value.Type.of(PString.class);
-
         StringInfoBuilder() {
-            super(TYPE);
+            super(PString.TYPE_NAME);
         }
 
         /**
@@ -710,7 +766,17 @@ public class Info {
          * @return builder
          */
         public PortInfoBuilder input(Class<? extends Port> type) {
-            return new PortInfoBuilder(Port.Type.of(type), PortInfo.Direction.IN);
+            return input(Port.Type.of(type).name());
+        }
+
+        /**
+         * Create a PortInfoBuilder for input ports of the provided base type.
+         *
+         * @param type base Port type name
+         * @return builder
+         */
+        public PortInfoBuilder input(String type) {
+            return new PortInfoBuilder(type, PortInfo.Direction.IN);
         }
 
         /**
@@ -720,7 +786,17 @@ public class Info {
          * @return builder
          */
         public PortInfoBuilder output(Class<? extends Port> type) {
-            return new PortInfoBuilder(Port.Type.of(type), PortInfo.Direction.OUT);
+            return output(Port.Type.of(type).name());
+        }
+
+        /**
+         * Create a PortInfoBuilder for output ports of the provided base type.
+         *
+         * @param type base Port type name
+         * @return builder
+         */
+        public PortInfoBuilder output(String type) {
+            return new PortInfoBuilder(type, PortInfo.Direction.OUT);
         }
 
     }
@@ -730,11 +806,11 @@ public class Info {
      */
     public static final class PortInfoBuilder {
 
-        private final Port.Type<?> type;
+        private final String type;
         private final PortInfo.Direction direction;
         private PMap.Builder properties;
 
-        PortInfoBuilder(Port.Type<?> type, PortInfo.Direction direction) {
+        PortInfoBuilder(String type, PortInfo.Direction direction) {
             this.type = type;
             this.direction = direction;
         }
@@ -755,8 +831,8 @@ public class Info {
         }
 
         public PortInfo build() {
-            return new PortInfo(type, direction,
-                    properties == null ? PMap.EMPTY : properties.build(), null);
+            return PortInfo.create(type, direction,
+                    properties == null ? PMap.EMPTY : properties.build());
         }
 
     }

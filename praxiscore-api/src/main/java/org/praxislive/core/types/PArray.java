@@ -41,6 +41,11 @@ import org.praxislive.core.syntax.Tokenizer;
 public final class PArray extends Value implements Iterable<Value> {
 
     /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Array";
+
+    /**
      * An empty PArray.
      */
     public final static PArray EMPTY = new PArray(List.of(), "");
@@ -94,7 +99,8 @@ public final class PArray extends Value implements Iterable<Value> {
                     if (sb.length() > 0) {
                         sb.append(' ');
                     }
-                    if (entry instanceof PArray || entry instanceof PMap) {
+                    if (entry instanceof PArray || entry instanceof PMap
+                            || entry instanceof PMap.MapBasedValue) {
                         sb.append('{')
                                 .append(entry.toString())
                                 .append('}');

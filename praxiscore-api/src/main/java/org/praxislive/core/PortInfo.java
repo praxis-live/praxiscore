@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,133 +21,152 @@
  */
 package org.praxislive.core;
 
+import java.util.Objects;
 import java.util.Optional;
-import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 
 /**
- *
+ * Information on the type, direction and properties for a {@link Port}.
  */
-public final class PortInfo extends Value {
+public final class PortInfo extends PMap.MapBasedValue {
 
-    public static enum Direction { IN, OUT, BIDI };
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "PortInfo";
 
-    private final Port.Type<? extends Port> type;
+    /**
+     * Map key for port type name. Value should be the String from
+     * {@link Port.Type#name()}.
+     */
+    public static final String KEY_TYPE = "type";
+
+    /**
+     * Map key for the port direction.
+     */
+    public static final String KEY_DIRECTION = "direction";
+
+    /**
+     * Port direction.
+     */
+    public static enum Direction {
+
+        /**
+         * Port is for input. Only output controls can be connected to inputs.
+         */
+        IN,
+        /**
+         * Port is for output. Only input controls can be connected to outputs.
+         */
+        OUT,
+        /**
+         * Port is bi-directional.
+         */
+        BIDI
+    };
+
+    private final String type;
     private final Direction direction;
-    private final PMap properties;
-    
-    private volatile String string;
 
-    PortInfo(Port.Type<? extends Port> type,
+    PortInfo(String type,
             Direction direction,
-            PMap properties,
-            String string) {
+            PMap data) {
+        super(data);
         this.type = type;
         this.direction = direction;
-        this.properties = properties;
-        this.string = string;
     }
 
-    public Port.Type<? extends Port> portType() {
+    /**
+     * The type of the port.
+     *
+     * @return port type
+     */
+    public String portType() {
         return type;
     }
-    
+
+    /**
+     * The direction of the port.
+     *
+     * @return port direction
+     */
     public Direction direction() {
         return direction;
     }
-    
+
+    /**
+     * Access the map of properties. The map includes the type and direction, as
+     * well as any custom or optional properties.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return property map
+     */
     public PMap properties() {
-        return properties;
-    }
-    
-    @Override
-    public String toString() {
-        String str = string;
-        if (str == null) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(type.name()).append(" ");
-            sb.append(direction.name());
-            if (!properties.isEmpty()) {
-                sb.append(" {");
-                sb.append(properties.toString());
-                sb.append("}");
-            }
-            string = sb.toString();
-        }
-        return string;
+        return dataMap();
     }
 
-//    @Override
-//    public boolean isEquivalent(Value arg) {
-//        return equals(arg);
-//    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof PortInfo) {
-            PortInfo o = (PortInfo) obj;
-            return type.equals(o.type) && direction.equals(o.direction)
-                    && properties.equals(o.properties);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 89 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 89 * hash + (this.direction != null ? this.direction.hashCode() : 0);
-        hash = 89 * hash + (this.properties != null ? this.properties.hashCode() : 0);
-        return hash;
-    }
-
+    /**
+     * Create a PortInfo.
+     *
+     * @param typeClass port base class
+     * @param direction port direction
+     * @param properties additional properties (may be null)
+     * @return port info
+     */
     public static PortInfo create(Class<? extends Port> typeClass,
             Direction direction, PMap properties) {
-        if (typeClass == null || direction == null) {
-            throw new NullPointerException();
-        }
-        if (properties == null) {
-            properties = PMap.EMPTY;
-        }
-        return new PortInfo(Port.Type.of(typeClass), direction, properties, null);
+        return create(Port.Type.of(typeClass).name(), direction, properties);
+    }
 
+    static PortInfo create(String type, Direction direction, PMap properties) {
+        PMap map = PMap.of(KEY_TYPE, Objects.requireNonNull(type),
+                KEY_DIRECTION, Objects.requireNonNull(direction));
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new PortInfo(type, direction, map);
     }
-    
+
     /**
-     * Coerce the given Value into an ArgumentInfo object.
-     * 
-     * @param arg Value to be coerced.
-     * @return ArgumentInfo
-     * @throws ValueFormatException if Value cannot be coerced.
+     * Coerce the provided Value into a PortInfo if possible.
+     *
+     * @param arg value of unknown type
+     * @return port info or empty optional
      */
-    private static PortInfo coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof PortInfo) {
-            return (PortInfo) arg;
-        } else {
-            return parse(arg.toString());
-        }
-    }
-    
     public static Optional<PortInfo> from(Value arg) {
-        try {
-            return Optional.of(coerce(arg));
-        } catch (ValueFormatException ex) {
-            return Optional.empty();
+        if (arg instanceof PortInfo info) {
+            return Optional.of(info);
+        } else {
+            try {
+                return PMap.from(arg).map(PortInfo::fromMap);
+            } catch (Exception ex) {
+                return Optional.empty();
+            }
         }
     }
-    
+
+    /**
+     * Parse the provided String into a PortInfo if possible.
+     *
+     * @param string text to parse
+     * @return port info
+     * @throws ValueFormatException if parsing fails
+     */
     public static PortInfo parse(String string) throws ValueFormatException {
-        PArray arr = PArray.parse(string);
+        var data = PMap.parse(string);
         try {
-            Port.Type<? extends Port> type = Port.Type.fromName(arr.get(0).toString()).get();
-            Direction direction = Direction.valueOf(arr.get(1).toString());
-            PMap properties = arr.size() > 2 ?
-                    PMap.from(arr.get(2)).orElseThrow() :
-                    PMap.EMPTY;
-            return new PortInfo(type, direction, properties, string);
+            return fromMap(data);
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }
     }
-    
+
+    private static PortInfo fromMap(PMap data) {
+        var portType = data.get(KEY_TYPE).toString();
+        var direction = Direction.valueOf(data.getString(KEY_DIRECTION, ""));
+        return new PortInfo(portType, direction, data);
+    }
+
 }

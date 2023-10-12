@@ -38,9 +38,9 @@ public class InfoTest {
     
     @Before
     public void setUp() {
-        Set<Class<? extends Protocol>> interfaces = new LinkedHashSet<>(2);
-        interfaces.add(ComponentProtocol.class);
-        interfaces.add(StartableProtocol.class);
+        Set<String> interfaces = new LinkedHashSet<>(2);
+        interfaces.add(Protocol.Type.of(ComponentProtocol.class).name());
+        interfaces.add(Protocol.Type.of(StartableProtocol.class).name());
         
         Map<String, ControlInfo> controls = new LinkedHashMap<>();
         controls.put("p1", ControlInfo.createPropertyInfo(PNumber.info(0, 1), PNumber.ONE, PMap.of(ControlInfo.KEY_TRANSIENT, true)));

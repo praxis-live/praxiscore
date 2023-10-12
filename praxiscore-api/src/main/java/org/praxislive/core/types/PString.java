@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.core.types;
 
 import java.util.Optional;
@@ -31,16 +30,21 @@ import org.praxislive.core.ArgumentInfo;
  */
 public final class PString extends Value implements Comparable<PString> {
 
-    public final static String KEY_ALLOWED_VALUES = ArgumentInfo.KEY_ALLOWED_VALUES;
-    public final static String KEY_SUGGESTED_VALUES = ArgumentInfo.KEY_SUGGESTED_VALUES;
-    public final static String KEY_TEMPLATE = ArgumentInfo.KEY_TEMPLATE;
-    public final static String KEY_MIME_TYPE = ArgumentInfo.KEY_MIME_TYPE;
-    public final static String KEY_EMPTY_IS_DEFAULT = ArgumentInfo.KEY_EMPTY_IS_DEFAULT;
-    
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "String";
+
+    public static final String KEY_ALLOWED_VALUES = ArgumentInfo.KEY_ALLOWED_VALUES;
+    public static final String KEY_SUGGESTED_VALUES = ArgumentInfo.KEY_SUGGESTED_VALUES;
+    public static final String KEY_TEMPLATE = ArgumentInfo.KEY_TEMPLATE;
+    public static final String KEY_MIME_TYPE = ArgumentInfo.KEY_MIME_TYPE;
+    public static final String KEY_EMPTY_IS_DEFAULT = ArgumentInfo.KEY_EMPTY_IS_DEFAULT;
+
     public final static PString EMPTY = PString.of("");
-    
+
     private final String value;
-    
+
     private PString(String value) {
         this.value = value;
     }
@@ -48,7 +52,7 @@ public final class PString extends Value implements Comparable<PString> {
     public String value() {
         return value;
     }
-    
+
     @Override
     public String toString() {
         return value;
@@ -66,9 +70,9 @@ public final class PString extends Value implements Comparable<PString> {
         } else if (obj instanceof PString) {
             return ((PString) obj).toString().equals(value);
         } else {
-           return false; 
+            return false;
         }
-        
+
     }
 
     private static PString coerce(Value arg) {
@@ -78,18 +82,18 @@ public final class PString extends Value implements Comparable<PString> {
             return new PString(arg.toString());
         }
     }
-    
+
     public static Optional<PString> from(Value arg) {
         return Optional.of(coerce(arg));
     }
-    
+
     public static PString of(String str) {
         if (str == null) {
             throw new NullPointerException();
         }
         return new PString(str);
     }
-    
+
     public static PString of(Object obj) {
         if (obj instanceof PString) {
             return (PString) obj;
@@ -97,17 +101,17 @@ public final class PString extends Value implements Comparable<PString> {
             return new PString(String.valueOf(obj));
         }
     }
-    
+
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PString.class, null);
     }
-    
-    public static ArgumentInfo info(String ... allowed) {
+
+    public static ArgumentInfo info(String... allowed) {
         if (allowed == null) {
             return info();
         } else {
             PString[] arr = new PString[allowed.length];
-            for (int i=0; i < arr.length; i++) {
+            for (int i = 0; i < arr.length; i++) {
                 arr[i] = PString.of(allowed[i]);
             }
             PMap props = PMap.of(KEY_ALLOWED_VALUES,
@@ -120,5 +124,5 @@ public final class PString extends Value implements Comparable<PString> {
     public int compareTo(PString o) {
         return value.compareTo(o.value);
     }
-    
+
 }

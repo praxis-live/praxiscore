@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,12 +30,17 @@ import static org.praxislive.core.ComponentAddress.cache;
  */
 public class ControlAddress extends Value {
 
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ControlAddress";
+
     public static final String SEPARATOR = ".";
     private static final String SEP_REGEX = "\\.";
     private static final String ID_REGEX = "[_\\-\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*";
     private static final Pattern ID_PATTERN = Pattern.compile(ID_REGEX);
     private static final Pattern SEP_PATTERN = Pattern.compile(SEP_REGEX);
-    
+
     private final ComponentAddress component;
     private final String controlID;
     private final String addressString;
@@ -49,11 +54,11 @@ public class ControlAddress extends Value {
     public ComponentAddress component() {
         return this.component;
     }
-    
+
     public String controlID() {
         return this.controlID;
     }
-    
+
     @Override
     public String toString() {
         return this.addressString;
@@ -94,7 +99,7 @@ public class ControlAddress extends Value {
             throw new IllegalArgumentException(ex);
         }
     }
-    
+
     public static ControlAddress of(ComponentAddress component, String id) {
         if (!(isValidID(id))) {
             throw new IllegalArgumentException();
@@ -105,7 +110,7 @@ public class ControlAddress extends Value {
         return new ControlAddress(component, id, address);
 
     }
-    
+
     private static ControlAddress coerce(Value arg) throws ValueFormatException {
         if (arg instanceof ControlAddress) {
             return (ControlAddress) arg;
@@ -113,7 +118,7 @@ public class ControlAddress extends Value {
             return parse(arg.toString());
         }
     }
-    
+
     public static Optional<ControlAddress> from(Value arg) {
         try {
             return Optional.of(coerce(arg));
@@ -121,7 +126,7 @@ public class ControlAddress extends Value {
             return Optional.empty();
         }
     }
-    
+
     public static boolean isValidID(String id) {
         return ID_PATTERN.matcher(id).matches();
     }

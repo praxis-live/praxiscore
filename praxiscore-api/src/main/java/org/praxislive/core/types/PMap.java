@@ -38,6 +38,11 @@ import org.praxislive.core.ValueMapper;
 public final class PMap extends Value {
 
     /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Map";
+
+    /**
      * An empty PMap.
      */
     public final static PMap EMPTY = new PMap(OrderedMap.of());
@@ -231,7 +236,8 @@ public final class PMap extends Value {
                     sb.append(Utils.escape(key));
                     sb.append(" ");
                     Value value = map.get(key);
-                    if (value instanceof PArray || value instanceof PMap) {
+                    if (value instanceof PArray || value instanceof PMap
+                            || value instanceof MapBasedValue) {
                         sb.append('{')
                                 .append(value.toString())
                                 .append('}');
@@ -672,6 +678,80 @@ public final class PMap extends Value {
         @Override
         public String toString() {
             return key + "=" + value;
+        }
+
+    }
+
+    /**
+     * An abstract superclass for values that are backed solely by a PMap.
+     * Subclassing this type can help with efficient serialization of the
+     * underlying representation. The concrete value type must be able to
+     * construct an equivalent value entirely from the PMap returned from
+     * {@link #dataMap()}.
+     * <p>
+     * The toString, equals, equivalent and hashCode methods are all implemented
+     * based solely on the map data.
+     */
+    public static abstract class MapBasedValue extends Value {
+
+        private final PMap data;
+
+        /**
+         * Construct a MapBasedValue using the provided data map.
+         *
+         * @param data data map
+         */
+        protected MapBasedValue(PMap data) {
+            this.data = Objects.requireNonNull(data);
+        }
+
+        /**
+         * Access the backing PMap data.
+         *
+         * @return backing map
+         */
+        public final PMap dataMap() {
+            return data;
+        }
+
+        @Override
+        public final String toString() {
+            return data.toString();
+        }
+
+        @Override
+        public final int hashCode() {
+            return data.hashCode();
+        }
+
+        @Override
+        public final boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final MapBasedValue other = (MapBasedValue) obj;
+            return Objects.equals(this.data, other.data);
+        }
+
+        @Override
+        public final boolean equivalent(Value value) {
+            if (this == value) {
+                return true;
+            }
+            if (value instanceof MapBasedValue mapBased) {
+                return data.equivalent(mapBased.data);
+            } else {
+                return PMap.from(value)
+                        .map(data::equivalent)
+                        .orElse(false);
+            }
+
         }
 
     }

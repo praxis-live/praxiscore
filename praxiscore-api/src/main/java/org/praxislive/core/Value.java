@@ -177,10 +177,6 @@ public abstract class Value {
         private final Function<Value, Optional<T>> converter;
         private final T emptyValue;
 
-        Type(Class<T> type, Function<Value, Optional<T>> converter) {
-            this(type, type.getSimpleName(), converter, null);
-        }
-
         Type(Class<T> type, String name, Function<Value, Optional<T>> converter) {
             this(type, name, converter, null);
         }
@@ -302,28 +298,28 @@ public abstract class Value {
 
             List<Type<?>> types = new ArrayList<>(18);
 
-            types.add(new Type<>(Value.class, v -> Optional.of(v)));
+            types.add(new Type<>(Value.class, "Value", v -> Optional.of(v)));
 
-            types.add(new Type<>(PArray.class, "Array", PArray::from, PArray.EMPTY));
-            types.add(new Type<>(PBoolean.class, "Boolean", PBoolean::from));
-            types.add(new Type<>(PBytes.class, "Bytes", PBytes::from, PBytes.EMPTY));
-            types.add(new Type<>(PError.class, "Error", PError::from));
-            types.add(new Type<>(PMap.class, "Map", PMap::from, PMap.EMPTY));
-            types.add(new Type<>(PNumber.class, "Number", PNumber::from));
-            types.add(new Type<>(PReference.class, "Reference", PReference::from));
-            types.add(new Type<>(PResource.class, "Resource", PResource::from));
-            types.add(new Type<>(PString.class, "String", PString::from, PString.EMPTY));
+            types.add(new Type<>(PArray.class, PArray.TYPE_NAME, PArray::from, PArray.EMPTY));
+            types.add(new Type<>(PBoolean.class, PBoolean.TYPE_NAME, PBoolean::from));
+            types.add(new Type<>(PBytes.class, PBytes.TYPE_NAME, PBytes::from, PBytes.EMPTY));
+            types.add(new Type<>(PError.class, PError.TYPE_NAME, PError::from));
+            types.add(new Type<>(PMap.class, PMap.TYPE_NAME, PMap::from, PMap.EMPTY));
+            types.add(new Type<>(PNumber.class, PNumber.TYPE_NAME, PNumber::from));
+            types.add(new Type<>(PReference.class, PReference.TYPE_NAME, PReference::from));
+            types.add(new Type<>(PResource.class, PResource.TYPE_NAME, PResource::from));
+            types.add(new Type<>(PString.class, PString.TYPE_NAME, PString::from, PString.EMPTY));
 
-            types.add(new Type<>(ArgumentInfo.class, ArgumentInfo::from));
-            types.add(new Type<>(ComponentInfo.class, ComponentInfo::from));
-            types.add(new Type<>(ControlInfo.class, ControlInfo::from));
-            types.add(new Type<>(PortInfo.class, PortInfo::from));
+            types.add(new Type<>(ArgumentInfo.class, ArgumentInfo.TYPE_NAME, ArgumentInfo::from));
+            types.add(new Type<>(ComponentInfo.class, ComponentInfo.TYPE_NAME, ComponentInfo::from));
+            types.add(new Type<>(ControlInfo.class, ControlInfo.TYPE_NAME, ControlInfo::from));
+            types.add(new Type<>(PortInfo.class, PortInfo.TYPE_NAME, PortInfo::from));
 
-            types.add(new Type<>(ComponentAddress.class, ComponentAddress::from));
-            types.add(new Type<>(ControlAddress.class, ControlAddress::from));
-            types.add(new Type<>(PortAddress.class, PortAddress::from));
+            types.add(new Type<>(ComponentAddress.class, ComponentAddress.TYPE_NAME, ComponentAddress::from));
+            types.add(new Type<>(ControlAddress.class, ControlAddress.TYPE_NAME, ControlAddress::from));
+            types.add(new Type<>(PortAddress.class, PortAddress.TYPE_NAME, PortAddress::from));
 
-            types.add(new Type<>(ComponentType.class, ComponentType::from));
+            types.add(new Type<>(ComponentType.class, ComponentType.TYPE_NAME, ComponentType::from));
 
             Map<Class<? extends Value>, Type<?>> typesByClass = new HashMap<>();
             Map<String, Type<?>> typesByName = new HashMap<>();

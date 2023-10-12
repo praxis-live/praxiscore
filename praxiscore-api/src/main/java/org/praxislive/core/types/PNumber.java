@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,16 +31,21 @@ import org.praxislive.core.ArgumentInfo;
  */
 public final class PNumber extends Value implements Comparable<PNumber> {
 
-    public final static PNumber ONE = PNumber.of(1);
-    public final static PNumber ZERO = PNumber.of(0);
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Number";
 
-    public final static String KEY_MINIMUM = "minimum";
-    public final static String KEY_MAXIMUM = "maximum";
-    public final static String KEY_IS_INTEGER = "is-integer";
-    public final static String KEY_SKEW = "skew";
+    public static final PNumber ONE = PNumber.of(1);
+    public static final PNumber ZERO = PNumber.of(0);
 
-    public final static int MAX_VALUE = Integer.MAX_VALUE;
-    public final static int MIN_VALUE = Integer.MIN_VALUE;
+    public static final String KEY_MINIMUM = "minimum";
+    public static final String KEY_MAXIMUM = "maximum";
+    public static final String KEY_IS_INTEGER = "is-integer";
+    public static final String KEY_SKEW = "skew";
+
+    public static final int MAX_VALUE = Integer.MAX_VALUE;
+    public static final int MIN_VALUE = Integer.MIN_VALUE;
 
     private final double value;
     private final boolean isInteger;
@@ -153,7 +158,7 @@ public final class PNumber extends Value implements Comparable<PNumber> {
             throw new ValueFormatException(ex);
         }
     }
-    
+
     private static PNumber coerce(Value arg) throws ValueFormatException {
         if (arg instanceof PNumber) {
             return (PNumber) arg;

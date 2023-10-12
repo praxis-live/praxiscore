@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,21 +19,25 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.core;
 
 import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * 
+ *
  */
 public class ComponentType extends Value {
-    
-    private final static String TYPE_REGEX =
-            "([\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*\\:)+" + 
-            "([\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*)";
-    private final static Pattern TYPE_PATTERN = Pattern.compile(TYPE_REGEX);
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ComponentType";
+
+    private static final String TYPE_REGEX
+            = "([\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*\\:)+"
+            + "([\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*)";
+    private static final Pattern TYPE_PATTERN = Pattern.compile(TYPE_REGEX);
 
     private final String typeString;
 
@@ -59,7 +63,7 @@ public class ComponentType extends Value {
             return false;
         }
     }
-    
+
     public static ComponentType of(String str) {
         try {
             return parse(str);
@@ -67,7 +71,7 @@ public class ComponentType extends Value {
             throw new IllegalArgumentException(ex);
         }
     }
-    
+
     private static boolean isValidTypeString(String str) {
         return TYPE_PATTERN.matcher(str).matches();
     }
@@ -90,7 +94,7 @@ public class ComponentType extends Value {
             return parse(arg.toString());
         }
     }
-    
+
     public static Optional<ComponentType> from(Value arg) {
         try {
             return Optional.of(coerce(arg));

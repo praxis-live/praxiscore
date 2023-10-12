@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -55,7 +55,12 @@ import org.praxislive.core.DataObject;
  */
 public final class PBytes extends Value {
 
-    public final static PBytes EMPTY = new PBytes(new byte[0], "");
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Bytes";
+
+    public static final PBytes EMPTY = new PBytes(new byte[0], "");
 
     private final byte[] bytes;
 
@@ -127,10 +132,11 @@ public final class PBytes extends Value {
     public boolean isEmpty() {
         return bytes.length == 0;
     }
-    
+
     /**
-     * Extract serialized object from data. Will throw an exception if this PBytes
-     * doesn't contain a valid object of the correct type.
+     * Extract serialized object from data. Will throw an exception if this
+     * PBytes doesn't contain a valid object of the correct type.
+     *
      * @param <T>
      * @param type class of expected object
      * @return deserialized object
@@ -150,8 +156,10 @@ public final class PBytes extends Value {
     }
 
     /**
-     * Iterate through data by decoding into provided container DataObject and calling consumer.
-     * Changes to the container are ignored outside of the consumer.
+     * Iterate through data by decoding into provided container DataObject and
+     * calling consumer. Changes to the container are ignored outside of the
+     * consumer.
+     *
      * @param <T> DataObject sub-type
      * @param container
      * @param consumer
@@ -162,8 +170,9 @@ public final class PBytes extends Value {
     }
 
     /**
-     * Transform data by iterating into provided container and calling provided consumer before
-     * writing container into new PBytes
+     * Transform data by iterating into provided container and calling provided
+     * consumer before writing container into new PBytes
+     *
      * @param <T> DataObject sub-type
      * @param container
      * @param transformer
@@ -189,7 +198,9 @@ public final class PBytes extends Value {
     }
 
     /**
-     * Create a Stream over the data by decoding into DataObjects provided by supplier
+     * Create a Stream over the data by decoding into DataObjects provided by
+     * supplier
+     *
      * @param <T>
      * @param supplier of DataObject
      * @return Stream of DataObject
@@ -201,9 +212,10 @@ public final class PBytes extends Value {
     }
 
     /**
-     * Create a Stream over the data by decoding into count number of DataObjects
-     * provided by supplier. Extra DataObjects with default values will be generated
-     * if required to reach count.
+     * Create a Stream over the data by decoding into count number of
+     * DataObjects provided by supplier. Extra DataObjects with default values
+     * will be generated if required to reach count.
+     *
      * @param <T>
      * @param count
      * @param supplier
@@ -214,7 +226,9 @@ public final class PBytes extends Value {
     }
 
     /**
-     * Collector to take Stream of DataObject subclasses and write into new PBytes.
+     * Collector to take Stream of DataObject subclasses and write into new
+     * PBytes.
+     *
      * @param <T>
      * @return collector
      */
@@ -237,9 +251,10 @@ public final class PBytes extends Value {
             throw new ValueFormatException(ex);
         }
     }
-    
+
     /**
      * Encode the provided List of DataObject subclasses into a new PBytes
+     *
      * @param list
      * @return PBytes of data
      */
@@ -259,9 +274,10 @@ public final class PBytes extends Value {
             throw new IllegalArgumentException(ex);
         }
     }
-    
+
     /**
      * Create a PBytes of the serialized form of the provided object.
+     *
      * @param obj
      * @return PBytes of serialized data
      * @throws IOException
@@ -310,16 +326,16 @@ public final class PBytes extends Value {
         }
 
     }
-    
+
     private static class DataOutputImpl extends DataOutputStream {
-        
+
         private final OutputStream out;
-        
+
         public DataOutputImpl(OutputStream out) {
             super(out);
             this.out = out;
         }
-        
+
     }
 
     private static class StreamableCollector<T extends DataObject> implements Collector<T, DataOutputImpl, PBytes> {
@@ -332,7 +348,7 @@ public final class PBytes extends Value {
         @Override
         public BiConsumer<DataOutputImpl, T> accumulator() {
             return (stream, data) -> {
-                try { 
+                try {
                     data.writeTo(stream);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,6 +34,11 @@ import org.praxislive.core.types.PMap;
  * {@code /rootID/parentID/componentID}. ComponentAddresses are always absolute.
  */
 public final class ComponentAddress extends Value {
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ComponentAddress";
 
     private static final String ADDRESS_REGEX = "\\G/([_\\-\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*)";
     private static final String ID_REGEX = "[_\\-\\p{javaLetter}][_\\-\\p{javaLetterOrDigit}]*";

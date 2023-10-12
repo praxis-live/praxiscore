@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.core.types;
 
 import java.util.Optional;
@@ -30,19 +29,24 @@ import org.praxislive.core.ArgumentInfo;
  *
  */
 public final class PReference extends Value {
-    
-    public final static String REFERENCE_TYPE = "reference-type";
-    
+
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Reference";
+
+    public static final String REFERENCE_TYPE = "reference-type";
+
     private final Object ref;
     private final Class refClass;
     private final int refHash;
-    
+
     private PReference(Object ref) {
         this.ref = ref;
         refHash = System.identityHashCode(ref);
         refClass = ref.getClass();
     }
-    
+
     public <T> Optional<T> as(Class<T> cls) {
         if (cls.isInstance(ref)) {
             return Optional.of(cls.cast(ref));
@@ -93,7 +97,7 @@ public final class PReference extends Value {
             return Optional.empty();
         }
     }
-    
+
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PReference.class, null);
     }
@@ -103,6 +107,5 @@ public final class PReference extends Value {
         PMap properties = PMap.of(REFERENCE_TYPE, clas.getName());
         return ArgumentInfo.of(PReference.class, properties);
     }
-    
-    
+
 }

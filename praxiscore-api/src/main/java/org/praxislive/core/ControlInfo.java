@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,301 +21,352 @@
  */
 package org.praxislive.core;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
-import org.praxislive.core.types.PString;
 
 /**
- *
+ * Information on the type, inputs, outputs and properties of a {@link Control}.
  */
-public class ControlInfo extends Value {
+public final class ControlInfo extends PMap.MapBasedValue {
 
-    public final static String KEY_TRANSIENT = "transient";
-    public final static String KEY_DEPRECATED = "deprecated";
-    public final static String KEY_EXPERT = "expert";
-//    public final static String KEY_DUPLICATES = "duplicates";
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "ControlInfo";
 
+    /**
+     * Map key for the control type.
+     */
+    public static final String KEY_TYPE = "type";
+
+    /**
+     * Map key for the inputs list of {@link ArgumentInfo}.
+     */
+    public static final String KEY_INPUTS = "inputs";
+
+    /**
+     * Map key for the outputs list of {@link ArgumentInfo}.
+     */
+    public static final String KEY_OUTPUTS = "outputs";
+
+    /**
+     * Map key for the list of default {@link Value}s. Only relevant for
+     * properties.
+     */
+    public static final String KEY_DEFAULTS = "defaults";
+
+    /**
+     * Optional map key to mark a property as transient, and so not to be
+     * included in any serialized representation of the component state.
+     */
+    public static final String KEY_TRANSIENT = "transient";
+
+    /**
+     * Optional map key to mark a control as deprecated.
+     */
+    public static final String KEY_DEPRECATED = "deprecated";
+
+    /**
+     * Optional map key to mark a control as relating to expert / advanced
+     * usage. A user interface might choose to display such a control in a
+     * different way.
+     */
+    public static final String KEY_EXPERT = "expert";
+
+    /**
+     * The types of a control.
+     */
     public static enum Type {
 
-        Function, Action, Property, ReadOnlyProperty
+        /**
+         * A control that acts as a function, taking any number of input
+         * arguments, and responding with any number of output arguments.
+         */
+        Function,
+        /**
+         * A control that triggers an action. An action control always has no
+         * input or output arguments.
+         */
+        Action,
+        /**
+         * A control that acts as a property. A property control accepts an
+         * optional single input argument to set the property, and always
+         * responds with a single output argument with the value of the
+         * property.
+         * <p>
+         * To query the property value without changing it, the control accepts
+         * a call with no input arguments. The input {@link ArgumentInfo} should
+         * always be treated as optional, and does not need to be marked with
+         * {@link ArgumentInfo#KEY_OPTIONAL}.
+         */
+        Property,
+        /**
+         * A control that acts as a read-only property. A read-only property
+         * control always has no input arguments, and a single output argument
+         * representing the value of the property.
+         */
+        ReadOnlyProperty
     };
 
-    private final static List<ArgumentInfo> EMPTY_INFO = List.of();
-    private final static List<Value> EMPTY_DEFAULTS = List.of();
-
+    private final Type type;
     private final List<ArgumentInfo> inputs;
     private final List<ArgumentInfo> outputs;
     private final List<Value> defaults;
-    private final PMap properties;
-    private final Type type;
 
     private volatile String string;
 
-    ControlInfo(List<ArgumentInfo> inputs,
+    private ControlInfo(Type type,
+            List<ArgumentInfo> inputs,
             List<ArgumentInfo> outputs,
             List<Value> defaults,
-            Type type,
-            PMap properties,
-            String string
-    ) {
-
+            PMap data) {
+        super(data);
         this.inputs = inputs;
         this.outputs = outputs;
         this.defaults = defaults;
         this.type = type;
-        this.properties = properties;
-        this.string = string;
     }
 
-    @Override
-    public String toString() {
-        String str = string;
-        if (str == null) {
-            str = buildString();
-            string = str;
-        }
-        return str;
-    }
-
-    private String buildString() {
-        
-        switch (type) {
-            case Action:
-                return PArray.of(
-                        PString.of(type),
-                        properties)
-                        .toString();
-            case Function:
-                return PArray.of(PString.of(type),
-                        PArray.of(inputs),
-                        PArray.of(outputs),
-                        properties)
-                        .toString();
-            default:
-                return PArray.of(PString.of(type),
-                        PArray.of(outputs),
-                        PArray.of(defaults),
-                        properties)
-                        .toString();
-                
-        }
-        
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Objects.hashCode(this.inputs);
-        hash = 37 * hash + Objects.hashCode(this.outputs);
-        hash = 37 * hash + Objects.hashCode(this.defaults);
-        hash = 37 * hash + Objects.hashCode(this.properties);
-        hash = 37 * hash + Objects.hashCode(this.type);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final ControlInfo other = (ControlInfo) obj;
-        if (!Objects.equals(this.inputs, other.inputs)) {
-            return false;
-        }
-        if (!Objects.equals(this.outputs, other.outputs)) {
-            return false;
-        }
-        if (!Objects.equals(this.defaults, other.defaults)) {
-            return false;
-        }
-        if (!Objects.equals(this.properties, other.properties)) {
-            return false;
-        }
-        if (this.type != other.type) {
-            return false;
-        }
-        return true;
-    }
-
-
+    /**
+     * The type of the control.
+     *
+     * @return control type
+     */
     public Type controlType() {
         return type;
     }
-    
+
+    /**
+     * Access the map of properties. The map includes the type, inputs, outputs
+     * and defaults, as well as any custom or optional properties.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return property map
+     */
     public PMap properties() {
-        return properties;
+        return dataMap();
     }
-    
+
+    /**
+     * The list of default values. May be empty if not a property or not
+     * specified.
+     *
+     * @return list of default values
+     */
     public List<Value> defaults() {
         return defaults;
     }
 
+    /**
+     * The list of input {@link ArgumentInfo}.
+     *
+     * @return input argument info
+     */
     public List<ArgumentInfo> inputs() {
         return inputs;
     }
 
+    /**
+     * The list of output {@link ArgumentInfo}.
+     *
+     * @return output argument info
+     */
     public List<ArgumentInfo> outputs() {
         return outputs;
     }
-    
+
+    /**
+     * Create ControlInfo for a function control.
+     *
+     * @param inputs list of input info
+     * @param outputs list of output info
+     * @param properties additional properties (may be null)
+     * @return control info
+     */
     public static ControlInfo createFunctionInfo(List<ArgumentInfo> inputs,
             List<ArgumentInfo> outputs, PMap properties) {
-        return create(inputs, outputs, null, Type.Function, properties);
+        List<ArgumentInfo> ins = inputs == null ? List.of() : List.copyOf(inputs);
+        List<ArgumentInfo> outs = outputs == null ? List.of() : List.copyOf(outputs);
+        PMap map = PMap.of(KEY_TYPE, Type.Function,
+                KEY_INPUTS, PArray.of(ins),
+                KEY_OUTPUTS, PArray.of(outs));
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new ControlInfo(Type.Function, ins, outs, List.of(), map);
     }
 
+    /**
+     * Create ControlInfo for an action control.
+     *
+     * @param properties additional properties (may be null)
+     * @return control info
+     */
     public static ControlInfo createActionInfo(PMap properties) {
-        return create(null, null, null, Type.Action, properties);
+        PMap map = PMap.of(KEY_TYPE, Type.Action);
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new ControlInfo(Type.Action, List.of(), List.of(), List.of(), map);
     }
 
+    /**
+     * Create ControlInfo for a property control.
+     *
+     * @param argument property value info
+     * @param def default value
+     * @param properties additional properties (may be null)
+     * @return control info
+     */
     public static ControlInfo createPropertyInfo(ArgumentInfo argument,
             Value def, PMap properties) {
         return createPropertyInfo(List.of(argument), List.of(def), properties);
     }
-    
+
     public static ControlInfo createPropertyInfo(List<ArgumentInfo> arguments,
             List<Value> defaults, PMap properties) {
-        return create(arguments, arguments, defaults, Type.Property, properties);
+        List<ArgumentInfo> ins = arguments == null ? List.of() : List.copyOf(arguments);
+        List<Value> defs = defaults == null ? List.of() : List.copyOf(defaults);
+        PMap map = PMap.of(KEY_TYPE, Type.Property,
+                KEY_INPUTS, PArray.of(ins),
+                KEY_DEFAULTS, PArray.of(defs));
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new ControlInfo(Type.Property, ins, ins, defs, map);
     }
 
+    /**
+     * Create ControlInfo for a read-only property control.
+     *
+     * @param argument property value info
+     * @param properties additional properties (may be null)
+     * @return control info
+     */
     public static ControlInfo createReadOnlyPropertyInfo(ArgumentInfo argument,
             PMap properties) {
         return createReadOnlyPropertyInfo(List.of(argument), properties);
     }
-    
+
     public static ControlInfo createReadOnlyPropertyInfo(List<ArgumentInfo> arguments,
             PMap properties) {
-        return create(null, arguments, null, Type.ReadOnlyProperty, properties);
+        List<ArgumentInfo> outs = arguments == null ? List.of() : List.copyOf(arguments);
+        PMap map = PMap.of(KEY_TYPE, Type.ReadOnlyProperty,
+                KEY_OUTPUTS, PArray.of(outs));
+        if (properties != null) {
+            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        }
+        return new ControlInfo(Type.ReadOnlyProperty, List.of(), outs, List.of(), map);
     }
 
-    private static ControlInfo create(List<ArgumentInfo> inputs,
-            List<ArgumentInfo> outputs,
-            List<Value> defaults,
-            Type type,
-            PMap properties) {
-
-        List<ArgumentInfo> ins = inputs == null ? EMPTY_INFO : List.copyOf(inputs);
-        List<ArgumentInfo> outs;
-        if (outputs == inputs) {
-            // property - make same as inputs
-            outs = ins;
-        } else {
-            outs = outputs == null ? EMPTY_INFO : List.copyOf(outputs);
-        }
-        List<Value> def;
-        if (defaults != null) {
-            def = List.copyOf(defaults);
-        } else {
-            def = EMPTY_DEFAULTS;
-        }
-        if (properties == null) {
-            properties = PMap.EMPTY;
-        }
-
-        return new ControlInfo(ins, outs, def, type, properties, null);
-
-    }
-
-    private static ControlInfo coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof ControlInfo) {
-            return (ControlInfo) arg;
-        } else {
-            return parse(arg.toString());
-        }
-    }
-
+    /**
+     * Coerce the provided Value into a ControlInfo if possible.
+     *
+     * @param arg value of unknown type
+     * @return control info or empty optional
+     */
     public static Optional<ControlInfo> from(Value arg) {
-        try {
-            return Optional.of(coerce(arg));
-        } catch (ValueFormatException ex) {
-            return Optional.empty();
+        if (arg instanceof ControlInfo info) {
+            return Optional.of(info);
+        } else {
+            try {
+                return PMap.from(arg).map(ControlInfo::fromMap);
+            } catch (Exception ex) {
+                return Optional.empty();
+            }
         }
     }
-    
+
+    /**
+     * Parse the provided String into a ControlInfo if possible.
+     *
+     * @param string text to parse
+     * @return control info
+     * @throws ValueFormatException if parsing fails
+     */
     public static ControlInfo parse(String string) throws ValueFormatException {
+        var data = PMap.parse(string);
         try {
-            PArray arr = PArray.parse(string);
-            Type type = Type.valueOf(arr.get(0).toString());
-            switch (type) {
-                case Function :
-                    return parseFunction(string, arr);
-                case Action :
-                    return parseAction(string, arr);
-                default : 
-                    return parseProperty(string, type, arr);
-            }
+            return fromMap(data);
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }
-        
     }
-    
-    private static ControlInfo parseFunction(String string, PArray array) throws Exception {
-        // array(1) is inputs
-        PArray args = PArray.from(array.get(1)).orElseThrow();
-        ArgumentInfo[] inputs = new ArgumentInfo[args.size()];
-        for (int i=0; i<inputs.length; i++) {
-            inputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
-        }
-        // array(2) is outputs
-        args = PArray.from(array.get(2)).orElseThrow();
-        ArgumentInfo[] outputs = new ArgumentInfo[args.size()];
-        for (int i=0; i<outputs.length; i++) {
-            outputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
-        }
-        // optional array(3) is properties
-        PMap properties;
-        if (array.size() > 3) {
-            properties = PMap.from(array.get(3)).orElseThrow();
-        } else {
-            properties = PMap.EMPTY;
-        }
-        return new ControlInfo(List.of(inputs), List.of(outputs), EMPTY_DEFAULTS, Type.Function, properties, string);
+
+    private static ControlInfo fromMap(PMap data) {
+        var type = Type.valueOf(data.getString(KEY_TYPE, ""));
+        return switch (type) {
+            case Action ->
+                actionFromData(data);
+            case Function ->
+                functionFromData(data);
+            case Property ->
+                propertyFromData(data);
+            case ReadOnlyProperty ->
+                readOnlyPropertyFromData(data);
+        };
     }
-    
-    private static ControlInfo parseAction(String string, PArray array) throws Exception {
-        // optional array(1) is properties
-        PMap properties;
-        if (array.size() > 1) {
-            properties = PMap.from(array.get(1)).orElseThrow();
-        } else {
-            properties = PMap.EMPTY;
+
+    private static ControlInfo actionFromData(PMap data) {
+        if (data.asMap().containsKey(KEY_INPUTS)
+                || data.asMap().containsKey(KEY_OUTPUTS)
+                || data.asMap().containsKey(KEY_DEFAULTS)) {
+            data = PMap.merge(data,
+                    PMap.of(KEY_INPUTS, "",
+                            KEY_OUTPUTS, "",
+                            KEY_DEFAULTS, ""),
+                    PMap.REPLACE);
         }
-        return new ControlInfo(EMPTY_INFO, EMPTY_INFO, EMPTY_DEFAULTS, Type.Action, properties, string);
+        return new ControlInfo(Type.Action, List.of(), List.of(), List.of(), data);
     }
-    
-    private static ControlInfo parseProperty(String string, Type type, PArray array) throws Exception {
-        // array(1) is outputs
-        PArray args = PArray.from(array.get(1)).orElseThrow();
-        ArgumentInfo[] outputs = new ArgumentInfo[args.size()];
-        for (int i=0; i<outputs.length; i++) {
-            outputs[i] = ArgumentInfo.from(args.get(i)).orElseThrow();
+
+    private static ControlInfo functionFromData(PMap data) {
+        var inputs = PArray.from(data.asMap().getOrDefault(KEY_INPUTS, PArray.EMPTY))
+                .map(a -> a.asListOf(ArgumentInfo.class))
+                .orElseThrow(IllegalArgumentException::new);
+
+        var outputs = PArray.from(data.asMap().getOrDefault(KEY_OUTPUTS, PArray.EMPTY))
+                .map(a -> a.asListOf(ArgumentInfo.class))
+                .orElseThrow(IllegalArgumentException::new);
+
+        if (data.asMap().containsKey(KEY_DEFAULTS)) {
+            data = PMap.merge(data, PMap.of(KEY_DEFAULTS, ""), PMap.REPLACE);
         }
-        ArgumentInfo[] inputs = type == Type.ReadOnlyProperty ?
-                new ArgumentInfo[0] : outputs;
-        // array(2) is defaults
-        args = PArray.from(array.get(2)).orElseThrow();
-        Value[] defs = new Value[args.size()];
-        for (int i=0; i<defs.length; i++) {
-            defs[i] = PString.from(args.get(i)).orElseThrow();
+
+        return createFunctionInfo(inputs, outputs, data);
+    }
+
+    private static ControlInfo propertyFromData(PMap data) {
+        var inputs = PArray.from(data.asMap().getOrDefault(KEY_INPUTS, PArray.EMPTY))
+                .map(a -> a.asListOf(ArgumentInfo.class))
+                .orElseThrow(IllegalArgumentException::new);
+        var defaults = PArray.from(data.asMap().getOrDefault(KEY_INPUTS, PArray.EMPTY))
+                .map(a -> a.asList())
+                .orElseThrow(IllegalArgumentException::new);
+
+        if (data.asMap().containsKey(KEY_OUTPUTS)) {
+            data = PMap.merge(data, PMap.of(KEY_OUTPUTS, ""), PMap.REPLACE);
         }
-        // optional array(3) is properties
-        PMap properties;
-        if (array.size() > 3) {
-            properties = PMap.from(array.get(3)).orElseThrow();
-        } else {
-            properties = PMap.EMPTY;
+
+        return new ControlInfo(Type.Property, inputs, inputs, defaults, data);
+
+    }
+
+    private static ControlInfo readOnlyPropertyFromData(PMap data) {
+        var outputs = PArray.from(data.asMap().getOrDefault(KEY_OUTPUTS, PArray.EMPTY))
+                .map(a -> a.asListOf(ArgumentInfo.class))
+                .orElseThrow(IllegalArgumentException::new);
+
+        if (data.asMap().containsKey(KEY_INPUTS) || data.asMap().containsKey(KEY_DEFAULTS)) {
+            data = PMap.merge(data, PMap.of(KEY_INPUTS, "", KEY_DEFAULTS, ""), PMap.REPLACE);
         }
-        return new ControlInfo(List.of(inputs), List.of(outputs), List.of(defs), type, properties, string);
+
+        return new ControlInfo(Type.ReadOnlyProperty, List.of(), outputs, List.of(), data);
+
     }
 
 }
