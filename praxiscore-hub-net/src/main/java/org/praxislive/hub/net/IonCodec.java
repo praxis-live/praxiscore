@@ -56,8 +56,8 @@ class IonCodec {
     private static final String ERROR = "Error";
     private static final String SYSTEM = "System";
 
-    private static final String TYPE_MAP = Value.Type.of(PMap.class).name();
-    private static final String TYPE_ARRAY = Value.Type.of(PArray.class).name();
+    private static final String TYPE_MAP = PMap.TYPE_NAME;
+    private static final String TYPE_ARRAY = PArray.TYPE_NAME;
 
     private static final String FIELD_MATCH_ID = "matchID";
     private static final String FIELD_TO = "to";
@@ -126,11 +126,16 @@ class IonCodec {
         }
         try {
             return switch (annotations[0]) {
-                case SEND -> readSendMessage(reader);
-                case SERVICE -> readServiceMessage(reader);
-                case REPLY -> readReplyMessage(reader);
-                case ERROR -> readErrorMessage(reader);
-                case SYSTEM -> readSystemMessage(reader);
+                case SEND ->
+                    readSendMessage(reader);
+                case SERVICE ->
+                    readServiceMessage(reader);
+                case REPLY ->
+                    readReplyMessage(reader);
+                case ERROR ->
+                    readErrorMessage(reader);
+                case SYSTEM ->
+                    readSystemMessage(reader);
                 default ->
                     throw new IOException("Unknown message type");
             };
@@ -301,9 +306,9 @@ class IonCodec {
             case INT ->
                 PNumber.of(reader.intValue());
             case LIST -> {
-                var annotations = reader.getTypeAnnotations();
-                if (annotations.length > 0 && TYPE_MAP.equals(annotations[0])) {
-                    yield readMap(reader);
+                String[] annotations = reader.getTypeAnnotations();
+                if (isMap(annotations)) {
+                    yield readMapValue(annotations, reader);
                 } else {
                     yield PArray.of(readValues(reader));
                 }
@@ -311,6 +316,38 @@ class IonCodec {
             default ->
                 PString.of(reader.stringValue());
         };
+    }
+
+    private boolean isMap(String[] annotations) {
+        for (String annotation : annotations) {
+            if (PMap.TYPE_NAME.equals(annotation)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Value readMapValue(String[] annotations, IonReader reader) throws Exception {
+        Value.Type<?> type = null;
+        if (annotations.length > 1) {
+            for (String annotation : annotations) {
+                if (PMap.TYPE_NAME.equals(annotation)) {
+                    continue;
+                }
+                var vt = Value.Type.fromName(annotation).orElse(null);
+                if (vt != null && PMap.MapBasedValue.class.isAssignableFrom(vt.asClass())) {
+                    type = vt;
+                    break;
+                }
+            }
+        }
+        PMap map = readMap(reader);
+        if (type != null) {
+            Value v = type.converter().apply(map).orElse(null);
+            return v == null ? map : v;
+        } else {
+            return map;
+        }
     }
 
     private PMap readMap(IonReader reader) throws Exception {
@@ -340,14 +377,16 @@ class IonCodec {
     private void writeValue(IonWriter writer, Value value) throws IOException {
         if (value instanceof PNumber n) {
             writeNumber(writer, n);
-        } else if (value instanceof PMap m) {
-            writeMap(writer, m);
         } else if (value instanceof PArray a) {
             writeArray(writer, a);
         } else if (value instanceof PBytes b) {
             writeBytes(writer, b);
         } else if (value instanceof PBoolean b) {
             writer.writeBool(b.value());
+        } else if (value instanceof PMap m) {
+            writeMap(writer, m, TYPE_MAP);
+        } else if (value instanceof PMap.MapBasedValue v) {
+            writeMap(writer, v.dataMap(), v.type().name(), TYPE_MAP);
         } else {
             writer.writeString(value.toString());
         }
@@ -361,8 +400,8 @@ class IonCodec {
         }
     }
 
-    private void writeMap(IonWriter writer, PMap map) throws IOException {
-        writer.setTypeAnnotations(TYPE_MAP);
+    private void writeMap(IonWriter writer, PMap map, String ... annotations) throws IOException {
+        writer.setTypeAnnotations(annotations);
         writer.stepIn(IonType.LIST);
         for (var key : map.keys()) {
             writer.writeString(key);

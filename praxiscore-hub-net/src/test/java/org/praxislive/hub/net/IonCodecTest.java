@@ -26,9 +26,16 @@ import com.amazon.ion.system.IonSystemBuilder;
 import com.amazon.ion.system.IonTextWriterBuilder;
 import java.net.URI;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.ControlPort;
+import org.praxislive.core.Info;
 import org.praxislive.core.Value;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PBytes;
@@ -45,11 +52,26 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class IonCodecTest {
 
-    private static final boolean DEBUG_INFO = false;
+    private static final boolean VERBOSE = Boolean.getBoolean("praxis.test.verbose");
 
     private static final PBytes bytes = PBytes.valueOf(new byte[]{
         (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE
     });
+
+    @BeforeEach
+    public void beforeEach(TestInfo info) {
+        if (VERBOSE) {
+            System.out.println("START TEST : " + info.getDisplayName());
+        }
+    }
+
+    @AfterEach
+    public void afterEach(TestInfo info) {
+        if (VERBOSE) {
+            System.out.println("END TEST : " + info.getDisplayName());
+            System.out.println("=====================================");
+        }
+    }
 
     @Test
     public void testSendMessage() throws Exception {
@@ -157,12 +179,38 @@ public class IonCodecTest {
         assertEquals(msg3, msgList.get(2));
         assertEquals(msg4, msgList.get(3));
         assertEquals(msg5, msgList.get(4));
-                
+
+    }
+
+    @Test
+    public void testMapBasedValues() throws Exception {
+        int matchID = -987654321;
+        var customProp = PMap.of("flag", true, "data", bytes);
+        var info = Info.component()
+                .merge(ComponentProtocol.API_INFO)
+                .port("in", Info.port().input(ControlPort.class).build())
+                .port("out", Info.port().output(ControlPort.class).build())
+                .property("custom", customProp)
+                .build();
+        var msg = new Message.Reply(matchID, List.of(info));
+        var msgList = roundTrip(List.of(msg));
+        assertEquals(1, msgList.size());
+        var decoded = (Message.Reply) msgList.get(0);
+        assertEquals(matchID, decoded.matchID());
+        var decodedInfo = decoded.args().get(0);
+        assertTrue(info.equivalent(decodedInfo));
+        assertTrue(decodedInfo instanceof ComponentInfo);
+        assertEquals(info, decodedInfo);
+        var byteProp = ComponentInfo.from(decodedInfo)
+                .flatMap(i -> PMap.from(i.properties().get("custom")))
+                .map(m -> m.get("data"))
+                .orElseThrow();
+        assertEquals(bytes, byteProp);
     }
 
     private List<Message> roundTrip(List<Message> messages) throws Exception {
         byte[] data = IonCodec.getDefault().writeMessages(messages);
-        if (DEBUG_INFO) {
+        if (VERBOSE) {
             var sb = new StringBuilder();
             sb.append("\nMESSAGE\n=======\n");
             var system = IonSystemBuilder.standard().build();
