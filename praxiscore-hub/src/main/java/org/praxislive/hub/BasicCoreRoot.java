@@ -37,6 +37,7 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
 import org.praxislive.core.Control;
+import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.RootFactoryService;
@@ -253,7 +254,7 @@ public class BasicCoreRoot extends AbstractRoot {
      * @param ctrl root controller
      */
     protected final void startRoot(final String id, final Root.Controller ctrl) {
-        ctrl.start(r -> new Thread(r, id));
+        ctrl.start();
     }
 
     /**

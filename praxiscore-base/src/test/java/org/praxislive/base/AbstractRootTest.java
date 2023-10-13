@@ -73,7 +73,7 @@ public class AbstractRootTest {
         RootImpl root = new RootImpl();
         LinkedBlockingQueue<Packet> responseQueue = new LinkedBlockingQueue<>();
         RootHubImpl hub = new RootHubImpl(root, responseQueue);
-        hub.ctrl.start(Thread::new);
+        hub.ctrl.start();
         hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
                 ControlAddress.of("/hub.world"),
                 hub.getClock().getTime() + TimeUnit.MILLISECONDS.toNanos(100)));
@@ -96,7 +96,7 @@ public class AbstractRootTest {
         DelegatingRootImpl root = new DelegatingRootImpl();
         LinkedBlockingQueue<Packet> responseQueue = new LinkedBlockingQueue<>();
         RootHubImpl hub = new RootHubImpl(root, responseQueue);
-        hub.ctrl.start(Thread::new);
+        hub.ctrl.start();
         hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
                 ControlAddress.of("/hub.world"),
                 hub.getClock().getTime() + TimeUnit.MILLISECONDS.toNanos(100)));
@@ -119,7 +119,7 @@ public class AbstractRootTest {
         RootImpl root = new RootImpl();
         LinkedBlockingQueue<Packet> responseQueue = new LinkedBlockingQueue<>();
         RootHubImpl hub = new RootHubImpl(root, responseQueue);
-        hub.ctrl.start(Thread::new);
+        hub.ctrl.start();
         hub.ctrl.submitPacket(Call.create(ControlAddress.of("/test.hello"),
                 ControlAddress.of("/hub.world"),
                 hub.getClock().getTime() + TimeUnit.SECONDS.toNanos(1)));

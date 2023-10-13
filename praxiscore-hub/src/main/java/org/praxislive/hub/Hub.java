@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -67,7 +68,6 @@ public final class Hub {
     private final RootHubImpl rootHub;
     private final List<String> rootIDs;
 
-    private Thread coreThread;
     private Root.Controller coreController;
     long startTime;
 
@@ -104,18 +104,14 @@ public final class Hub {
      * @throws Exception if start fails or the hub has already been started
      */
     public synchronized void start() throws Exception {
-        if (coreThread != null) {
+        if (coreController != null) {
             throw new IllegalStateException();
         }
         startTime = System.nanoTime();
         String coreID = CORE_PREFIX + Integer.toHexString(core.hashCode());
         coreController = core.initialize(coreID, rootHub);
         roots.put(coreID, coreController);
-        coreController.start(r -> {
-            coreThread = new Thread(r, "PRAXIS_CORE_THREAD");
-            return coreThread;
-        });
-        assert coreThread.isAlive();
+        coreController.start(Lookup.EMPTY);
     }
 
     /**
@@ -132,7 +128,14 @@ public final class Hub {
      * @throws InterruptedException if interrupted
      */
     public void await() throws InterruptedException {
-        coreThread.join();
+        while (true) {
+            try {
+                await(1, TimeUnit.MINUTES);
+                return;
+            } catch (TimeoutException ex) {
+                // loop again
+            }
+        }
     }
 
     /**
@@ -144,9 +147,10 @@ public final class Hub {
      * @throws TimeoutException if the hub has not terminated in the given time
      */
     public void await(long time, TimeUnit unit) throws InterruptedException, TimeoutException {
-        coreThread.join(unit.toMillis(time));
-        if (coreThread.isAlive()) {
-            throw new TimeoutException();
+        try {
+            coreController.awaitTermination(time, unit);
+        } catch (ExecutionException ex) {
+            return;
         }
     }
 
@@ -156,7 +160,7 @@ public final class Hub {
      * @return true if active
      */
     public boolean isAlive() {
-        return coreThread.isAlive();
+        return coreController.isAlive();
     }
 
     /**

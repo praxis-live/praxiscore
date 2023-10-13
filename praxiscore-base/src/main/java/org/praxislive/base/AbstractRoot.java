@@ -25,12 +25,15 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
@@ -574,6 +577,7 @@ public abstract class AbstractRoot implements Root {
     protected class Controller implements Root.Controller {
 
         private final AtomicBoolean updateQueued = new AtomicBoolean();
+        private final CompletableFuture<Void> activeFuture = new CompletableFuture<>();
 
         private ScheduledExecutorService exec;
         private ScheduledFuture<?> updateTask;
@@ -590,10 +594,11 @@ public abstract class AbstractRoot implements Root {
         }
 
         @Override
-        public void start(ThreadFactory threadFactory) {
+        public void start(Lookup lookup) {
             if (state.compareAndSet(State.INITIALIZED, State.ACTIVE_IDLE)) {
-                this.threadFactory = threadFactory;
-                this.exec = hub.getLookup()
+                String threadID = getAddress().rootID();
+                threadFactory = r -> new Thread(r, threadID);
+                this.exec = lookup
                         .find(ScheduledExecutorService.class)
                         .orElse(null);
                 if (exec == null) {
@@ -610,6 +615,18 @@ public abstract class AbstractRoot implements Root {
         public void shutdown() {
             state.updateAndGet(s -> s == State.TERMINATED
                     ? State.TERMINATED : State.TERMINATING);
+        }
+
+        @Override
+        public boolean isAlive() {
+            var s = state.get();
+            return s == State.ACTIVE_RUNNING || s == State.ACTIVE_IDLE;
+        }
+
+        @Override
+        public void awaitTermination(long timeout, TimeUnit unit) throws
+                InterruptedException, TimeoutException, ExecutionException {
+            activeFuture.get(timeout, unit);
         }
 
         /**
@@ -687,8 +704,10 @@ public abstract class AbstractRoot implements Root {
                         }
                         context.updateState(hub.getClock().getTime(), ExecutionContext.State.TERMINATED);
                         if (ownsScheduler) {
+                            // we're running in scheduler so cannot wait for it!
                             exec.shutdown();
                         }
+                        activeFuture.complete(null);
                     } finally {
                         lock.unlock();
                     }
