@@ -619,7 +619,7 @@ public class Info {
          * @return this
          */
         @SuppressWarnings("unchecked")
-        public T property(String key, Value value) {
+        public T property(String key, Object value) {
             if (ArgumentInfo.KEY_TYPE.equals(key)) {
                 throw new IllegalArgumentException("Reserved key");
             }

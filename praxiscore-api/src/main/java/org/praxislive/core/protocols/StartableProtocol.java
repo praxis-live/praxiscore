@@ -34,9 +34,6 @@ import org.praxislive.core.types.PMap;
  */
 public class StartableProtocol implements Protocol {
 
-    @Deprecated
-    public final static StartableProtocol INSTANCE = new StartableProtocol();
-
     /**
      * Name of the start control.
      */
@@ -94,14 +91,15 @@ public class StartableProtocol implements Protocol {
 
     @Override
     public ControlInfo getControlInfo(String control) {
-        switch (control) {
-            case START:
-                return START_INFO;
-            case STOP:
-                return STOP_INFO;
-            case IS_RUNNING:
-                return IS_RUNNING_INFO;
-        }
-        throw new IllegalArgumentException();
+        return switch (control) {
+            case START ->
+                START_INFO;
+            case STOP ->
+                STOP_INFO;
+            case IS_RUNNING ->
+                IS_RUNNING_INFO;
+            default ->
+                throw new IllegalArgumentException();
+        };
     }
 }

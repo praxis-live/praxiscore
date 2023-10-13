@@ -39,10 +39,7 @@ import org.praxislive.core.types.PString;
  * A container protocol that allows for calls to add / remove child components,
  * and connect / disconnect their ports.
  */
-public class ContainerProtocol implements Protocol {
-
-    @Deprecated
-    public final static ContainerProtocol INSTANCE = new ContainerProtocol();
+public final class ContainerProtocol implements Protocol {
 
     /**
      * Name of the add-child control.
@@ -187,23 +184,24 @@ public class ContainerProtocol implements Protocol {
 
     @Override
     public ControlInfo getControlInfo(String control) {
-        switch (control) {
-            case ADD_CHILD:
-                return ADD_CHILD_INFO;
-            case REMOVE_CHILD:
-                return REMOVE_CHILD_INFO;
-            case CHILDREN:
-                return CHILDREN_INFO;
-            case CONNECT:
-                return CONNECT_INFO;
-            case DISCONNECT:
-                return DISCONNECT_INFO;
-            case CONNECTIONS:
-                return CONNECTIONS_INFO;
-            case SUPPORTED_TYPES:
-                return SUPPORTED_TYPES_INFO;
-        }
-        throw new IllegalArgumentException();
+        return switch (control) {
+            case ADD_CHILD ->
+                ADD_CHILD_INFO;
+            case REMOVE_CHILD ->
+                REMOVE_CHILD_INFO;
+            case CHILDREN ->
+                CHILDREN_INFO;
+            case CONNECT ->
+                CONNECT_INFO;
+            case DISCONNECT ->
+                DISCONNECT_INFO;
+            case CONNECTIONS ->
+                CONNECTIONS_INFO;
+            case SUPPORTED_TYPES ->
+                SUPPORTED_TYPES_INFO;
+            default ->
+                throw new IllegalArgumentException();
+        };
     }
 
 }
