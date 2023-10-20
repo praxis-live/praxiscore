@@ -21,6 +21,7 @@
  */
 package org.praxislive.base;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -33,10 +34,13 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.PortConnectionException;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
+import org.praxislive.core.protocols.SerializableProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PMap;
 
 /**
  *
@@ -50,15 +54,29 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
     protected AbstractRootContainer() {
         delegate = new ContainerImpl(this);
         registerControl(StartableProtocol.START, (call, router) -> {
-            setRunning();
-            router.route(call.reply());
+            if (call.isRequest()) {
+                setRunning();
+                router.route(call.reply());
+            }
         });
         registerControl(StartableProtocol.STOP, (call, router) -> {
-            setIdle();
-            router.route(call.reply());
+            if (call.isRequest()) {
+                setIdle();
+                router.route(call.reply());
+            }
         });
         registerControl(StartableProtocol.IS_RUNNING, (call, router) -> {
-            router.route(call.reply(PBoolean.of(getState() == State.ACTIVE_RUNNING)));
+            if (call.isRequest()) {
+                router.route(call.reply(PBoolean.of(getState() == State.ACTIVE_RUNNING)));
+            }
+        });
+        registerControl(SerializableProtocol.SERIALIZE, (call, router) -> {
+            if (call.isRequest()) {
+                PMap config = call.args().isEmpty() ? PMap.EMPTY
+                        : PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
+                PMap response = serialize(config);
+                router.route(call.reply(response));
+            }
         });
     }
 
@@ -111,6 +129,11 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
 
     @Override
     public abstract ComponentInfo getInfo();
+
+    @Override
+    public void write(TreeWriter writer) {
+        delegate.write(writer);
+    }
 
     @Override
     protected void processCall(Call call, PacketRouter router) {
@@ -173,6 +196,27 @@ public abstract class AbstractRootContainer extends AbstractRoot implements Cont
             }
         }
         return comp;
+    }
+
+    private PMap serialize(PMap configuration) {
+        configuration.keys().forEach(k -> {
+            if (!SerializableProtocol.OPTION_SUBTREE.equals(k)) {
+                throw new IllegalArgumentException("Unknown configuration key : " + k);
+            }
+        });
+        var subtreeValue = configuration.get(SerializableProtocol.OPTION_SUBTREE);
+        Component base;
+        if (subtreeValue != null) {
+            base = ComponentAddress.from(subtreeValue)
+                    .filter(a -> a.rootID().equals(getAddress().rootID()))
+                    .flatMap(a -> Optional.ofNullable(findComponent(a)))
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid subtree : " + subtreeValue));
+        } else {
+            base = this;
+        }
+        var writer = new MapTreeWriter();
+        base.write(writer);
+        return writer.build();
     }
 
     private static class ContainerImpl extends AbstractContainer.Delegate {

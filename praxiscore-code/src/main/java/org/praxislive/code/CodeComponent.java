@@ -32,7 +32,9 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.ThreadContext;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
@@ -108,6 +110,13 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     @Override
     public ComponentInfo getInfo() {
         return codeCtxt.getInfo();
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        writer.writeType(codeCtxt.getComponentType());
+        writer.writeInfo(getInfo());
+        codeCtxt.writeDescriptors(writer);
     }
 
     Lookup getLookup() {

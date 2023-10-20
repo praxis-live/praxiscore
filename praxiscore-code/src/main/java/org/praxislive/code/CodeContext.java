@@ -44,6 +44,8 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
@@ -68,6 +70,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final Map<String, ReferenceDescriptor<?>> refs;
     private final List<Descriptor> descriptors;
     private final ComponentInfo info;
+    private final ComponentType componentType;
 
     private final D delegate;
     private final LogBuilder log;
@@ -111,6 +114,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
             ports = connector.extractPorts();
             refs = connector.extractRefs();
             info = connector.extractInfo();
+            componentType = connector.extractComponentType();
             delegate = connector.getDelegate();
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
@@ -401,6 +405,15 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     /**
+     * Get the component type.
+     *
+     * @return component type
+     */
+    protected final ComponentType getComponentType() {
+        return componentType;
+    }
+
+    /**
      * Find the address of the passed in control, or null if it does not have
      * one.
      *
@@ -680,6 +693,10 @@ public abstract class CodeContext<D extends CodeDelegate> {
             async.fail(PError.of(ex));
         }
         return async;
+    }
+
+    final void writeDescriptors(TreeWriter writer) {
+        descriptors.forEach(d -> d.write(writer));
     }
 
     /**

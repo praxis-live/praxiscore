@@ -21,9 +21,11 @@
  */
 package org.praxislive.code;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
 import org.praxislive.base.FilteredTypes;
+import org.praxislive.base.MapTreeWriter;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -33,8 +35,11 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
+import org.praxislive.core.protocols.SerializableProtocol;
+import org.praxislive.core.types.PMap;
 
 /**
  * A {@link Root} container instance that is rewritable at runtime. The
@@ -90,6 +95,12 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         container.hierarchyChanged();
     }
 
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        container.write(writer);
+    }
+
     Control getContainerControl(String id) {
         return container.getControl(id);
     }
@@ -99,6 +110,28 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
             refBus = new RefBus();
         }
         return refBus;
+    }
+
+    @Override
+    PMap serialize(PMap configuration) {
+        configuration.keys().forEach(k -> {
+            if (!SerializableProtocol.OPTION_SUBTREE.equals(k)) {
+                throw new IllegalArgumentException("Unknown configuration key : " + k);
+            }
+        });
+        var subtreeValue = configuration.get(SerializableProtocol.OPTION_SUBTREE);
+        Component base;
+        if (subtreeValue != null) {
+            base = ComponentAddress.from(subtreeValue)
+                    .filter(a -> a.rootID().equals(getAddress().rootID()))
+                    .flatMap(a -> Optional.ofNullable(findComponent(a)))
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid subtree : " + subtreeValue));
+        } else {
+            base = this;
+        }
+        var writer = new MapTreeWriter();
+        base.write(writer);
+        return writer.build();
     }
 
     @Override

@@ -57,6 +57,7 @@ import org.praxislive.code.userapi.Type;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Value;
@@ -192,6 +193,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      */
     protected ComponentInfo extractInfo() {
         return info;
+    }
+
+    ComponentType extractComponentType() {
+        return factory.componentType();
     }
 
     /**

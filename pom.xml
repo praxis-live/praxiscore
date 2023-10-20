@@ -186,7 +186,7 @@
           <configuration>
             <skippedModules>praxiscore-video-pgl-natives,praxiscore-internal-httpd,praxiscore-internal-osc</skippedModules>
             <detectOfflineLinks>false</detectOfflineLinks>
-            <release>11</release>
+            <release>17</release>
             <additionalOptions>
               <additionalOption>-Xdoclint:none</additionalOption>
             </additionalOptions>

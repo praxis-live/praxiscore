@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
+import org.praxislive.core.protocols.SerializableProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.services.ComponentFactoryService;
 import org.praxislive.core.services.LogService;
@@ -191,6 +192,7 @@ public interface Protocol {
             register(new Type<>(ComponentProtocol.class));
             register(new Type<>(ContainerProtocol.class));
             register(new Type<>(StartableProtocol.class));
+            register(new Type<>(SerializableProtocol.class));
 
             register(new Type<>(ComponentFactoryService.class));
             register(new Type<>(RootFactoryService.class));

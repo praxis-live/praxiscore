@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.Connection;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
@@ -41,6 +42,7 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.PortConnectionException;
 import org.praxislive.core.PortListener;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -110,6 +112,14 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
     @Override
     public Lookup getLookup() {
         return super.getLookup();
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        childMap.forEach((id, child) -> writer.writeChild(id, child::write));
+        connections.forEach(c -> writer.writeConnection(
+                new Connection(c.get(0).toString(), c.get(1).toString(),
+                        c.get(2).toString(), c.get(3).toString())));
     }
 
     protected void addChild(String id, Component child) throws VetoException {

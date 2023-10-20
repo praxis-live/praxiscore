@@ -22,6 +22,7 @@
 package org.praxislive.code;
 
 import java.util.Objects;
+import org.praxislive.core.TreeWriter;
 
 /**
  * Common interface of reference, port and control descriptors.
@@ -111,7 +112,17 @@ public sealed abstract class Descriptor<T extends Descriptor<T>>
     public void dispose() {
 
     }
-    
+
+    /**
+     * Write properties or annotations as part of serialization of the
+     * component. The default implementation does nothing.
+     *
+     * @param writer component tree writer
+     */
+    public void write(TreeWriter writer) {
+
+    }
+
     void handleAttach(CodeContext<?> context, Descriptor<?> previous) {
         if (previous != null) {
             if (type().isInstance(previous)) {

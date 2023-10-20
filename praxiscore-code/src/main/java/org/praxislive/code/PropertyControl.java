@@ -41,6 +41,7 @@ import org.praxislive.core.Port;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.PortInfo;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -181,11 +182,11 @@ public class PropertyControl extends Property implements Control {
         protected void attach(CodeContext<?> context) {
             // no op hook
         }
-        
+
         protected void attach(CodeContext<?> context, Binding previous) {
             attach(context);
         }
-        
+
         protected void reset(boolean full) {
             // no op hook
         }
@@ -339,6 +340,15 @@ public class PropertyControl extends Property implements Control {
             }
         }
 
+        @Override
+        public void write(TreeWriter writer) {
+            Value val = control.get();
+            Value def = control.binding.getDefaultValue();
+            if (val != null && !val.equals(def)) {
+                writer.writeProperty(id(), val);
+            }
+        }
+
         public static Descriptor create(CodeConnector<?> connector,
                 P ann, Field field) {
             Binding binding = findBinding(connector, field);
@@ -379,7 +389,7 @@ public class PropertyControl extends Property implements Control {
             }
             return new Descriptor(id, index, info, binding, propertyField, onChange, onError);
         }
-        
+
         private static PMap buildProperties(Field field) {
             PMap.Builder builder = PMap.builder(2);
             if (field.isAnnotationPresent(Transient.class)) {

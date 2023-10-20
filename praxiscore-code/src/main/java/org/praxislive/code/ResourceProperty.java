@@ -43,6 +43,7 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.Port;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.PortInfo;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
@@ -237,8 +238,8 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
             this.field = field;
             this.onChange = onChange;
             this.onError = onError;
-            this.info = field.isAnnotationPresent(Config.Preferred.class) ?
-                    PREF_INFO : INFO;
+            this.info = field.isAnnotationPresent(Config.Preferred.class)
+                    ? PREF_INFO : INFO;
         }
 
         @Override
@@ -263,6 +264,14 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
         @Override
         public Control control() {
             return control;
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            Value v = control.getKey();
+            if (!v.isEmpty()) {
+                writer.writeProperty(id(), v);
+            }
         }
 
         public PortDescriptor createPortDescriptor() {

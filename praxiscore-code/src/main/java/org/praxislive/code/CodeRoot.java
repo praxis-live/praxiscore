@@ -26,23 +26,27 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.base.AbstractRoot;
+import org.praxislive.base.MapTreeWriter;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
-import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.TreeWriter;
+import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
+import org.praxislive.core.protocols.SerializableProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PMap;
 
 /**
  * A {@link Root} component instance that is rewritable at runtime. The CodeRoot
@@ -61,6 +65,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     private final Control startControl;
     private final Control stopControl;
     private final Control isRunningControl;
+    private final Control serializeControl;
     private final SharedCodeProperty sharedCode;
 
     private Lookup lookup;
@@ -68,15 +73,29 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     CodeRoot() {
         root = new RootImpl(this);
         startControl = (call, router) -> {
-            root.start();
-            router.route(call.reply());
+            if (call.isRequest()) {
+                root.start();
+                router.route(call.reply());
+            }
         };
         stopControl = (call, router) -> {
-            root.stop();
-            router.route(call.reply());
+            if (call.isRequest()) {
+                root.stop();
+                router.route(call.reply());
+            }
         };
         isRunningControl = (call, router) -> {
-            router.route(call.reply(PBoolean.of(root.isRunning())));
+            if (call.isRequest()) {
+                router.route(call.reply(PBoolean.of(root.isRunning())));
+            }
+        };
+        serializeControl = (call, router) -> {
+            if (call.isRequest()) {
+                PMap config = call.args().isEmpty() ? PMap.EMPTY
+                        : PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
+                PMap response = serialize(config);
+                router.route(call.reply(response));
+            }
         };
         sharedCode = new SharedCodeProperty(this, log -> {
             Context<?> ctxt = getCodeContext();
@@ -167,6 +186,15 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
     }
 
+    PMap serialize(PMap config) {
+        if (!config.isEmpty()) {
+            throw new IllegalArgumentException();
+        }
+        var writer = new MapTreeWriter();
+        write(writer);
+        return writer.build();
+    }
+
     /**
      * CodeContext subclass for CodeRoots.
      *
@@ -231,12 +259,14 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             addControl(new RootControlDescriptor(StartableProtocol.START, getInternalIndex()));
             addControl(new RootControlDescriptor(StartableProtocol.STOP, getInternalIndex()));
             addControl(new RootControlDescriptor(StartableProtocol.IS_RUNNING, getInternalIndex()));
+            addControl(new RootControlDescriptor(SerializableProtocol.SERIALIZE, getInternalIndex()));
         }
 
         @Override
         protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
             super.buildBaseComponentInfo(cmp);
             cmp.merge(StartableProtocol.API_INFO);
+            cmp.merge(SerializableProtocol.API_INFO);
         }
 
         @Override
@@ -358,32 +388,48 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
         @Override
         public Control control() {
-            switch (controlID) {
-                case StartableProtocol.START:
-                    return root.startControl;
-                case StartableProtocol.STOP:
-                    return root.stopControl;
-                case StartableProtocol.IS_RUNNING:
-                    return root.isRunningControl;
-                case SHARED_CODE:
-                    return root.sharedCode;
-            }
-            return null;
+            return switch (controlID) {
+                case StartableProtocol.START ->
+                    root.startControl;
+                case StartableProtocol.STOP ->
+                    root.stopControl;
+                case StartableProtocol.IS_RUNNING ->
+                    root.isRunningControl;
+                case SerializableProtocol.SERIALIZE ->
+                    root.serializeControl;
+                case SHARED_CODE ->
+                    root.sharedCode;
+                default ->
+                    null;
+            };
         }
 
         @Override
         public ControlInfo controlInfo() {
-            switch (controlID) {
-                case StartableProtocol.START:
-                    return StartableProtocol.START_INFO;
-                case StartableProtocol.STOP:
-                    return StartableProtocol.STOP_INFO;
-                case StartableProtocol.IS_RUNNING:
-                    return StartableProtocol.IS_RUNNING_INFO;
-                case SHARED_CODE:
-                    return SharedCodeProperty.INFO;
+            return switch (controlID) {
+                case StartableProtocol.START ->
+                    StartableProtocol.START_INFO;
+                case StartableProtocol.STOP ->
+                    StartableProtocol.STOP_INFO;
+                case StartableProtocol.IS_RUNNING ->
+                    StartableProtocol.IS_RUNNING_INFO;
+                case SerializableProtocol.SERIALIZE ->
+                    SerializableProtocol.SERIALIZE_INFO;
+                case SHARED_CODE ->
+                    SharedCodeProperty.INFO;
+                default ->
+                    null;
+            };
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            if (SHARED_CODE.equals(id())) {
+                Value v = root.sharedCode.getValue();
+                if (!v.isEmpty()) {
+                    writer.writeProperty(SHARED_CODE, v);
+                }
             }
-            return null;
         }
 
     }

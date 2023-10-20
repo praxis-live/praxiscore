@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,14 +22,14 @@
 package org.praxislive.core;
 
 /**
- * Components are the main building blocks (actors) within Praxis CORE. They may 
- * provide Controls (asynchronous message endpoints) and Ports (synchronous message
- * points). 
- * 
- * Components expect to be used within a hierarchy, inside a Root
- * component, and potentially inside other Container components.
+ * Components are the main building blocks (actors) within Praxis CORE. They may
+ * provide Controls (asynchronous message endpoints) and Ports (synchronous
+ * message points).
  *
- * 
+ * Components expect to be used within a hierarchy, inside a Root component, and
+ * potentially inside other Container components.
+ *
+ *
  */
 public interface Component {
 
@@ -37,14 +37,15 @@ public interface Component {
      * Return the Container that is the immediate parent of this Component, or
      * null if this Component is not currently contained within a Component
      * hierarchy.
+     *
      * @return Container
      */
     public Container getParent();
 
     /**
      * Notify the Component that it has been added to the supplied Container, or
-     * removed from its parent if the supplied argument is null. The
-     * Component may throw a VetoException if it should not be added to the Container
+     * removed from its parent if the supplied argument is null. The Component
+     * may throw a VetoException if it should not be added to the Container
      * provided. It should also throw this exception if a parent is already set.
      *
      * @param parent
@@ -55,42 +56,57 @@ public interface Component {
     /**
      * Notify the component that a change has happened in its component
      * hierarchy. For example its direct parent or an ancestor has changed.
-     * 
+     *
      * This method will be called after parentNotify() if the result of an
      * immediate parent change.
      *
      */
     public void hierarchyChanged();
-    
+
     /**
-     * Get a Control that can handle a Call to the given ID, or null if it does 
-     * not exist. Component implementations are free to return a different Control
-     * for each ID, a single control to handle any message, or somewhere in between.
-     * 
+     * Get a Control that can handle a Call to the given ID, or null if it does
+     * not exist. Component implementations are free to return a different
+     * Control for each ID, a single control to handle any message, or somewhere
+     * in between.
+     *
      * A null return from this method shall be handled by the Root component by
      * responding with an error message to the sender where required.
-     * 
+     *
      * @param id
      * @return Control or null
      */
-    
     public Control getControl(String id);
-
 
     /**
      * Get the Port with the given ID, or null if it does not exist.
+     *
      * @param id
      * @return Port or null
      */
     public Port getPort(String id);
 
-
-
     /**
      * Get the ComponentInfo object for this component.
+     *
      * @return ComponentInfo
      */
     public ComponentInfo getInfo();
 
-    
+    /**
+     * If supported, write the state of this component to the provided
+     * {@link TreeWriter}. This should allow for the component to be recreated
+     * in as close to its current state as possible.
+     * <p>
+     * To fully support this method, the Component should write its type,
+     * component info, and property values, in that order. It may also add
+     * custom annotations.
+     * <p>
+     * The default implementation of this method does nothing.
+     *
+     * @param writer TreeWriter to write to
+     */
+    public default void write(TreeWriter writer) {
+        // no op
+    }
+
 }

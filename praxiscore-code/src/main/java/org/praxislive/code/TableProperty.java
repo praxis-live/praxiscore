@@ -33,6 +33,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
@@ -132,7 +133,7 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
         private final Field field;
         private final boolean isList;
         private final Method onChange, onError;
-        
+
         private TableProperty control;
 
         private Descriptor(
@@ -172,6 +173,14 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
         @Override
         public Control control() {
             return control;
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            Value v = control.getKey();
+            if (!v.isEmpty()) {
+                writer.writeProperty(id(), v);
+            }
         }
 
         public static Descriptor create(CodeConnector<?> connector, P ann,
@@ -224,6 +233,5 @@ class TableProperty extends AbstractAsyncProperty<TableParser.Response> {
         }
 
     }
-
 
 }

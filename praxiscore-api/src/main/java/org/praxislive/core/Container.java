@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,5 +60,23 @@ public interface Container extends Component, Lookup.Provider {
      * @return address, or null of component is not a child of this container.
      */
     public ComponentAddress getAddress(Component child);
+
+    /**
+     * If supported, write the state of this container to the provided
+     * {@link TreeWriter}. This should allow for the container, and its
+     * children, to be recreated in as close to its current state as possible.
+     * <p>
+     * To fully support this method, the Container should write its type,
+     * component info, property values, children and connections, in that order.
+     * It may also add custom annotations.
+     * <p>
+     * The default implementation of this method does nothing.
+     *
+     * @param writer TreeWriter to write to
+     */
+    @Override
+    public default void write(TreeWriter writer) {
+        // no op
+    }
 
 }

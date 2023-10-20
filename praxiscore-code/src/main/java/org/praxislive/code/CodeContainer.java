@@ -42,6 +42,7 @@ import org.praxislive.core.PortAddress;
 import org.praxislive.core.PortConnectionException;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.PortListener;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -160,6 +161,15 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     public void hierarchyChanged() {
         super.hierarchyChanged();
         container.hierarchyChanged();
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (!portMap.isEmpty()) {
+            writer.writeProperty("ports", portMap);
+        }
+        container.write(writer);
     }
 
     Control getContainerControl(String id) {

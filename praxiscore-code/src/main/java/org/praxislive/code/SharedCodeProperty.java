@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -89,11 +89,15 @@ public class SharedCodeProperty implements Control {
 
     /**
      * The shared code context, which should be added to the container's lookup.
-     * 
+     *
      * @return shared code context
      */
     public SharedCodeContext getSharedCodeContext() {
         return context;
+    }
+
+    Value getValue() {
+        return value.get(0);
     }
 
     private void processInvoke(Call call, PacketRouter router) throws Exception {

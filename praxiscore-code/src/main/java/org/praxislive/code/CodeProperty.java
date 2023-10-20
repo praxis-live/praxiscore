@@ -29,6 +29,7 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
@@ -244,6 +245,14 @@ class CodeProperty<D extends CodeDelegate>
         @Override
         public void dispose() {
             control.dispose();
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            Value source = control.sourceArgs.get(0);
+            if (!source.isEmpty()) {
+                writer.writeProperty(id(), source);
+            }
         }
 
     }
