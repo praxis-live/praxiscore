@@ -536,11 +536,6 @@ public final class PMap extends Value {
         return new Builder();
     }
 
-    @Deprecated
-    public static Builder builder(int initialCapacity) {
-        return new Builder(initialCapacity * 2);
-    }
-
     /**
      * A PMap builder.
      */
@@ -550,10 +545,6 @@ public final class PMap extends Value {
 
         private Builder() {
             data = new LinkedHashMap<>();
-        }
-
-        private Builder(int capacity) {
-            data = new LinkedHashMap<>(capacity);
         }
 
         /**

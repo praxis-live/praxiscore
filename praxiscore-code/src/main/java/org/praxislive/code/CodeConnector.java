@@ -884,7 +884,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         if (properties.length % 2 != 0) {
             throw new IllegalArgumentException();
         }
-        PMap.Builder bld = PMap.builder(properties.length / 2);
+        PMap.Builder bld = PMap.builder();
         for (int i = 0; i < properties.length; i += 2) {
             bld.put(properties[i], properties[i + 1]);
         }

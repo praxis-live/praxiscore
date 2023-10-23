@@ -391,7 +391,7 @@ public class PropertyControl extends Property implements Control {
         }
 
         private static PMap buildProperties(Field field) {
-            PMap.Builder builder = PMap.builder(2);
+            PMap.Builder builder = PMap.builder();
             if (field.isAnnotationPresent(Transient.class)) {
                 builder.put(ControlInfo.KEY_TRANSIENT, true);
             }

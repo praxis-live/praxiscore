@@ -247,7 +247,7 @@ public class DefaultCompilerService extends AbstractRoot
         }
 
         private PMap convertClasses(Map<String, byte[]> classes) {
-            PMap.Builder bld = PMap.builder(classes.size());
+            PMap.Builder bld = PMap.builder();
             classes.entrySet().stream().forEach((type) -> {
                 bld.put(type.getKey(), PBytes.valueOf(type.getValue()));
             });
