@@ -30,8 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.PacketRouter;
@@ -50,8 +48,8 @@ import org.praxislive.core.protocols.ComponentProtocol;
  */
 public class BindingContextControl implements Control, BindingContext {
 
-    private final static Logger LOG
-            = Logger.getLogger(BindingContextControl.class.getName());
+    private final static System.Logger LOG
+            = System.getLogger(BindingContextControl.class.getName());
     private static final long LOW_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(1000);
     private static final long MED_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(200);
     private static final long HIGH_SYNC_DELAY = TimeUnit.MILLISECONDS.toNanos(50);
@@ -267,7 +265,7 @@ public class BindingContextControl implements Control, BindingContext {
 
         private void updateSyncConfiguration() {
             if (isProperty) {
-                LOG.log(Level.FINE, "Updating sync configuration on {0}", boundAddress);
+                LOG.log(System.Logger.Level.DEBUG, "Updating sync configuration on {0}", boundAddress);
                 boolean active = false;
                 SyncRate highRate = SyncRate.None;
                 for (Adaptor a : adaptors) {
@@ -327,7 +325,7 @@ public class BindingContextControl implements Control, BindingContext {
                     } catch (Exception ex) {
                         isProperty = false;
                         bindingInfo = null;
-                        LOG.log(Level.WARNING, "" + call + "\n" + compInfo, ex);
+                        LOG.log(System.Logger.Level.WARNING, "" + call + "\n" + compInfo, ex);
                     }
                     for (Adaptor a : adaptors) {
                         a.updateBindingConfiguration();
@@ -340,7 +338,7 @@ public class BindingContextControl implements Control, BindingContext {
         private void processInfoError(Call call) {
             isProperty = false;
             bindingInfo = null;
-            LOG.log(Level.WARNING, "Couldn't get info for {0}", boundAddress);
+            LOG.log(System.Logger.Level.WARNING, "Couldn't get info for {0}", boundAddress);
             for (Adaptor a : adaptors) {
                 a.updateBindingConfiguration();
             }
@@ -379,7 +377,7 @@ public class BindingContextControl implements Control, BindingContext {
                     activeAdaptor.onError(call.args());
                     activeAdaptor = null;
                 } else {
-                    LOG.log(Level.FINE, "Error on sync call - {0}", call.from());
+                    LOG.log(System.Logger.Level.DEBUG, "Error on sync call - {0}", call.from());
                 }
                 activeCall = null;
             } else if (call.matchID() == infoMatchID) {

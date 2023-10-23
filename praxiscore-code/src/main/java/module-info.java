@@ -3,7 +3,6 @@ module org.praxislive.code {
 
     requires java.compiler;
     requires java.desktop;
-    requires java.logging;
 
     requires transitive org.praxislive.core;
     requires org.praxislive.base;

@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
@@ -62,7 +60,7 @@ import org.praxislive.core.types.PString;
  */
 public abstract class AbstractContainer extends AbstractComponent implements Container {
 
-    private final static Logger LOG = Logger.getLogger(AbstractContainer.class.getName());
+    private final static System.Logger LOG = System.getLogger(AbstractContainer.class.getName());
 
     private final Map<String, Component> childMap;
     private final Set<PArray> connections;
@@ -148,7 +146,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
             } catch (VetoException ex) {
                 // it is an error for children to throw exception on removal
                 // should we throw an error?
-                LOG.log(Level.SEVERE, "Child throwing Veto on removal", ex);
+                LOG.log(System.Logger.Level.ERROR, "Child throwing Veto on removal", ex);
             }
             child.hierarchyChanged();
         }
@@ -181,7 +179,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
                     PString.of(component2),
                     PString.of(port2));
         } catch (PortConnectionException ex) {
-            Logger.getLogger(AbstractContainer.class.getName()).log(Level.SEVERE, null, ex);
+            LOG.log(System.Logger.Level.ERROR, "", ex);
         }
     }
 
@@ -206,7 +204,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
                 connections.remove(connection);
             }
         } catch (Exception ex) {
-            LOG.log(Level.FINE, "Can't connect ports.", ex);
+            LOG.log(System.Logger.Level.DEBUG, "Can't connect ports.", ex);
             throw new PortConnectionException("Can't connect " + c1id + "!" + p1id
                     + " to " + c2id + "!" + p2id);
         }
@@ -319,7 +317,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         public void connectionsChanged(Port source) {
             if (p1.isConnectedTo(p2) && p2.isConnectedTo(p1)) {
             } else {
-                LOG.log(Level.FINEST, "Removing connection\n{0}", connection);
+                LOG.log(System.Logger.Level.TRACE, "Removing connection\n{0}", connection);
                 connections.remove(connection);
                 p1.removeListener(this);
                 p2.removeListener(this);

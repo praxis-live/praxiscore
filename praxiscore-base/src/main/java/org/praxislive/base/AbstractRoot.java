@@ -38,8 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ExecutionContext;
@@ -75,7 +73,7 @@ public abstract class AbstractRoot implements Root {
         NEW, INITIALIZING, INITIALIZED, ACTIVE_IDLE, ACTIVE_RUNNING, TERMINATING, TERMINATED
     }
 
-    private static final Logger LOG = Logger.getLogger(AbstractRoot.class.getName());
+    private static final System.Logger LOG = System.getLogger(AbstractRoot.class.getName());
 
     private final AtomicReference<State> state;
     private final AtomicReference<Delegate> delegate;
@@ -385,7 +383,8 @@ public abstract class AbstractRoot implements Root {
         }
 
         if ((time - this.time) < 0) {
-            LOG.log(Level.FINE, () -> "Update time is not monotonic : behind by " + (time - this.time));
+            LOG.log(System.Logger.Level.TRACE,
+                    () -> "Update time is not monotonic : behind by " + (time - this.time));
             this.time++;
         } else {
             this.time = time;
@@ -437,10 +436,10 @@ public abstract class AbstractRoot implements Root {
                 try {
                     ((Runnable) obj).run();
                 } catch (Throwable t) {
-                    LOG.log(Level.SEVERE, "Runnable task error", t);
+                    LOG.log(System.Logger.Level.ERROR, "Runnable task error", t);
                 }
             } else {
-                LOG.log(Level.SEVERE, "Unknown Object in queue : {0}", obj);
+                LOG.log(System.Logger.Level.ERROR, "Unknown Object in queue : {0}", obj);
             }
 
             if (interrupted) {
@@ -465,7 +464,7 @@ public abstract class AbstractRoot implements Root {
                 try {
                     ((Runnable) obj).run();
                 } catch (Throwable t) {
-                    LOG.log(Level.SEVERE, "Runnable task error", t);
+                    LOG.log(System.Logger.Level.ERROR, "Runnable task error", t);
                 }
             }
         }
@@ -478,7 +477,7 @@ public abstract class AbstractRoot implements Root {
             try {
                 processCall(call, router);
             } catch (Throwable t) {
-                LOG.log(Level.SEVERE, "Uncaught exception processing call", t);
+                LOG.log(System.Logger.Level.ERROR, "Uncaught exception processing call", t);
                 if (call.isReplyRequired()) {
                     Exception ex;
                     if (t instanceof Exception) {
@@ -651,7 +650,7 @@ public abstract class AbstractRoot implements Root {
                 activating();
                 updateTask = exec.scheduleAtFixedRate(this::doUpdate, 0, 10, TimeUnit.MILLISECONDS);
             } catch (Throwable t) {
-                LOG.log(Level.SEVERE, "Uncaught error in activation", t);
+                LOG.log(System.Logger.Level.ERROR, "Uncaught error in activation", t);
                 doTerminate();
             }
         }
@@ -668,7 +667,7 @@ public abstract class AbstractRoot implements Root {
                     doTerminate();
                 }
             } catch (Throwable t) {
-                LOG.log(Level.SEVERE, "Uncaught error", t);
+                LOG.log(System.Logger.Level.ERROR, "Uncaught error", t);
             } finally {
                 lock.unlock();
             }
@@ -682,7 +681,7 @@ public abstract class AbstractRoot implements Root {
                     try {
                         pollQueue();
                     } catch (Throwable t) {
-                        LOG.log(Level.SEVERE, "Uncaught error", t);
+                        LOG.log(System.Logger.Level.ERROR, "Uncaught error", t);
                     } finally {
                         lock.unlock();
                     }
@@ -700,7 +699,7 @@ public abstract class AbstractRoot implements Root {
                         try {
                             terminating();
                         } catch (Throwable t) {
-                            LOG.log(Level.SEVERE, "Uncaught error in termination", t);
+                            LOG.log(System.Logger.Level.ERROR, "Uncaught error in termination", t);
                         }
                         context.updateState(hub.getClock().getTime(), ExecutionContext.State.TERMINATED);
                         if (ownsScheduler) {
@@ -782,13 +781,13 @@ public abstract class AbstractRoot implements Root {
             lock.lock();
             try {
                 if (delegate.get() != this) {
-                    LOG.info("Delegate invalid");
+                    LOG.log(System.Logger.Level.INFO, "Delegate invalid");
                     return false;
                 }
                 delegateThread = Thread.currentThread();
                 return update(correctUpdateTime(time), true);
             } catch (Throwable t) {
-                LOG.log(Level.SEVERE, "Uncaught error", t);
+                LOG.log(System.Logger.Level.ERROR, "Uncaught error", t);
                 return true;
             } finally {
                 lock.unlock();
@@ -807,7 +806,7 @@ public abstract class AbstractRoot implements Root {
                         pollQueue();
                     }
                 } catch (Throwable t) {
-                    LOG.log(Level.SEVERE, "Uncaught error", t);
+                    LOG.log(System.Logger.Level.ERROR, "Uncaught error", t);
                 } finally {
                     lock.unlock();
                 }
@@ -898,7 +897,7 @@ public abstract class AbstractRoot implements Root {
                 return true;
             }
             if (Math.abs(delta) > 10_000_000_000L) {
-                LOG.log(Level.SEVERE, "Delegate not updating time");
+                LOG.log(System.Logger.Level.ERROR, "Delegate not updating time");
             }
             return false;
         }

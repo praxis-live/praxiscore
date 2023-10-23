@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,8 +23,6 @@ package org.praxislive.base;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
 import org.praxislive.core.PacketRouter;
@@ -35,7 +33,7 @@ import org.praxislive.core.types.PError;
  */
 public abstract class AbstractAsyncControl implements Control {
 
-    private final static Logger LOG = Logger.getLogger(AbstractAsyncControl.class.getName());
+    private final static System.Logger LOG = System.getLogger(AbstractAsyncControl.class.getName());
     private final Queue<Call> callQueue;
     private Call pending;
 
@@ -76,7 +74,7 @@ public abstract class AbstractAsyncControl implements Control {
 
     private void processResponse(Call call, PacketRouter router) {
         if (pending == null || pending.matchID() != call.matchID()) {
-            LOG.warning("Unexpected call received by processResponse(call, router)");
+            LOG.log(System.Logger.Level.WARNING ,"Unexpected call received by processResponse(call, router)");
             return;
         }
         pending = null;
@@ -129,7 +127,7 @@ public abstract class AbstractAsyncControl implements Control {
                     router.route(ret);
                 }
             } catch (Exception ex) {
-                LOG.log(Level.FINE, "Exception thrown processing call", ex);
+                LOG.log(System.Logger.Level.DEBUG, "Exception thrown processing call", ex);
                 callQueue.poll();
                 router.route(call.error(PError.of(ex)));
             }

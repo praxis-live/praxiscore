@@ -25,8 +25,6 @@ import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
 import org.praxislive.core.Clock;
 import org.praxislive.core.ControlAddress;
@@ -179,7 +177,7 @@ public class AbstractRootTest {
             try {
                 del.active.join(1000);
             } catch (InterruptedException ex) {
-                Logger.getLogger(AbstractRootTest.class.getName()).log(Level.SEVERE, null, ex);
+                ex.printStackTrace(System.err);
             }
             assertTrue(!del.active.isAlive());
             latch.countDown();
@@ -206,7 +204,7 @@ public class AbstractRootTest {
                         try {
                             doTimedPoll(1, TimeUnit.MILLISECONDS);
                         } catch (InterruptedException ex) {
-                            Logger.getLogger(AbstractRootTest.class.getName()).log(Level.SEVERE, null, ex);
+                            ex.printStackTrace(System.err);
                         }
                     }
                     detachDelegate(this);

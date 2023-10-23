@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -38,7 +36,7 @@ import java.util.stream.StreamSupport;
  */
 class SystemLookup implements Lookup {
     
-    private final static Logger LOG = Logger.getLogger(SystemLookup.class.getName());
+    private final static System.Logger LOG = System.getLogger(SystemLookup.class.getName());
     
     private final Lookup lookup; 
     
@@ -69,7 +67,7 @@ class SystemLookup implements Lookup {
                     return Optional.of(itr.next());
                 }
             } catch (ServiceConfigurationError ex) {
-                LOG.log(Level.SEVERE, "Error in service configuration", ex);
+                LOG.log(System.Logger.Level.ERROR, "Error in service configuration", ex);
             }
             return Optional.empty();
         }
@@ -84,7 +82,7 @@ class SystemLookup implements Lookup {
                         .collect(Collectors.toList());
                 return results.stream();
             } catch (ServiceConfigurationError ex) {
-                LOG.log(Level.SEVERE, "Error in service configuration", ex);
+                LOG.log(System.Logger.Level.ERROR, "Error in service configuration", ex);
             }
             return Stream.empty();
         }
