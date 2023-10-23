@@ -54,6 +54,7 @@ public abstract class AbstractComponent implements Component {
     protected AbstractComponent() {
         controls = new LinkedHashMap<>();
         controls.put(ComponentProtocol.INFO, new InfoControl());
+        controls.put(ComponentProtocol.META, new MetaControl());
         ports = new LinkedHashMap<>();
     }
 

@@ -253,6 +253,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         @Override
         protected void addDefaultControls() {
             addControl(createInfoControl(getInternalIndex()));
+            addControl(new MetaDescriptor(getInternalIndex()));
             addControl(new RootControlDescriptor(SHARED_CODE, getInternalIndex()));
             addControl(createCodeControl(getInternalIndex()));
             addControl(new ResponseHandler(getInternalIndex()));

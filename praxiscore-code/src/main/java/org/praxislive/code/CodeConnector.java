@@ -353,6 +353,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      */
     protected void addDefaultControls() {
         addControl(createInfoControl(getInternalIndex()));
+        addControl(new MetaDescriptor(getInternalIndex()));
         addControl(createCodeControl(getInternalIndex()));
         addControl(new ResponseHandler(getInternalIndex()));
     }
