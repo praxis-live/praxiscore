@@ -27,7 +27,6 @@
  */
 package org.praxislive.code.userapi;
 
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
 /**
@@ -46,6 +45,10 @@ import java.util.ArrayList;
  * @author Chet
  */
 final class SplineEasing implements Easing {
+
+    private record Point(double x, double y) {
+
+    }
 
     // Note: (x0,y0) and (x1,y1) are implicitly (0, 0) and (1,1) respectively
     private double x1, y1, x2, y2;
@@ -78,15 +81,15 @@ final class SplineEasing implements Easing {
         double prevY = 0.0f;
         double prevLength = 0.0f; // cumulative length
         for (double t = 0.01f; t <= 1.0f; t += .01f) {
-            Point2D.Double xy = getXY(t);
+            Point xy = getXY(t);
             double length = prevLength
-                    + (double) Math.sqrt((xy.x - prevX) * (xy.x - prevX)
-                            + (xy.y - prevY) * (xy.y - prevY));
+                    + (double) Math.sqrt((xy.x() - prevX) * (xy.x() - prevX)
+                            + (xy.y() - prevY) * (xy.y() - prevY));
             LengthItem lengthItem = new LengthItem(length, t);
             lengths.add(lengthItem);
             prevLength = length;
-            prevX = xy.x;
-            prevY = xy.y;
+            prevX = xy.x();
+            prevY = xy.y();
         }
         // Now calculate the fractions so that we can access the lengths
         // array with values in [0,1].  prevLength now holds the total
@@ -108,16 +111,14 @@ final class SplineEasing implements Easing {
      *
      * @param t parametric value for spline calculation
      */
-    private Point2D.Double getXY(double t) {
-        Point2D.Double xy;
+    private Point getXY(double t) {
         double invT = (1 - t);
         double b1 = 3 * t * (invT * invT);
         double b2 = 3 * (t * t) * invT;
         double b3 = t * t * t;
-        xy = new Point2D.Double(
+        return new Point(
                 (b1 * x1) + (b2 * x2) + b3,
                 (b1 * y1) + (b2 * y2) + b3);
-        return xy;
     }
 
     /**
@@ -125,7 +126,6 @@ final class SplineEasing implements Easing {
      * the Y values. See {@link getXY getXY} for the details.
      */
     private double getY(double t) {
-        Point2D.Double xy;
         double invT = (1 - t);
         double b1 = 3 * t * (invT * invT);
         double b2 = 3 * (t * t) * invT;
