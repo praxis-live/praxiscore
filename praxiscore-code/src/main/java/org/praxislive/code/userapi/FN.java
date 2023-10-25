@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,8 @@ public @interface FN {
 
     /**
      * Relative weight compared to other @FN elements. Functions will be sorted
-     * by weight, and then alphabetically.
+     * by weight, and then alphabetically. Higher weight elements will sort
+     * after lower weight elements.
      *
      * @return weight
      */

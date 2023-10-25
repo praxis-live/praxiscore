@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2023 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.code.userapi;
 
 import java.lang.annotation.ElementType;
@@ -28,14 +27,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotate a field representing an output, such as {@link Output}. A port will be 
- * created on the component. Outputs show after inputs.
- * <p>
- * The value gives the relative position compared to other @Out elements. 
- * Values must be unique. They do not have to be contiguous.
+ * Annotate a field representing an output, such as {@link Output}. A port will
+ * be created on the component. Outputs show after inputs.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
 public @interface Out {
-    int value();
+
+    /**
+     * Relative weight compared to other @Out elements. Elements will be sorted
+     * by weight, and then alphabetically. Higher weight elements will sort
+     * after lower weight elements.
+     *
+     * @return weight
+     */
+    int value() default 0;
 }
