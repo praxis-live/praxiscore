@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component xmlns="http://maven.apache.org/ASSEMBLY-COMPONENT/2.1.0"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY-COMPONENT/2.1.0 https://maven.apache.org/xsd/assembly-component-2.1.0.xsd">
+  <dependencySets>
+    <dependencySet>
+      <outputDirectory>mods</outputDirectory>
+    </dependencySet>
+  </dependencySets>
+  <files>
+    <file>
+      <source>src/assembly/bin/praxis</source>
+      <outputDirectory>bin</outputDirectory>
+      <lineEnding>unix</lineEnding>
+      <fileMode>0755</fileMode>
+    </file>
+    <file>
+      <source>src/assembly/bin/praxis.cmd</source>
+      <outputDirectory>bin</outputDirectory>
+      <lineEnding>dos</lineEnding>
+    </file>
+  </files>
+</component>

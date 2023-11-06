@@ -29,7 +29,6 @@
     <module>praxiscore-hub</module>
     <module>praxiscore-script</module>
     <module>praxiscore-launcher</module>
-    <module>praxiscore-bin</module>
     <module>praxiscore-data</module>
     <module>praxiscore-video</module>
     <module>praxiscore-video-code</module>
@@ -50,6 +49,7 @@
     <module>praxiscore-code-ivy</module>
     <module>praxiscore-launcher-jline</module>
     <module>praxiscore-purl</module>
+    <module>praxiscore-bin</module>
   </modules>
     
   <scm>
