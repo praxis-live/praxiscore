@@ -15,7 +15,7 @@ import java.nio.file.Path;
 public class Utils \{
 
     public static Path findLauncher() throws Exception \{
-        var launcherName = Platform.isWindows() ? \"praxis.bat\" : \"praxis\";
+        var launcherName = Platform.isWindows() ? \"praxis.cmd\" : \"praxis\";
         var appHome = System.getProperty(\"app.home\");
         if (appHome != null) \{
             Path launcher = Path.of(appHome)
@@ -119,7 +119,7 @@ import java.nio.file.Files;
 
 
 
-    final long TIMEOUT = Long.getLong(\"testsuite.timeout\", 20000);
+    final long TIMEOUT = Long.getLong(\"testsuite.timeout\", 60000);
     final String SEP = System.lineSeparator();
     
     @P(1)

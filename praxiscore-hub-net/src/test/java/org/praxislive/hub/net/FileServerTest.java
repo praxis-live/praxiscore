@@ -39,7 +39,7 @@ public class FileServerTest {
 
     @Test
     public void testFileServer() throws IOException {
-        var rootDir = Files.createTempDirectory("px-fileserver-test");
+        var rootDir = Files.createTempDirectory("px-fileserver-test").toRealPath();
         var allowedDir = Files.createDirectory(rootDir.resolve("allowed"));
         var allowedFile = Files.writeString(allowedDir.resolve("allowed-text.txt"),
                 "ALLOWED", StandardOpenOption.CREATE_NEW);
