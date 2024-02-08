@@ -21,9 +21,11 @@
  */
 package org.praxislive.script;
 
+import org.praxislive.core.Value;
+
 /**
  * A Namespace offers storage of {@link Variable} and {@link Command} by name.
- * Namesoaces exist in a hierarchy. Variables and Commands added to this
+ * Namespaces exist in a hierarchy. Variables and Commands added to this
  * namespace usually shadow those from parent namespaces, and are usually
  * visible to child namespaces.
  * <p>
@@ -46,6 +48,8 @@ public interface Namespace {
      *
      * @param id variable ID
      * @param var variable to add
+     * @throws IllegalArgumentException if a variable with that ID already
+     * exists in this namespace
      */
     public void addVariable(String id, Variable var);
 
@@ -63,6 +67,8 @@ public interface Namespace {
      *
      * @param id command ID
      * @param cmd command to add
+     * @throws IllegalArgumentException if a command with that ID already exists
+     * in this namespace
      */
     public void addCommand(String id, Command cmd);
 
@@ -72,5 +78,72 @@ public interface Namespace {
      * @return child namespace
      */
     public Namespace createChild();
+
+    /**
+     * Create a variable in this namespace with the initial value given.
+     * <p>
+     * The default implementation of this method creates a new instance of a
+     * variable implementation, and calls
+     * {@link #addVariable(java.lang.String, org.praxislive.script.Variable)} to
+     * register it.
+     *
+     * @param id variable ID
+     * @param value initial value
+     * @return created variable
+     * @throws IllegalArgumentException if a variable with that name already
+     * exists in this namespace
+     */
+    public default Variable createVariable(String id, Value value) {
+        Variable v = new VariableImpl(value);
+        addVariable(id, v);
+        return v;
+    }
+
+    /**
+     * Get the variable with the given ID from this namespace or a parent
+     * namespace, creating and initializing a variable with the provided default
+     * value if none exists.
+     * <p>
+     * The default implementation of this method calls
+     * {@link #getVariable(java.lang.String)} to find a registered variable, and
+     * if that method returns {@link null} delegates to
+     * {@link #createVariable(java.lang.String, org.praxislive.core.Value)}.
+     *
+     * @param id variable ID
+     * @param defaultValue default initial value
+     * @return created variable
+     */
+    public default Variable getOrCreateVariable(String id, Value defaultValue) {
+        Variable v = getVariable(id);
+        if (v == null) {
+            return createVariable(id, defaultValue);
+        } else {
+            return v;
+        }
+    }
+
+    /**
+     * Create a constant in this namespace with the initial value given. The
+     * constant is guaranteed to always return {@code value} from
+     * {@link Variable#getValue()}, and to always throw
+     * {@link UnsupportedOperationException} on any call to
+     * {@link Variable#setValue(org.praxislive.core.Value)}.
+     * <p>
+     * The default implementation of this method creates a new instance of a
+     * constant variable implementation, and calls
+     * {@link #addVariable(java.lang.String, org.praxislive.script.Variable)} to
+     * register it.
+     *
+     * @param id constant name
+     * @param value constant value
+     * @return created constant
+     * @throws IllegalArgumentException if a variable with that name already
+     * exists in this namespace
+     */
+    public default Variable createConstant(String id, Value value) {
+        Variable c = new ConstantImpl(value);
+        addVariable(id, c);
+        return c;
+    }
 
 }

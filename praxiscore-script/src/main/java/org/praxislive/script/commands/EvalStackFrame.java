@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,24 +23,25 @@ package org.praxislive.script.commands;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
 import org.praxislive.core.Value;
 import org.praxislive.core.Call;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.types.PError;
 import org.praxislive.script.Command;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
 import org.praxislive.script.ast.RootNode;
+
+import static java.lang.System.Logger.Level;
 
 /**
  *
  */
 public class EvalStackFrame implements StackFrame {
 
-    private final static Logger log = Logger.getLogger(EvalStackFrame.class.getName());
+    private static final System.Logger log = System.getLogger(EvalStackFrame.class.getName());
+
     private Namespace namespace;
     private RootNode rootNode;
     private State state;
@@ -94,16 +95,16 @@ public class EvalStackFrame implements StackFrame {
         if (pending != null && pending.matchID() == call.matchID()) {
             pending = null;
             if (call.isReply()) {
-                log.finest("EvalStackFrame - Received valid Return call : \n" + call);
+                log.log(Level.TRACE, () -> "EvalStackFrame - Received valid Return call : \n" + call);
                 postResponse(call.args());
             } else {
-                log.finest("EvalStackFrame - Received valid Error call : \n" + call);
+                log.log(Level.TRACE, () -> "EvalStackFrame - Received valid Error call : \n" + call);
                 this.state = State.Error;
                 this.result = call.args();
             }
             doProcess = true;
         } else {
-            log.finest("EvalStackFrame - Received invalid call : \n" + call);
+            log.log(Level.TRACE, () -> "EvalStackFrame - Received invalid call : \n" + call);
         }
 
     }
@@ -143,12 +144,12 @@ public class EvalStackFrame implements StackFrame {
             argList.clear();
             argList.addAll(args);
             rootNode.postResponse(argList);
-        } catch (ExecutionException ex) {
+        } catch (Exception ex) {
             state = State.Error;//@TODO proper error reporting
         }
     }
 
-    private void processResultFromNode() throws ExecutionException {
+    private void processResultFromNode() throws Exception {
         argList.clear();
         rootNode.writeResult(argList);
         result = List.copyOf(argList);
@@ -157,12 +158,12 @@ public class EvalStackFrame implements StackFrame {
     }
 
     private StackFrame processNextCommand(Env context)
-            throws ExecutionException {
+            throws Exception {
 
         argList.clear();
         rootNode.writeNextCommand(argList);
         if (argList.size() < 1) {
-            throw new ExecutionException();
+            throw new Exception();
         }
         Value cmdArg = argList.get(0);
         if (cmdArg instanceof ControlAddress) {
@@ -171,7 +172,7 @@ public class EvalStackFrame implements StackFrame {
         }
         String cmdStr = cmdArg.toString();
         if (cmdStr.isEmpty()) {
-            throw new ExecutionException();
+            throw new Exception();
         }
         Command cmd = namespace.getCommand(cmdStr);
         if (cmd != null) {
@@ -183,17 +184,17 @@ public class EvalStackFrame implements StackFrame {
             return null;
         }
 
-        throw new ExecutionException();
+        throw new Exception();
 
     }
 
     private void routeCall(Env context, List<Value> argList)
-            throws ExecutionException {
+            throws Exception {
         ControlAddress ad = ControlAddress.from(argList.get(0))
-                .orElseThrow(ExecutionException::new);
+                .orElseThrow(Exception::new);
         argList.remove(0);
         Call call = Call.create(ad, context.getAddress(), context.getTime(), List.copyOf(argList));
-        log.finest("Sending Call" + call);
+        log.log(Level.TRACE, () -> "Sending Call" + call);
         pending = call;
         context.getPacketRouter().route(call);
     }

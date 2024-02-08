@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,7 @@
 package org.praxislive.script.commands;
 
 import java.util.List;
-import org.praxislive.script.impl.AbstractSingleCallFrame;
+import org.praxislive.script.AbstractSingleCallFrame;
 import java.util.Map;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -34,7 +34,6 @@ import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
 
@@ -64,7 +63,7 @@ public class ConnectionCmds implements CommandInstaller {
     private static class Connect implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             return new ConnectionStackFrame(namespace, args, true);
         }
     }
@@ -72,7 +71,7 @@ public class ConnectionCmds implements CommandInstaller {
     private static class Disconnect implements Command {
         
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             return new ConnectionStackFrame(namespace, args, false);
         }
         

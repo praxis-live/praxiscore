@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,35 +19,37 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script;
 
+import java.util.Objects;
+import org.praxislive.core.Value;
+
 /**
+ * Default constant implementation used by
+ * {@link Namespace#createConstant(java.lang.String, org.praxislive.core.Value)}.
  *
- * 
  */
-public class ExecutionException extends Exception {
+final class ConstantImpl implements Variable {
 
-    /**
-     * Creates a new instance of <code>ExecutionException</code> without detail message.
-     */
-    public ExecutionException() {
+    private final Value value;
+
+    public ConstantImpl(Value value) {
+        this.value = Objects.requireNonNull(value);
     }
 
-
-    /**
-     * Constructs an instance of <code>ExecutionException</code> with the specified detail message.
-     * @param msg the detail message.
-     */
-    public ExecutionException(String msg) {
-        super(msg);
+    @Override
+    public void setValue(Value value) {
+        throw new UnsupportedOperationException();
     }
 
-    public ExecutionException(Throwable cause) {
-        super(cause);
+    @Override
+    public Value getValue() {
+        return value;
     }
 
-    public ExecutionException(String message, Throwable cause) {
-        super(message, cause);
+    @Override
+    public String toString() {
+        return value.toString();
     }
+
 }

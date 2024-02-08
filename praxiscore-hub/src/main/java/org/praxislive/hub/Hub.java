@@ -43,7 +43,7 @@ import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
-import org.praxislive.script.impl.ScriptServiceImpl;
+import org.praxislive.script.DefaultScriptService;
 
 /**
  * Support for configuring and running a {@link RootHub}, along with the
@@ -91,7 +91,7 @@ public final class Hub {
 
     private void extractExtensions(Builder builder, List<Root> exts) {
         exts.add(new DefaultComponentFactoryService());
-        exts.add(new ScriptServiceImpl());
+        exts.add(new DefaultScriptService());
         exts.add(new DefaultTaskService());
         exts.addAll(builder.extensions);
     }

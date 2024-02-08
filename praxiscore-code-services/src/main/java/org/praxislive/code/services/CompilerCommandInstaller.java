@@ -39,7 +39,7 @@ import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
-import org.praxislive.script.impl.AbstractSingleCallFrame;
+import org.praxislive.script.AbstractSingleCallFrame;
 
 /**
  *

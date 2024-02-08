@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,11 +22,9 @@
 package org.praxislive.script.commands;
 
 import java.util.List;
-import org.praxislive.script.impl.AbstractSingleCallFrame;
-import org.praxislive.script.impl.VariableImpl;
+import org.praxislive.script.AbstractSingleCallFrame;
 import java.util.Map;
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
@@ -36,12 +34,10 @@ import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
 
@@ -70,10 +66,10 @@ public class AtCmds implements CommandInstaller {
     private static class At implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
 
             if (args.size() < 2) {
-                throw new ExecutionException();
+                throw new Exception();
             }
 
             try {
@@ -96,7 +92,7 @@ public class AtCmds implements CommandInstaller {
                     return new AtStackFrame(namespace, ctxt, null, arg);
                 }
             } catch (Exception ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
 
         }
@@ -104,7 +100,8 @@ public class AtCmds implements CommandInstaller {
 
     private static class NotAt implements Command {
 
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             return new NotAtStackFrame(namespace, args);
         }
 
@@ -173,7 +170,7 @@ public class AtCmds implements CommandInstaller {
                 stage++;
                 try {
                     Namespace child = namespace.createChild();
-                    child.addVariable(Env.CONTEXT, new VariableImpl(ctxt));
+                    child.createConstant(Env.CONTEXT, ctxt);
                     return ScriptCmds.INLINE_EVAL.createStackFrame(child, List.of(script));
                 } catch (Exception ex) {
                     state = State.Error;

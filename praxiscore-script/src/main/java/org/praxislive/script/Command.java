@@ -38,9 +38,9 @@ public interface Command {
      * @param namespace current namespace
      * @param args arguments
      * @return stack frame to execute command with provided arguments
-     * @throws ExecutionException if stack frame cannot be created
+     * @throws Exception if stack frame cannot be created
      */
     public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-            throws ExecutionException;
+            throws Exception;
 
 }

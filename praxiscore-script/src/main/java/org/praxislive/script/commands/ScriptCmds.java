@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,7 +29,6 @@ import org.praxislive.core.syntax.InvalidSyntaxException;
 import org.praxislive.core.types.PResource;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
 import org.praxislive.script.ast.RootNode;
@@ -62,16 +61,16 @@ public class ScriptCmds implements CommandInstaller {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-                throws ExecutionException {
+                throws Exception {
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             String script = args.get(0).toString();
             try {
                 RootNode astRoot = ScriptParser.getInstance().parse(script);
                 return new EvalStackFrame(namespace.createChild(), astRoot);
             } catch (InvalidSyntaxException ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
         }
     }
@@ -80,16 +79,16 @@ public class ScriptCmds implements CommandInstaller {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-                throws ExecutionException {
+                throws Exception {
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             String script = args.get(0).toString();
             try {
                 RootNode astRoot = ScriptParser.getInstance().parse(script);
                 return new EvalStackFrame(namespace, astRoot);
             } catch (InvalidSyntaxException ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
         }
     }
@@ -97,10 +96,10 @@ public class ScriptCmds implements CommandInstaller {
     private static class Include implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             // @TODO - should load in background - call to
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             try {
                 PResource res = PResource.from(args.get(0)).orElseThrow();
@@ -109,7 +108,7 @@ public class ScriptCmds implements CommandInstaller {
                 RootNode astRoot = ScriptParser.getInstance().parse(script);
                 return new EvalStackFrame(namespace.createChild(), astRoot);
             } catch (Exception ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
 
         }

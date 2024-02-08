@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,32 +22,28 @@
 package org.praxislive.script.commands;
 
 import java.util.List;
-import org.praxislive.script.impl.AbstractInlineCommand;
-import org.praxislive.script.impl.VariableImpl;
 import java.util.Map;
-import java.util.logging.Logger;
 import org.praxislive.core.Value;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
+import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.Variable;
+
+import static java.lang.System.Logger.Level;
 
 /**
  *
  */
 public class VariableCmds implements CommandInstaller {
 
-    private final static VariableCmds instance = new VariableCmds();
+    private static final VariableCmds instance = new VariableCmds();
+    private static final Command SET = new Set();
+    private final static System.Logger log = System.getLogger(VariableCmds.class.getName());
 
-    private final static Command SET = new Set();
-
-
-    private final static Logger log = Logger.getLogger(VariableCmds.class.getName());
-
-
-    private VariableCmds() {}
+    private VariableCmds() {
+    }
 
     @Override
     public void install(Map<String, Command> commands) {
@@ -58,12 +54,12 @@ public class VariableCmds implements CommandInstaller {
         return instance;
     }
 
-    private static class Set extends AbstractInlineCommand {
+    private static class Set implements InlineCommand {
 
         @Override
-        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
             if (args.size() != 2) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             String varName = args.get(0).toString();
             Value val = args.get(1);
@@ -71,9 +67,8 @@ public class VariableCmds implements CommandInstaller {
             if (var != null) {
                 var.setValue(val);
             } else {
-                log.finest("SET COMMAND : Adding variable " + varName + " to namespace " + namespace);
-                var = new VariableImpl(val);
-                namespace.addVariable(varName, var);
+                log.log(Level.TRACE, () -> "SET COMMAND : Adding variable " + varName + " to namespace " + namespace);
+                namespace.createVariable(varName, val);
             }
             return List.of(val);
 

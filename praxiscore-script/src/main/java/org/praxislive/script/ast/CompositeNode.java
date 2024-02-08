@@ -24,7 +24,6 @@ package org.praxislive.script.ast;
 
 import java.util.List;
 import org.praxislive.core.Value;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 
 /**
@@ -79,7 +78,7 @@ public abstract class CompositeNode extends Node {
 
     @Override
     public void writeNextCommand(List<Value> args) 
-            throws ExecutionException {
+            throws Exception {
         if (namespace == null) {
             throw new IllegalStateException();
         }
@@ -91,12 +90,12 @@ public abstract class CompositeNode extends Node {
     }
 
     protected abstract void writeThisNextCommand(List<Value> args)
-            throws ExecutionException;
+            throws Exception;
 
 
     @Override
     public void postResponse(List<Value> args) 
-            throws ExecutionException {
+            throws Exception {
         if (namespace == null) {
             throw new IllegalStateException();
         }
@@ -108,7 +107,7 @@ public abstract class CompositeNode extends Node {
     }
 
     protected abstract void postThisResponse(List<Value> args)
-            throws ExecutionException;
+            throws Exception;
 
     @Override
     public void reset() {

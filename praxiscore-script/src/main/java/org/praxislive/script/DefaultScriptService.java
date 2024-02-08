@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,13 +19,11 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.script.impl;
+package org.praxislive.script;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
@@ -37,22 +35,19 @@ import org.praxislive.core.RootHub;
 import org.praxislive.core.services.ScriptService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PError;
-import org.praxislive.script.Env;
 
 /**
- *
+ * A default implementation of {@link ScriptService}.
  */
-public class ScriptServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
+public final class DefaultScriptService extends AbstractRoot implements RootHub.ServiceProvider {
 
-    private static final Logger LOG = Logger.getLogger(ScriptServiceImpl.class.getName());
+    private static final System.Logger LOG = System.getLogger(DefaultScriptService.class.getName());
 
-//    private ScriptContext context;
-//    private ScriptExecutor defaultExecutor;
     private final Map<String, Control> controls;
     private final Map<ControlAddress, ScriptContext> contexts;
     private int exID;
 
-    public ScriptServiceImpl() {
+    public DefaultScriptService() {
         controls = new HashMap<>();
         controls.put(ScriptService.EVAL, new EvalControl());
         controls.put(ScriptService.CLEAR, new ClearControl());
@@ -81,7 +76,6 @@ public class ScriptServiceImpl extends AbstractRoot implements RootHub.ServicePr
         exID++;
         String id = "_exec_" + exID;
         EnvImpl env = new EnvImpl(ControlAddress.of(getAddress(), id));
-//        ScriptExecutor ex = new ScriptExecutor(env, true);
         ScriptExecutor ex = new ScriptExecutor(env, from.component());
         controls.put(id, new ScriptControl(ex));
         contexts.put(from, new ScriptContext(id, ex));
@@ -174,12 +168,12 @@ public class ScriptServiceImpl extends AbstractRoot implements RootHub.ServicePr
 
         @Override
         public Lookup getLookup() {
-            return ScriptServiceImpl.this.getLookup();
+            return DefaultScriptService.this.getLookup();
         }
 
         @Override
         public long getTime() {
-            return ScriptServiceImpl.this.getExecutionContext().getTime();
+            return DefaultScriptService.this.getExecutionContext().getTime();
         }
 
         @Override
@@ -197,7 +191,8 @@ public class ScriptServiceImpl extends AbstractRoot implements RootHub.ServicePr
 
         @Override
         public void route(Packet packet) {
-            LOG.log(Level.FINEST, () -> "Sending Call : ---\n" + packet.toString());
+            LOG.log(System.Logger.Level.TRACE,
+                    () -> "Sending Call : ---\n" + packet.toString());
             getRouter().route(packet);
         }
 
