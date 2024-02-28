@@ -38,7 +38,7 @@ import static java.lang.System.Logger.Level;
 /**
  *
  */
-public class EvalStackFrame implements StackFrame {
+class EvalStackFrame implements StackFrame {
 
     private static final System.Logger log = System.getLogger(EvalStackFrame.class.getName());
 

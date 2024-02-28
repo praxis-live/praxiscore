@@ -23,7 +23,9 @@ package org.praxislive.script.commands;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.praxislive.core.Value;
+import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
@@ -36,22 +38,24 @@ import static java.lang.System.Logger.Level;
 /**
  *
  */
-public class VariableCmds implements CommandInstaller {
+public class BaseCmds implements CommandInstaller {
 
-    private static final VariableCmds instance = new VariableCmds();
-    private static final Command SET = new Set();
-    private final static System.Logger log = System.getLogger(VariableCmds.class.getName());
+    private static final System.Logger LOG = System.getLogger(BaseCmds.class.getName());
+    private static final Set SET = new Set();
+    private static final Echo ECHO = new Echo();
+    private static final BaseCmds INSTANCE = new BaseCmds();
 
-    private VariableCmds() {
+    private BaseCmds() {
     }
 
     @Override
     public void install(Map<String, Command> commands) {
         commands.put("set", SET);
+        commands.put("echo", ECHO);
     }
 
-    public static VariableCmds getInstance() {
-        return instance;
+    public static BaseCmds getInstance() {
+        return INSTANCE;
     }
 
     private static class Set implements InlineCommand {
@@ -67,11 +71,24 @@ public class VariableCmds implements CommandInstaller {
             if (var != null) {
                 var.setValue(val);
             } else {
-                log.log(Level.TRACE, () -> "SET COMMAND : Adding variable " + varName + " to namespace " + namespace);
+                LOG.log(Level.TRACE, () -> "SET COMMAND : Adding variable " + varName + " to namespace " + namespace);
                 namespace.createVariable(varName, val);
             }
             return List.of(val);
 
         }
     }
+
+    private static class Echo implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            return List.of(PString.of(
+                    args.stream()
+                            .map(Value::toString)
+                            .collect(Collectors.joining())));
+        }
+
+    }
+
 }

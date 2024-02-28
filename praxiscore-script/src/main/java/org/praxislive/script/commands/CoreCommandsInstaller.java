@@ -32,14 +32,15 @@ import org.praxislive.script.CommandInstaller;
  */
 public class CoreCommandsInstaller implements CommandInstaller {
 
+    @Override
     public void install(Map<String, Command> commands) {
+        BaseCmds.getInstance().install(commands);
         ArrayCmds.getInstance().install(commands);
         AtCmds.getInstance().install(commands);
         ConnectionCmds.getInstance().install(commands);
         FileCmds.getInstance().install(commands);
         ResourceCmds.getInstance().install(commands);
         ScriptCmds.getInstance().install(commands);
-        VariableCmds.getInstance().install(commands);
     }
 
 }
