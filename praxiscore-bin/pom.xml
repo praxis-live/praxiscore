@@ -36,6 +36,18 @@
         <version>3.6.0</version>
         <executions>
           <execution>
+            <id>make-bin</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <descriptors>
+                <descriptor>${basedir}/src/assembly/bin.xml</descriptor>
+              </descriptors>
+            </configuration>
+          </execution>
+          <execution>
             <id>make-bin-dir</id>
             <phase>package</phase>
             <goals>

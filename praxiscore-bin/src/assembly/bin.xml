@@ -22,7 +22,6 @@ under the License.
           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.1 https://maven.apache.org/xsd/assembly-2.1.1.xsd">
   <id>bin</id>
   <formats>
-    <format>tar.gz</format>
     <format>zip</format>
   </formats>
   <componentDescriptors>
