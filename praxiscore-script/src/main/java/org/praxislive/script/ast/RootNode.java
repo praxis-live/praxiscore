@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script.ast;
 
 import java.util.List;
@@ -27,7 +26,7 @@ import org.praxislive.core.Value;
 
 /**
  *
- * 
+ *
  */
 public class RootNode extends CompositeNode {
 
@@ -52,13 +51,17 @@ public class RootNode extends CompositeNode {
 
     @Override
     public void writeResult(List<Value> args) throws Exception {
-        Node[] children = getChildren();
-        if (children.length > 0) {
-            children[children.length - 1].writeResult(args);
+        List<Node> children = getChildren();
+        if (!children.isEmpty()) {
+            Node last = children.getLast();
+            if (last.isDone()) {
+                last.writeResult(args);
+            }
         }
-        
     }
 
-
+    public void skipCurrentLine() {
+        skipActive();
+    }
 
 }

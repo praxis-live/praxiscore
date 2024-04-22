@@ -31,7 +31,6 @@ import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.types.PError;
 import org.praxislive.script.commands.CoreCommandsInstaller;
-import org.praxislive.script.commands.ScriptCmds;
 
 import static java.lang.System.Logger.Level;
 
@@ -42,36 +41,27 @@ class ScriptExecutor {
 
     private static final System.Logger log = System.getLogger(ScriptExecutor.class.getName());
 
-    private List<StackFrame> stack;
-    private Queue<Call> queue;
-    private Env env;
-    private Command evaluator;
-    private Map<String, Command> commandMap;
-    private Namespace rootNS;
+    private final List<StackFrame> stack;
+    private final Queue<Call> queue;
+    private final Env env;
+    private final Map<String, Command> commandMap;
+    private final Namespace rootNS;
 
-    public ScriptExecutor(Env env, boolean inline) {
-        this.env = env;
+    ScriptExecutor(Env context, final ComponentAddress ctxt) {
+        this.env = context;
         stack = new LinkedList<>();
         queue = new LinkedList<>();
-        if (inline) {
-            evaluator = ScriptCmds.INLINE_EVAL;
-        } else {
-            evaluator = ScriptCmds.EVAL;
-        }
+        commandMap = buildCommandMap();
         rootNS = new NS();
-        buildCommandMap();
-    }
-
-    public ScriptExecutor(Env context, final ComponentAddress ctxt) {
-        this(context, true);
         rootNS.addVariable(Env.CONTEXT, new ConstantImpl(ctxt));
     }
 
-    private void buildCommandMap() {
-        commandMap = new HashMap<>();
+    private Map<String, Command> buildCommandMap() {
+        Map<String, Command> map = new HashMap<>();
         CommandInstaller installer = new CoreCommandsInstaller();
-        installer.install(commandMap);
-        Lookup.SYSTEM.findAll(CommandInstaller.class).forEach(cmds -> cmds.install(commandMap));
+        installer.install(map);
+        Lookup.SYSTEM.findAll(CommandInstaller.class).forEach(cmds -> cmds.install(map));
+        return map;
     }
 
     public void queueEvalCall(Call call) {
@@ -150,7 +140,11 @@ class ScriptExecutor {
             Call call = queue.peek();
             var args = call.args();
             try {
-                stack.add(0, evaluator.createStackFrame(rootNS, args));
+                var script = args.get(0).toString();
+                var stackFrame = ScriptStackFrame.forScript(rootNS, script)
+                        .inline()
+                        .build();
+                stack.add(0, stackFrame);
                 processStack();
                 break;
             } catch (Exception ex) {

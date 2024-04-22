@@ -22,17 +22,18 @@
 package org.praxislive.script.commands;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import org.praxislive.core.Value;
-import org.praxislive.core.syntax.InvalidSyntaxException;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Namespace;
+import org.praxislive.script.ScriptStackFrame;
 import org.praxislive.script.StackFrame;
-import org.praxislive.script.ast.RootNode;
-import org.praxislive.script.ast.ScriptParser;
 
 /**
  *
@@ -41,7 +42,6 @@ public class ScriptCmds implements CommandInstaller {
 
     private final static ScriptCmds instance = new ScriptCmds();
     public final static Command EVAL = new Eval();
-    public final static Command INLINE_EVAL = new InlineEval();
     public final static Command INCLUDE = new Include();
 
     private ScriptCmds() {
@@ -62,34 +62,44 @@ public class ScriptCmds implements CommandInstaller {
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args)
                 throws Exception {
-            if (args.size() != 1) {
-                throw new Exception();
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("No script passed to eval");
             }
-            String script = args.get(0).toString();
-            try {
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace.createChild(), astRoot);
-            } catch (InvalidSyntaxException ex) {
-                throw new Exception(ex);
+            Queue<Value> queue = new ArrayDeque<>(args);
+            boolean inline = false;
+            boolean trap = false;
+            List<String> allowed = null;
+            String script = null;
+            while (!queue.isEmpty()) {
+                String arg = queue.poll().toString();
+                if ("--inline".equals(arg)) {
+                    inline = true;
+                } else if ("--trap-errors".equals(arg)) {
+                    trap = true;
+                    if (allowed == null) {
+                        allowed = List.of();
+                    }
+                } else if ("--allowed-commands".equals(arg)) {
+                    allowed = PArray.from(queue.poll()).orElseThrow().asListOf(String.class);
+                } else {
+                    script = arg;
+                    break;
+                }
             }
-        }
-    }
-
-    private static class InlineEval implements Command {
-
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-                throws Exception {
-            if (args.size() != 1) {
-                throw new Exception();
+            if (!queue.isEmpty()) {
+                throw new IllegalArgumentException("Additional arguments after script");
             }
-            String script = args.get(0).toString();
-            try {
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace, astRoot);
-            } catch (InvalidSyntaxException ex) {
-                throw new Exception(ex);
+            var bld = ScriptStackFrame.forScript(namespace, script);
+            if (inline) {
+                bld.inline();
             }
+            if (trap) {
+                bld.trapErrors();
+            }
+            if (allowed != null) {
+                bld.allowedCommands(allowed);
+            }
+            return bld.build();
         }
     }
 
@@ -105,8 +115,7 @@ public class ScriptCmds implements CommandInstaller {
                 PResource res = PResource.from(args.get(0)).orElseThrow();
                 File file = new File(res.value());
                 String script = Utils.loadStringFromFile(file);
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace.createChild(), astRoot);
+                return ScriptStackFrame.forScript(namespace, script).build();
             } catch (Exception ex) {
                 throw new Exception(ex);
             }

@@ -26,7 +26,7 @@ import org.praxislive.core.Value;
 
 /**
  *
- * 
+ *
  */
 public class SubcommandNode extends CompositeNode {
 
@@ -52,7 +52,7 @@ public class SubcommandNode extends CompositeNode {
     @Override
     public void writeResult(List<Value> args)
             throws Exception {
-        Node[] children = getChildren();
-        children[children.length - 1].writeResult(args);
+        List<Node> children = getChildren();
+        children.get(children.size() - 1).writeResult(args);
     }
 }

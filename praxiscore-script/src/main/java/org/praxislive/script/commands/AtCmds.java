@@ -39,6 +39,7 @@ import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.Namespace;
+import org.praxislive.script.ScriptStackFrame;
 import org.praxislive.script.StackFrame;
 
 /**
@@ -171,7 +172,7 @@ public class AtCmds implements CommandInstaller {
                 try {
                     Namespace child = namespace.createChild();
                     child.createConstant(Env.CONTEXT, ctxt);
-                    return ScriptCmds.INLINE_EVAL.createStackFrame(child, List.of(script));
+                    return ScriptStackFrame.forScript(child, script.toString()).inline().build();
                 } catch (Exception ex) {
                     state = State.Error;
                     result = List.of(PError.of(ex));
