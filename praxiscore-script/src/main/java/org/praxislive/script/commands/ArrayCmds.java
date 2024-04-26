@@ -26,7 +26,6 @@ import java.util.Map;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
@@ -34,21 +33,15 @@ import org.praxislive.script.Namespace;
 /**
  *
  */
-public class ArrayCmds implements CommandInstaller {
-
-    private final static ArrayCmds INSTANCE = new ArrayCmds();
+class ArrayCmds {
 
     private final static Array ARRAY = new Array();
 
     private ArrayCmds() {
     }
 
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("array", ARRAY);
-    }
-
-    public final static ArrayCmds getInstance() {
-        return INSTANCE;
     }
 
     private static class Array implements InlineCommand {

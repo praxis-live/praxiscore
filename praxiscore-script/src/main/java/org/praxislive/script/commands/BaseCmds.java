@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
@@ -38,24 +37,18 @@ import static java.lang.System.Logger.Level;
 /**
  *
  */
-public class BaseCmds implements CommandInstaller {
+class BaseCmds {
 
     private static final System.Logger LOG = System.getLogger(BaseCmds.class.getName());
     private static final Set SET = new Set();
     private static final Echo ECHO = new Echo();
-    private static final BaseCmds INSTANCE = new BaseCmds();
 
     private BaseCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("set", SET);
         commands.put("echo", ECHO);
-    }
-
-    public static BaseCmds getInstance() {
-        return INSTANCE;
     }
 
     private static class Set implements InlineCommand {

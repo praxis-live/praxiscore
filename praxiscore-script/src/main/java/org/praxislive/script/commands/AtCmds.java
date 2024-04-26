@@ -22,21 +22,16 @@
 package org.praxislive.script.commands;
 
 import java.util.List;
-import org.praxislive.script.AbstractSingleCallFrame;
 import java.util.Map;
+import java.util.function.Function;
 import org.praxislive.core.Value;
-import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.services.RootManagerService;
-import org.praxislive.core.services.ServiceUnavailableException;
-import org.praxislive.core.services.Services;
-import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.ScriptStackFrame;
@@ -45,23 +40,17 @@ import org.praxislive.script.StackFrame;
 /**
  *
  */
-public class AtCmds implements CommandInstaller {
+class AtCmds {
 
-    private final static AtCmds INSTANCE = new AtCmds();
     private final static At AT = new At();
     private final static NotAt NOT_AT = new NotAt();
 
     private AtCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("@", AT);
         commands.put("!@", NOT_AT);
-    }
-
-    public final static AtCmds getInstance() {
-        return INSTANCE;
     }
 
     private static class At implements Command {
@@ -69,31 +58,65 @@ public class AtCmds implements CommandInstaller {
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
 
-            if (args.size() < 2) {
-                throw new Exception();
+            if (args.size() < 2 || args.size() > 3) {
+                throw new IllegalArgumentException("Incorrect number of arguments");
             }
 
-            try {
-                ComponentAddress ctxt = ComponentAddress.from(args.get(0))
+            ComponentAddress ctxt = ComponentAddress.from(args.get(0))
+                    .orElseThrow(IllegalArgumentException::new);
+            ComponentType type;
+            String script;
+            if (args.size() == 3) {
+                type = ComponentType.from(args.get(1))
                         .orElseThrow(IllegalArgumentException::new);
-                if (args.size() == 3) {
-                    ComponentType type = ComponentType.from(args.get(1))
-                            .orElseThrow(IllegalArgumentException::new);
-                    return new AtStackFrame(namespace, ctxt, type, args.get(2));
-                } else {
-                    Value arg = args.get(1);
-                    if (! arg.toString().contains(" ")) {
-                        try {
-                            ComponentType type = ComponentType.from(arg).get();
-                            return new AtStackFrame(namespace, ctxt, type, PString.EMPTY);
-                        } catch (Exception ex) {
-                            // fall through
-                        }
+                script = args.get(2).toString();
+            } else {
+                Value arg = args.get(1);
+                if (!arg.toString().contains(" ")) {
+                    try {
+                        type = ComponentType.from(arg).get();
+                        script = null;
+                    } catch (Exception ex) {
+                        type = null;
+                        script = arg.toString();
                     }
-                    return new AtStackFrame(namespace, ctxt, null, arg);
+                } else {
+                    type = null;
+                    script = arg.toString();
                 }
-            } catch (Exception ex) {
-                throw new Exception(ex);
+            }
+            StackFrame create = null;
+            if (type != null) {
+                if (ctxt.depth() == 1) {
+                    create = StackFrame.serviceCall(RootManagerService.class, RootManagerService.ADD_ROOT,
+                            List.of(PString.of(ctxt.rootID()), type));
+                } else {
+                    create = StackFrame.call(
+                            ControlAddress.of(ctxt.parent(), ContainerProtocol.ADD_CHILD),
+                            List.of(PString.of(ctxt.componentID()), type));
+                }
+            }
+            Function<List<Value>, StackFrame> eval = null;
+            if (script != null) {
+                String s = script;
+                eval = v -> {
+                    return ScriptStackFrame.forScript(namespace, s)
+                            .createConstant(Env.CONTEXT, ctxt)
+                            .build();
+                };
+
+            }
+
+            if (create != null) {
+                if (eval != null) {
+                    return create.andThen(eval);
+                } else {
+                    return create;
+                }
+            } else if (eval != null) {
+                return eval.apply(List.of());
+            } else {
+                throw new IllegalStateException();
             }
 
         }
@@ -103,154 +126,19 @@ public class AtCmds implements CommandInstaller {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            return new NotAtStackFrame(namespace, args);
-        }
-
-    }
-
-    private static class AtStackFrame implements StackFrame {
-
-        private State state;
-        private final Namespace namespace;
-        private final ComponentAddress ctxt;
-        private final ComponentType type;
-        private final Value script;
-        private int stage;
-        private List<Value> result;
-        private Call active;
-
-        private AtStackFrame(Namespace namespace, ComponentAddress ctxt,
-                ComponentType type, Value script) {
-            this.namespace = namespace;
-            this.ctxt = ctxt;
-            this.type = type;
-            this.script = script;
-            state = State.Incomplete;
-            if (type == null) {
-                stage = 2;
-            } else {
-                stage = 0;
-            }
-        }
-
-        @Override
-        public State getState() {
-            return state;
-        }
-
-        @Override
-        public StackFrame process(Env env) {
-            if (stage == 0) {
-                stage++;
-                try {
-
-                    ControlAddress to;
-                    List<Value> args;
-                    int depth = ctxt.depth();
-                    if (depth == 1) {
-                        to = ControlAddress.of(
-                                env.getLookup().find(Services.class)
-                                .flatMap(sm -> sm.locate(RootManagerService.class))
-                                .orElseThrow(ServiceUnavailableException::new),
-                                RootManagerService.ADD_ROOT);
-                        args = List.of(PString.of(ctxt.rootID()), type);
-                    } else {
-                        to = ControlAddress.of(ctxt.parent(),
-                                ContainerProtocol.ADD_CHILD);
-                        args = List.of(PString.of(ctxt.componentID(depth - 1)), type);
-                    }
-                    active = Call.create(to, env.getAddress(), env.getTime(), args);
-                    env.getPacketRouter().route(active);
-
-                } catch (Exception ex) {
-                    state = State.Error;
-                    result = List.of(PError.of(ex));
-                }
-            }
-            if (stage == 2) {
-                stage++;
-                try {
-                    Namespace child = namespace.createChild();
-                    child.createConstant(Env.CONTEXT, ctxt);
-                    return ScriptStackFrame.forScript(child, script.toString()).inline().build();
-                } catch (Exception ex) {
-                    state = State.Error;
-                    result = List.of(PError.of(ex));
-                }
-            }
-
-            return null;
-        }
-
-        @Override
-        public void postResponse(Call call) {
-            if (active != null && call.matchID() == active.matchID()) {
-                active = null;
-                if (call.isReply() && stage == 1) {
-                    stage++;
-                } else {
-                    result = call.args();
-                    this.state = State.Error;
-                }
-            }
-        }
-
-        @Override
-        public void postResponse(State state, List<Value> args) {
-            if (state == State.OK) {
-//                if (stage == 1) {
-//                    stage++;
-//                } else
-                if (stage == 3) {
-                    this.state = State.OK;
-                    result = args;
-                }
-            } else {
-                this.state = state;
-                result = args;
-            }
-        }
-
-        @Override
-        public List<Value> result() {
-            if (result == null) {
-                throw new IllegalStateException();
-            }
-            return result;
-        }
-    }
-
-    private static class NotAtStackFrame extends AbstractSingleCallFrame {
-
-        private NotAtStackFrame(Namespace ns, List<Value> args) {
-            super(ns, args);
-        }
-
-        @Override
-        protected Call createCall(Env env, List<Value> args) throws Exception {
-            ComponentAddress comp = ComponentAddress.from(args.get(0))
+            ComponentAddress component = ComponentAddress.from(args.get(0))
                     .orElseThrow(IllegalArgumentException::new);
-            if (comp.depth() == 1) {
-                return createRootRemovalCall(env, comp.rootID());
+            if (component.depth() == 1) {
+                return StackFrame.serviceCall(RootManagerService.class,
+                        RootManagerService.REMOVE_ROOT,
+                        PString.of(component.componentID()));
             } else {
-                return createChildRemovalCall(env, comp);
+                return StackFrame.call(ControlAddress.of(component.parent(),
+                        ContainerProtocol.REMOVE_CHILD),
+                        PString.of(component.componentID()));
             }
         }
 
-        private Call createRootRemovalCall(Env env, String id) throws Exception {
-            ControlAddress to = ControlAddress.of(
-                    env.getLookup().find(Services.class)
-                            .flatMap(sm -> sm.locate(RootManagerService.class))
-                            .orElseThrow(ServiceUnavailableException::new),
-                    RootManagerService.REMOVE_ROOT);
-            return Call.create(to, env.getAddress(), env.getTime(), PString.of(id));
-        }
-
-        private Call createChildRemovalCall(Env env, ComponentAddress comp) throws Exception {
-            ControlAddress to = ControlAddress.of(comp.parent(),
-                    ContainerProtocol.REMOVE_CHILD);
-            return Call.create(to, env.getAddress(), env.getTime(),
-                    PString.of(comp.componentID(comp.depth() - 1)));
-        }
     }
+
 }

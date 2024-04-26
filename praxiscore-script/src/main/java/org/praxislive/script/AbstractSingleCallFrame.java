@@ -22,6 +22,7 @@
 package org.praxislive.script;
 
 import java.util.List;
+import java.util.Objects;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PError;
@@ -39,18 +40,22 @@ import org.praxislive.core.types.PReference;
  */
 public abstract class AbstractSingleCallFrame implements StackFrame {
 
-    private Namespace namespace;
-    private List<Value> args;
+    private final Namespace namespace;
+    private final List<Value> args;
+
     private State state;
     private Call call;
     private List<Value> result;
 
     protected AbstractSingleCallFrame(Namespace namespace, List<Value> args) {
-        if (namespace == null || args == null) {
-            throw new NullPointerException();
-        }
-        this.namespace = namespace;
-        this.args = args;
+        this.namespace = Objects.requireNonNull(namespace);
+        this.args = Objects.requireNonNull(args);
+        state = State.Incomplete;
+    }
+
+    AbstractSingleCallFrame(List<Value> args) {
+        this.namespace = null;
+        this.args = Objects.requireNonNull(args);
         state = State.Incomplete;
     }
 

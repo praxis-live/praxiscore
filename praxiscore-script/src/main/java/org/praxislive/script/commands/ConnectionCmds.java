@@ -40,24 +40,19 @@ import org.praxislive.script.StackFrame;
 /**
  *
  */
-public class ConnectionCmds implements CommandInstaller {
+class ConnectionCmds {
 
-    private final static ConnectionCmds instance = new ConnectionCmds();
     private final static Connect CONNECT = new Connect();
     private final static Disconnect DISCONNECT = new Disconnect();
 
     private ConnectionCmds() {
     }
 
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("connect", CONNECT);
         commands.put("~", CONNECT);
         commands.put("disconnect", DISCONNECT);
         commands.put("!~", DISCONNECT);
-    }
-
-    public final static ConnectionCmds getInstance() {
-        return instance;
     }
 
     private static class Connect implements Command {

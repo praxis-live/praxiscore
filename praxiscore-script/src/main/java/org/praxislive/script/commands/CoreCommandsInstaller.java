@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -34,13 +34,12 @@ public class CoreCommandsInstaller implements CommandInstaller {
 
     @Override
     public void install(Map<String, Command> commands) {
-        BaseCmds.getInstance().install(commands);
-        ArrayCmds.getInstance().install(commands);
-        AtCmds.getInstance().install(commands);
-        ConnectionCmds.getInstance().install(commands);
-        FileCmds.getInstance().install(commands);
-        ResourceCmds.getInstance().install(commands);
-        ScriptCmds.getInstance().install(commands);
+        BaseCmds.install(commands);
+        ArrayCmds.install(commands);
+        AtCmds.install(commands);
+        ConnectionCmds.install(commands);
+        FileCmds.install(commands);
+        ScriptCmds.install(commands);
     }
 
 }

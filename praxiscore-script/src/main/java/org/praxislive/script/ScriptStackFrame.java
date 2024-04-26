@@ -24,6 +24,7 @@ package org.praxislive.script;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.praxislive.core.Value;
@@ -282,6 +283,7 @@ public final class ScriptStackFrame implements StackFrame {
         private boolean inline;
         private List<String> allowedCommands;
         private boolean trapErrors;
+        private List<Consumer<Namespace>> namespaceProcessors;
 
         private Builder(Namespace namespace, RootNode root) {
             this.namespace = namespace;
@@ -333,6 +335,39 @@ public final class ScriptStackFrame implements StackFrame {
         }
 
         /**
+         * Create a constant with the given name and value in the script
+         * namespace.
+         *
+         * @param id constant name
+         * @param value constant value
+         * @return this for chaining
+         */
+        public Builder createConstant(String id, Value value) {
+            addNamespaceProcessor(ns -> ns.createConstant(id, value));
+            return this;
+        }
+
+        /**
+         * Create a variable with the given name and value in the script
+         * namespace.
+         *
+         * @param id variable name
+         * @param value variable value
+         * @return this for chaining
+         */
+        public Builder createVariable(String id, Value value) {
+            addNamespaceProcessor(ns -> ns.createVariable(id, value));
+            return this;
+        }
+
+        private void addNamespaceProcessor(Consumer<Namespace> processor) {
+            if (namespaceProcessors == null) {
+                namespaceProcessors = new ArrayList<>();
+            }
+            namespaceProcessors.add(processor);
+        }
+
+        /**
          * Build the ScriptStackFrame.
          *
          * @return script stackframe
@@ -343,6 +378,10 @@ public final class ScriptStackFrame implements StackFrame {
                 ns = namespace;
             } else {
                 ns = namespace.createChild();
+            }
+            if (namespaceProcessors != null) {
+                Namespace nsp = ns;
+                namespaceProcessors.forEach(p -> p.accept(nsp));
             }
             if (allowedCommands != null) {
                 ns = new FilteredNamespace(ns, allowedCommands);

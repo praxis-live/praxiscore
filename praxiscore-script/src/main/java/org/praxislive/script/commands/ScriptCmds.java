@@ -21,7 +21,8 @@
  */
 package org.praxislive.script.commands;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import java.util.Queue;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
+import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Namespace;
@@ -38,23 +40,17 @@ import org.praxislive.script.StackFrame;
 /**
  *
  */
-public class ScriptCmds implements CommandInstaller {
+class ScriptCmds {
 
-    private final static ScriptCmds instance = new ScriptCmds();
     public final static Command EVAL = new Eval();
     public final static Command INCLUDE = new Include();
 
     private ScriptCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("eval", EVAL);
         commands.put("include", INCLUDE);
-    }
-
-    public static ScriptCmds getInstance() {
-        return instance;
     }
 
     private static class Eval implements Command {
@@ -107,18 +103,15 @@ public class ScriptCmds implements CommandInstaller {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            // @TODO - should load in background - call to
             if (args.size() != 1) {
-                throw new Exception();
+                throw new IllegalArgumentException("Wrong number of arguments");
             }
-            try {
-                PResource res = PResource.from(args.get(0)).orElseThrow();
-                File file = new File(res.value());
-                String script = Utils.loadStringFromFile(file);
-                return ScriptStackFrame.forScript(namespace, script).build();
-            } catch (Exception ex) {
-                throw new Exception(ex);
-            }
+            Path path = PResource.from(args.get(0))
+                    .map(PResource::value)
+                    .map(Path::of)
+                    .orElseThrow(IllegalArgumentException::new);
+            return StackFrame.async(() -> PString.of(Files.readString(path)))
+                    .andThen(v -> ScriptStackFrame.forScript(namespace, v.get(0).toString()).build());
 
         }
 

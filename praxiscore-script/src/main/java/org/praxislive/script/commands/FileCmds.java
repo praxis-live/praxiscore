@@ -41,39 +41,34 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
+import org.praxislive.script.StackFrame;
 
 /**
  *
  */
-public class FileCmds implements CommandInstaller {
-
-    private final static FileCmds INSTANCE = new FileCmds();
+class FileCmds {
 
     private final static Command FILE = new FileCmd();
     private final static Command FILE_LIST = new FileListCmd();
     private final static Command FILE_NAMES = new FileNamesCmd();
     private final static Command CD = new CdCmd();
     private final static Command PWD = new PwdCmd();
+    private final static Command LOAD = new LoadCmd();
 
     private FileCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("file", FILE);
         commands.put("file-list", FILE_LIST);
         commands.put("file-names", FILE_NAMES);
         commands.put("ls", FILE_NAMES);
         commands.put("cd", CD);
         commands.put("pwd", PWD);
-    }
-
-    public static FileCmds getInstance() {
-        return INSTANCE;
+        commands.put("load", LOAD);
     }
 
     private static URI getPWD(Namespace namespace) {
@@ -240,6 +235,22 @@ public class FileCmds implements CommandInstaller {
         @Override
         public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
             return List.of(PResource.of(getPWD(namespace)));
+        }
+
+    }
+
+    private static class LoadCmd implements Command {
+
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 1) {
+                throw new IllegalArgumentException("Wrong number of arguments");
+            }
+            Path path = PResource.from(args.get(0))
+                    .map(PResource::value)
+                    .map(Path::of)
+                    .orElseThrow(IllegalArgumentException::new);
+            return StackFrame.async(() -> PString.of(Files.readString(path)));
         }
 
     }

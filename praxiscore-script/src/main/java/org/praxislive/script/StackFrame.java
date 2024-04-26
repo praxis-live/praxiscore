@@ -22,8 +22,16 @@
 package org.praxislive.script;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import org.praxislive.core.Call;
+import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Value;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.Services;
+import org.praxislive.core.services.TaskService;
+import org.praxislive.core.types.PReference;
 
 /**
  * A StackFrame used within the script executor pointing to the currently
@@ -137,5 +145,130 @@ public interface StackFrame {
      * @throws IllegalStateException if the state is incomplete
      */
     public List<Value> result();
+
+    /**
+     * Combine this StackFrame with another created from the result of this
+     * StackFrame. The returned StackFrame will execute the frames in turn.
+     * <p>
+     * The default implementation returns a private implementation of a compound
+     * stackframe. If this method is called on an existing compound stack frame,
+     * then the stage function will be added to that and {@code this} will be
+     * returned.
+     *
+     * @param stage function to create next stack frame from result
+     * @return compound stackframe
+     */
+    public default StackFrame andThen(Function<List<Value>, StackFrame> stage) {
+        if (this instanceof CompoundStackFrame csf) {
+            csf.addStage(stage);
+            return this;
+        } else {
+            return new CompoundStackFrame(this, stage);
+        }
+    }
+
+    /**
+     * Map the result of this StackFrame with the provided mapping function
+     * before returning a result or using
+     * {@link #andThen(java.util.function.Function)}.
+     * <p>
+     * The default implementation calls
+     * {@link #andThen(java.util.function.Function)} with a function that
+     * creates a private implementation of a mapping StackFrame.
+     *
+     * @param mapper map value list
+     * @return mapping stackframe
+     */
+    public default StackFrame andThenMap(UnaryOperator<List<Value>> mapper) {
+        return andThen(args -> new CompoundStackFrame.SupplierStackFrame(
+                () -> mapper.apply(args))
+        );
+    }
+
+    /**
+     * Create a StackFrame that makes a call to the provided control and returns
+     * the result.
+     *
+     * @param to control address
+     * @param arg single argument
+     * @return stackframe
+     */
+    public static StackFrame call(ControlAddress to, Value arg) {
+        return call(to, List.of(arg));
+    }
+
+    /**
+     * Create a StackFrame that makes a call to the provided control and returns
+     * the result.
+     *
+     * @param to control address
+     * @param args arguments
+     * @return stackframe
+     */
+    public static StackFrame call(ControlAddress to, List<Value> args) {
+        return new AbstractSingleCallFrame(args) {
+            @Override
+            protected Call createCall(Env env, List<Value> args) throws Exception {
+                return Call.create(to, env.getAddress(), env.getTime(), args);
+            }
+        };
+    }
+
+    /**
+     * Create a StackFrame that makes a call to the provided {@link Service} and
+     * returns the result. The first implementation of the service found in the
+     * Env lookup will be used.
+     *
+     * @param service type of service
+     * @param control id of control on service
+     * @param arg single argument
+     * @return stackframe
+     * @throws ServiceUnavailableException if no implementation of the service
+     * is found
+     *
+     */
+    public static StackFrame serviceCall(Class<? extends Service> service,
+            String control, Value arg) {
+        return serviceCall(service, control, List.of(arg));
+    }
+
+    /**
+     * Create a StackFrame that makes a call to the provided {@link Service} and
+     * returns the result. The first implementation of the service found in the
+     * Env lookup will be used.
+     *
+     * @param service type of service
+     * @param control id of control on service
+     * @param args arguments
+     * @return stackframe
+     * @throws ServiceUnavailableException if no implementation of the service
+     * is found
+     */
+    public static StackFrame serviceCall(Class<? extends Service> service,
+            String control, List<Value> args) {
+        return new AbstractSingleCallFrame(args) {
+            @Override
+            protected Call createCall(Env env, List<Value> args) throws Exception {
+                ControlAddress to = ControlAddress.of(
+                        env.getLookup().find(Services.class)
+                                .flatMap(sm -> sm.locate(service))
+                                .orElseThrow(ServiceUnavailableException::new),
+                        control
+                );
+                return Call.create(to, env.getAddress(), env.getTime(), args);
+            }
+        };
+    }
+
+    /**
+     * Create a StackFrame that executes the provided task asynchronously in the
+     * default {@link TaskService} and returns the result.
+     *
+     * @param task task to execute
+     * @return stackframe
+     */
+    public static StackFrame async(TaskService.Task task) {
+        return serviceCall(TaskService.class, TaskService.SUBMIT, PReference.of(task));
+    }
 
 }
