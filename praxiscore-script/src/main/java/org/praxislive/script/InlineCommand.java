@@ -24,7 +24,7 @@ package org.praxislive.script;
 import java.util.List;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
-import org.praxislive.core.types.PReference;
+import org.praxislive.core.types.PError;
 
 /**
  * Simple subtype of {@link Command} that can be executed and produce a result
@@ -96,7 +96,7 @@ public interface InlineCommand extends Command {
                     result = command.process(env, namespace, args);
                     state = State.OK;
                 } catch (Exception ex) {
-                    result = List.of(PReference.of(ex));
+                    result = List.of(PError.of(ex));
                     state = State.Error;
                 }
             }

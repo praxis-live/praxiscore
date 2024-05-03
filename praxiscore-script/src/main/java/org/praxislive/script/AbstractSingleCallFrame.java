@@ -26,7 +26,6 @@ import java.util.Objects;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PReference;
 
 /**
  * An abstract {@link StackFrame} for commands that need to make a stack frame
@@ -78,7 +77,7 @@ public abstract class AbstractSingleCallFrame implements StackFrame {
                 }
                 env.getPacketRouter().route(call);
             } catch (Exception ex) {
-                result = List.of(PReference.of(ex));
+                result = List.of(PError.of(ex));
                 state = State.Error;
             }
         }
