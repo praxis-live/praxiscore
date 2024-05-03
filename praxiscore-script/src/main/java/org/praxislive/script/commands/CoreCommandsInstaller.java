@@ -39,6 +39,7 @@ public class CoreCommandsInstaller implements CommandInstaller {
         AtCmds.install(commands);
         ConnectionCmds.install(commands);
         FileCmds.install(commands);
+        MapCmds.install(commands);
         ScriptCmds.install(commands);
     }
 

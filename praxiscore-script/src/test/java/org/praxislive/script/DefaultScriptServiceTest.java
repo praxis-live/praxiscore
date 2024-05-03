@@ -128,12 +128,13 @@ public class DefaultScriptServiceTest {
         logTest("testEvalInline");
         String script = """
                         eval --inline {
-                            set X 42
+                            var X 42
                             /hub.value $X
                         }
+                        set X [echo $X $X]
                         /hub.value $X
                         eval {
-                            set Y 84
+                            var Y 84
                             /hub.value $Y 
                         }
                         /hub.value $Y
@@ -143,7 +144,7 @@ public class DefaultScriptServiceTest {
             hub.start();
             hub.send("/script.eval", "/hub.result", script);
 
-            for (String expected : new String[]{"42", "42", "84"}) {
+            for (String expected : new String[]{"42", "4242", "84"}) {
                 Call call = hub.poll();
                 logCall("Value received", call);
                 assertEquals("/hub.value", call.to().toString());

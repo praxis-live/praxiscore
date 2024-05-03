@@ -40,14 +40,19 @@ import static java.lang.System.Logger.Level;
 class BaseCmds {
 
     private static final System.Logger LOG = System.getLogger(BaseCmds.class.getName());
+
+    private static final Constant CONSTANT = new Constant();
     private static final Set SET = new Set();
+    private static final Var VAR = new Var();
     private static final Echo ECHO = new Echo();
 
     private BaseCmds() {
     }
 
     static void install(Map<String, Command> commands) {
+        commands.put("constant", CONSTANT);
         commands.put("set", SET);
+        commands.put("var", VAR);
         commands.put("echo", ECHO);
     }
 
@@ -67,6 +72,36 @@ class BaseCmds {
                 LOG.log(Level.TRACE, () -> "SET COMMAND : Adding variable " + varName + " to namespace " + namespace);
                 namespace.createVariable(varName, val);
             }
+            return List.of(val);
+
+        }
+    }
+
+    private static class Constant implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 2) {
+                throw new Exception();
+            }
+            String varName = args.get(0).toString();
+            Value val = args.get(1);
+            namespace.createConstant(varName, val);
+            return List.of(val);
+
+        }
+    }
+
+    private static class Var implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 2) {
+                throw new Exception();
+            }
+            String varName = args.get(0).toString();
+            Value val = args.get(1);
+            namespace.createVariable(varName, val);
             return List.of(val);
 
         }
