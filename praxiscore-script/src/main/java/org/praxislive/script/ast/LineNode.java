@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,17 +22,13 @@
 package org.praxislive.script.ast;
 
 import java.util.List;
-import java.util.logging.Logger;
 import org.praxislive.core.Value;
-import org.praxislive.script.ExecutionException;
 
 /**
  *
- * 
+ *
  */
 public class LineNode extends CompositeNode {
-
-    private final static Logger log = Logger.getLogger(LineNode.class.getName());
 
     private Value[] result;
 
@@ -46,13 +42,12 @@ public class LineNode extends CompositeNode {
     }
 
     @Override
-    protected void writeThisNextCommand(List<Value> args) 
-            throws ExecutionException {
+    protected void writeThisNextCommand(List<Value> args)
+            throws Exception {
         if (result == null) {
             for (Node child : getChildren()) {
                 child.writeResult(args);
             }
-            log.finest("LineNode writing command : " + args.toString());
         } else {
             throw new IllegalStateException();
         }
@@ -62,7 +57,7 @@ public class LineNode extends CompositeNode {
     @Override
     protected void postThisResponse(List<Value> args) {
         if (result == null) {
-            result = args.toArray(new Value[args.size()]);
+            result = args.toArray(Value[]::new);
         } else {
             throw new IllegalStateException();
         }

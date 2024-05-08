@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,30 +19,37 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
+package org.praxislive.script;
 
-
-package org.praxislive.script.impl;
-
+import java.util.Objects;
 import org.praxislive.core.Value;
-import org.praxislive.script.Variable;
 
 /**
+ * Default constant implementation used by
+ * {@link Namespace#createConstant(java.lang.String, org.praxislive.core.Value)}.
  *
- * 
  */
-public class ConstantImpl implements Variable {
+final class ConstantImpl implements Variable {
 
-    Value value;
+    private final Value value;
 
     public ConstantImpl(Value value) {
-        this.value = value;
+        this.value = Objects.requireNonNull(value);
     }
 
+    @Override
     public void setValue(Value value) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public Value getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return value.toString();
+    }
+
 }

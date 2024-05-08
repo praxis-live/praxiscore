@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,24 +19,19 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script.ast;
 
 import java.util.List;
-import java.util.logging.Logger;
 import org.praxislive.core.Value;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.Variable;
 
 /**
  *
- * 
+ *
  */
 public class VariableNode extends Node {
 
-    private final static Logger log = Logger.getLogger(VariableNode.class.getName());
-    
     private String id;
     private Namespace namespace;
 
@@ -45,7 +40,6 @@ public class VariableNode extends Node {
             throw new NullPointerException();
         }
         this.id = id;
-        log.finest("Created VariableNode with id : " + id);
     }
 
     @Override
@@ -61,18 +55,15 @@ public class VariableNode extends Node {
     }
 
     @Override
-    public void writeResult(List<Value> args) throws ExecutionException {
+    public void writeResult(List<Value> args) throws Exception {
         if (namespace == null) {
             throw new IllegalStateException();
         }
         Variable var = namespace.getVariable(id);
         if (var == null) {
-            log.finest("VARIABLE NODE : Can't find variable " + id + " in namespace " + namespace);
-            throw new ExecutionException();
+            throw new Exception("Can't find variable " + id + " in namespace " + namespace);
         }
         args.add(var.getValue());
     }
-
-
 
 }

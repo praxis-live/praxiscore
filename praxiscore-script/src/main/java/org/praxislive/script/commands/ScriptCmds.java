@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,96 +21,97 @@
  */
 package org.praxislive.script.commands;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import org.praxislive.core.Value;
-import org.praxislive.core.syntax.InvalidSyntaxException;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
+import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
+import org.praxislive.script.ScriptStackFrame;
 import org.praxislive.script.StackFrame;
-import org.praxislive.script.ast.RootNode;
-import org.praxislive.script.ast.ScriptParser;
 
 /**
  *
  */
-public class ScriptCmds implements CommandInstaller {
+class ScriptCmds {
 
-    private final static ScriptCmds instance = new ScriptCmds();
     public final static Command EVAL = new Eval();
-    public final static Command INLINE_EVAL = new InlineEval();
     public final static Command INCLUDE = new Include();
 
     private ScriptCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("eval", EVAL);
         commands.put("include", INCLUDE);
-    }
-
-    public static ScriptCmds getInstance() {
-        return instance;
     }
 
     private static class Eval implements Command {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-                throws ExecutionException {
-            if (args.size() != 1) {
-                throw new ExecutionException();
+                throws Exception {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("No script passed to eval");
             }
-            String script = args.get(0).toString();
-            try {
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace.createChild(), astRoot);
-            } catch (InvalidSyntaxException ex) {
-                throw new ExecutionException(ex);
+            Queue<Value> queue = new ArrayDeque<>(args);
+            boolean inline = false;
+            boolean trap = false;
+            List<String> allowed = null;
+            String script = null;
+            while (!queue.isEmpty()) {
+                String arg = queue.poll().toString();
+                if ("--inline".equals(arg)) {
+                    inline = true;
+                } else if ("--trap-errors".equals(arg)) {
+                    trap = true;
+                    if (allowed == null) {
+                        allowed = List.of();
+                    }
+                } else if ("--allowed-commands".equals(arg)) {
+                    allowed = PArray.from(queue.poll()).orElseThrow().asListOf(String.class);
+                } else {
+                    script = arg;
+                    break;
+                }
             }
-        }
-    }
-
-    private static class InlineEval implements Command {
-
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-                throws ExecutionException {
-            if (args.size() != 1) {
-                throw new ExecutionException();
+            if (!queue.isEmpty()) {
+                throw new IllegalArgumentException("Additional arguments after script");
             }
-            String script = args.get(0).toString();
-            try {
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace, astRoot);
-            } catch (InvalidSyntaxException ex) {
-                throw new ExecutionException(ex);
+            var bld = ScriptStackFrame.forScript(namespace, script);
+            if (inline) {
+                bld.inline();
             }
+            if (trap) {
+                bld.trapErrors();
+            }
+            if (allowed != null) {
+                bld.allowedCommands(allowed);
+            }
+            return bld.build();
         }
     }
 
     private static class Include implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
-            // @TODO - should load in background - call to
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new IllegalArgumentException("Wrong number of arguments");
             }
-            try {
-                PResource res = PResource.from(args.get(0)).orElseThrow();
-                File file = new File(res.value());
-                String script = Utils.loadStringFromFile(file);
-                RootNode astRoot = ScriptParser.getInstance().parse(script);
-                return new EvalStackFrame(namespace.createChild(), astRoot);
-            } catch (Exception ex) {
-                throw new ExecutionException(ex);
-            }
+            Path path = PResource.from(args.get(0))
+                    .map(PResource::value)
+                    .map(Path::of)
+                    .orElseThrow(IllegalArgumentException::new);
+            return StackFrame.async(() -> PString.of(Files.readString(path)))
+                    .andThen(v -> ScriptStackFrame.forScript(namespace, v.get(0).toString()).build());
 
         }
 

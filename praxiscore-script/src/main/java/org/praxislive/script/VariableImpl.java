@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -14,38 +14,42 @@
  *
  * You should have received a copy of the GNU Lesser General Public License version 3
  * along with this work; if not, see http://www.gnu.org/licenses/
- *
+ * 
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.script.commands;
+package org.praxislive.script;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.Objects;
+import org.praxislive.core.Value;
 
 /**
+ * Default variable implementation used by
+ * {@link Namespace#createVariable(java.lang.String, org.praxislive.core.Value)}.
  *
- * 
  */
-class Utils {
+final class VariableImpl implements Variable {
 
-    private Utils() {
+    private Value value;
+
+    public VariableImpl(Value value) {
+        this.value = Objects.requireNonNull(value);
     }
 
-    static String loadStringFromFile(File file) throws FileNotFoundException, IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(file));
-        StringBuilder data = new StringBuilder();
-        char[] buf = new char[1024];
-        int read = 0;
-        while ((read = reader.read(buf)) != -1) {
-            data.append(buf, 0, read);
-        }
-        reader.close();
-        return data.toString();
-
+    @Override
+    public void setValue(Value value) {
+        this.value = Objects.requireNonNull(value);
     }
+
+    @Override
+    public Value getValue() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return value.toString();
+    }
+
 }

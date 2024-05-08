@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,10 +32,9 @@ import org.praxislive.core.services.Services;
 import org.praxislive.script.Command;
 import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
-import org.praxislive.script.impl.AbstractSingleCallFrame;
+import org.praxislive.script.AbstractSingleCallFrame;
 
 /**
  *
@@ -53,7 +52,7 @@ public class HubNetCommands implements CommandInstaller {
     private final static class ConfigurationCommand implements Command {
 
         @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws ExecutionException {
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             return new AbstractSingleCallFrame(namespace, args) {
                 @Override
                 protected Call createCall(Env env, List<Value> args) throws Exception {

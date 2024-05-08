@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,6 @@
  */
 package org.praxislive.script.commands;
 
-import org.praxislive.script.impl.AbstractInlineCommand;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -36,50 +35,40 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Env;
-import org.praxislive.script.ExecutionException;
+import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
-import org.praxislive.script.Variable;
-import org.praxislive.script.impl.VariableImpl;
+import org.praxislive.script.StackFrame;
 
 /**
  *
  */
-public class FileCmds implements CommandInstaller {
-
-    private final static FileCmds INSTANCE = new FileCmds();
+class FileCmds {
 
     private final static Command FILE = new FileCmd();
     private final static Command FILE_LIST = new FileListCmd();
     private final static Command FILE_NAMES = new FileNamesCmd();
     private final static Command CD = new CdCmd();
     private final static Command PWD = new PwdCmd();
+    private final static Command LOAD = new LoadCmd();
 
     private FileCmds() {
     }
 
-    @Override
-    public void install(Map<String, Command> commands) {
+    static void install(Map<String, Command> commands) {
         commands.put("file", FILE);
         commands.put("file-list", FILE_LIST);
         commands.put("file-names", FILE_NAMES);
         commands.put("ls", FILE_NAMES);
         commands.put("cd", CD);
         commands.put("pwd", PWD);
-    }
-
-    public static FileCmds getInstance() {
-        return INSTANCE;
+        commands.put("load", LOAD);
     }
 
     private static URI getPWD(Namespace namespace) {
@@ -141,60 +130,57 @@ public class FileCmds implements CommandInstaller {
         }
     }
 
-    private static class FileCmd extends AbstractInlineCommand {
+    private static class FileCmd implements InlineCommand {
 
         @Override
-        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws Exception {
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             try {
                 return List.of(PResource.of(
                         resolve(namespace, args.get(0).toString())
                 ));
             } catch (Exception ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
         }
     }
 
-    private static class FileListCmd extends AbstractInlineCommand {
+    private static class FileListCmd implements InlineCommand {
 
         @Override
-        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
             if (args.size() > 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             try {
                 List<Path> list;
-                /*if (args.getSize() == 2) {
-                    list = listFiles(namespace, args.get(0).toString(), args.get(1).toString());
-                } else*/
                 if (args.size() == 1) {
                     list = listFiles(namespace, args.get(0).toString());
                 } else {
                     list = listFiles(namespace);
                 }
-                
+
                 List<PResource> ret = list.stream()
                         .map(path -> PResource.of(path.toUri()))
                         .collect(Collectors.toList());
-                
+
                 return List.of(PArray.of(ret));
             } catch (Exception ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
 
         }
 
     }
 
-    private static class FileNamesCmd extends AbstractInlineCommand {
+    private static class FileNamesCmd implements InlineCommand {
 
         @Override
-        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env env, Namespace namespace, List<Value> args) throws Exception {
             if (args.size() > 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             try {
                 List<Path> list;
@@ -206,57 +192,67 @@ public class FileCmds implements CommandInstaller {
                 } else {
                     list = listFiles(namespace);
                 }
-                
+
                 List<PString> ret = list.stream()
                         .map(path -> PString.of(path.getFileName()))
                         .collect(Collectors.toList());
-                
+
                 return List.of(PArray.of(ret));
             } catch (Exception ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
         }
 
     }
-    
-    private static class CdCmd extends AbstractInlineCommand {
+
+    private static class CdCmd implements InlineCommand {
 
         @Override
-        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
             if (args.size() != 1) {
-                throw new ExecutionException();
+                throw new Exception();
             }
             try {
                 URI uri = resolve(namespace, args.get(0).toString());
                 if ("file".equals(uri.getScheme())) {
                     File d = new File(uri);
                     if (!d.isDirectory()) {
-                        throw new ExecutionException("Not a valid directory");
+                        throw new Exception("Not a valid directory");
                     }
                 }
                 PResource dir = PResource.of(uri);
-                Variable pwd = namespace.getVariable(Env.PWD);
-                if (pwd != null) {
-                    pwd.setValue(dir);
-                } else {
-                    pwd = new VariableImpl(dir);
-                    namespace.addVariable(Env.PWD, pwd);
-                }
+                namespace.getOrCreateVariable(Env.PWD, dir).setValue(dir);
                 return List.of(dir);
             } catch (URISyntaxException ex) {
-                throw new ExecutionException(ex);
+                throw new Exception(ex);
             }
         }
-        
+
     }
-    
-    private static class PwdCmd extends AbstractInlineCommand {
+
+    private static class PwdCmd implements InlineCommand {
 
         @Override
-        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws ExecutionException {
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
             return List.of(PResource.of(getPWD(namespace)));
         }
-        
-    }    
-    
+
+    }
+
+    private static class LoadCmd implements Command {
+
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 1) {
+                throw new IllegalArgumentException("Wrong number of arguments");
+            }
+            Path path = PResource.from(args.get(0))
+                    .map(PResource::value)
+                    .map(Path::of)
+                    .orElseThrow(IllegalArgumentException::new);
+            return StackFrame.async(() -> PString.of(Files.readString(path)));
+        }
+
+    }
+
 }

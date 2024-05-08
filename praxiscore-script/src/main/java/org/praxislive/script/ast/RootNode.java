@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,16 +19,14 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script.ast;
 
 import java.util.List;
 import org.praxislive.core.Value;
-import org.praxislive.script.ExecutionException;
 
 /**
  *
- * 
+ *
  */
 public class RootNode extends CompositeNode {
 
@@ -52,14 +50,18 @@ public class RootNode extends CompositeNode {
     }
 
     @Override
-    public void writeResult(List<Value> args) throws ExecutionException {
-        Node[] children = getChildren();
-        if (children.length > 0) {
-            children[children.length - 1].writeResult(args);
+    public void writeResult(List<Value> args) throws Exception {
+        List<Node> children = getChildren();
+        if (!children.isEmpty()) {
+            Node last = children.getLast();
+            if (last.isDone()) {
+                last.writeResult(args);
+            }
         }
-        
     }
 
-
+    public void skipCurrentLine() {
+        skipActive();
+    }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,63 +19,49 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-package org.praxislive.script.impl;
+package org.praxislive.script;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.logging.Logger;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.types.PError;
-import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
-import org.praxislive.script.Env;
-import org.praxislive.script.Namespace;
-import org.praxislive.script.StackFrame;
-import org.praxislive.script.Variable;
 import org.praxislive.script.commands.CoreCommandsInstaller;
-import org.praxislive.script.commands.ScriptCmds;
+
+import static java.lang.System.Logger.Level;
 
 /**
  *
  */
-public class ScriptExecutor {
+class ScriptExecutor {
 
-    private final static Logger log = Logger.getLogger(ScriptExecutor.class.getName());
-    private List<StackFrame> stack;
-    private Queue<Call> queue;
-    private Env env;
-    private Command evaluator;
-    private Map<String, Command> commandMap;
-    private Namespace rootNS;
+    private static final System.Logger log = System.getLogger(ScriptExecutor.class.getName());
 
-    public ScriptExecutor(Env env, boolean inline) {
-        this.env = env;
-        stack = new LinkedList<StackFrame>();
-        queue = new LinkedList<Call>();
-        if (inline) {
-            evaluator = ScriptCmds.INLINE_EVAL;
-        } else {
-            evaluator = ScriptCmds.EVAL;
-        }
+    private final List<StackFrame> stack;
+    private final Queue<Call> queue;
+    private final Env env;
+    private final Map<String, Command> commandMap;
+    private final Namespace rootNS;
+
+    ScriptExecutor(Env context, final ComponentAddress ctxt) {
+        this.env = context;
+        stack = new LinkedList<>();
+        queue = new LinkedList<>();
+        commandMap = buildCommandMap();
         rootNS = new NS();
-        buildCommandMap();
-    }
-
-    public ScriptExecutor(Env context, final ComponentAddress ctxt) {
-        this(context, true);
         rootNS.addVariable(Env.CONTEXT, new ConstantImpl(ctxt));
     }
 
-    private void buildCommandMap() {
-        commandMap = new HashMap<String, Command>();
+    private Map<String, Command> buildCommandMap() {
+        Map<String, Command> map = new HashMap<>();
         CommandInstaller installer = new CoreCommandsInstaller();
-        installer.install(commandMap);
-        Lookup.SYSTEM.findAll(CommandInstaller.class).forEach(cmds -> cmds.install(commandMap));
+        installer.install(map);
+        Lookup.SYSTEM.findAll(CommandInstaller.class).forEach(cmds -> cmds.install(map));
+        return map;
     }
 
     public void queueEvalCall(Call call) {
@@ -96,7 +82,7 @@ public class ScriptExecutor {
     }
 
     public void processScriptCall(Call call) {
-        log.finest("processScriptCall - received :\n" + call);
+        log.log(Level.TRACE, () -> "processScriptCall - received :\n" + call);
         if (!stack.isEmpty()) {
             stack.get(0).postResponse(call);
             processStack();
@@ -109,14 +95,14 @@ public class ScriptExecutor {
     private void processStack() {
         while (!stack.isEmpty()) {
             StackFrame current = stack.get(0);
-            log.finest("Processing stack : " + current.getClass()
+            log.log(Level.TRACE, () -> "Processing stack : " + current.getClass()
                     + "\n  Stack Size : " + stack.size());
 
             // if incomplete do round of processing
             if (current.getState() == StackFrame.State.Incomplete) {
                 StackFrame child = current.process(env);
                 if (child != null) {
-                    log.finest("Pushing to stack" + child.getClass());
+                    log.log(Level.TRACE, () -> "Pushing to stack" + child.getClass());
                     stack.add(0, child);
                     continue;
                 }
@@ -128,20 +114,19 @@ public class ScriptExecutor {
                 return;
             } else {
                 var args = current.result();
-                log.finest("Stack frame complete : " + current.getClass()
+                log.log(Level.TRACE, () -> "Stack frame complete : " + current.getClass()
                         + "\n  Result : " + args + "\n  Stack Size : " + stack.size());
                 stack.remove(0);
                 if (!stack.isEmpty()) {
-                    log.finest("Posting result up stack");
+                    log.log(Level.TRACE, "Posting result up stack");
                     stack.get(0).postResponse(state, args);
-                    continue;
                 } else {
                     Call call = queue.poll();
                     if (state == StackFrame.State.OK) {
-                        log.finest("Sending OK return call");
+                        log.log(Level.TRACE, "Sending OK return call");
                         call = call.reply(args);
                     } else {
-                        log.finest("Sending Error return call");
+                        log.log(Level.TRACE, "Sending Error return call");
                         call = call.error(args);
                     }
                     env.getPacketRouter().route(call);
@@ -155,7 +140,11 @@ public class ScriptExecutor {
             Call call = queue.peek();
             var args = call.args();
             try {
-                stack.add(0, evaluator.createStackFrame(rootNS, args));
+                var script = args.get(0).toString();
+                var stackFrame = ScriptStackFrame.forScript(rootNS, script)
+                        .inline()
+                        .build();
+                stack.add(0, stackFrame);
                 processStack();
                 break;
             } catch (Exception ex) {
@@ -177,9 +166,10 @@ public class ScriptExecutor {
 
         private NS(NS parent) {
             this.parent = parent;
-            variables = new HashMap<String, Variable>();
+            variables = new HashMap<>();
         }
 
+        @Override
         public Variable getVariable(String id) {
             Variable var = variables.get(id);
             if (var == null && parent != null) {
@@ -189,6 +179,7 @@ public class ScriptExecutor {
             }
         }
 
+        @Override
         public void addVariable(String id, Variable var) {
             if (variables.containsKey(id)) {
                 throw new IllegalArgumentException();
@@ -196,14 +187,17 @@ public class ScriptExecutor {
             variables.put(id, var);
         }
 
+        @Override
         public Command getCommand(String id) {
             return commandMap.get(id);
         }
 
+        @Override
         public void addCommand(String id, Command cmd) {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public Namespace createChild() {
             return new NS(this);
         }

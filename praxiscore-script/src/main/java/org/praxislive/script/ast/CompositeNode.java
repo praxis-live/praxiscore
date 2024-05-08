@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,29 +19,28 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script.ast;
 
 import java.util.List;
 import org.praxislive.core.Value;
-import org.praxislive.script.ExecutionException;
 import org.praxislive.script.Namespace;
 
 /**
  *
- * 
+ *
  */
-public abstract class CompositeNode extends Node {
-    
-    private Node[] children;
+abstract class CompositeNode extends Node {
+
+    private final List<Node> children;
+
     private int active;
     private Namespace namespace;
 
     public CompositeNode(List<? extends Node> children) {
-        this.children = children.toArray(new Node[children.size()]);
+        this.children = List.copyOf(children);
     }
 
-      @Override
+    @Override
     public void init(Namespace namespace) {
         if (namespace == null) {
             throw new NullPointerException();
@@ -51,9 +50,7 @@ public abstract class CompositeNode extends Node {
         }
         this.namespace = namespace;
         active = 0;
-        for (Node child : children) {
-            child.init(namespace);
-        }
+        children.forEach(child -> child.init(namespace));
     }
 
     @Override
@@ -64,8 +61,8 @@ public abstract class CompositeNode extends Node {
         if (active < 0) {
             return isThisDone();
         } else {
-            while (active < children.length) {
-                if (!children[active].isDone()) {
+            while (active < children.size()) {
+                if (!children.get(active).isDone()) {
                     return false;
                 }
                 active++;
@@ -78,37 +75,36 @@ public abstract class CompositeNode extends Node {
     protected abstract boolean isThisDone();
 
     @Override
-    public void writeNextCommand(List<Value> args) 
-            throws ExecutionException {
+    public void writeNextCommand(List<Value> args)
+            throws Exception {
         if (namespace == null) {
             throw new IllegalStateException();
         }
         if (active >= 0) {
-            children[active].writeNextCommand(args);
+            children.get(active).writeNextCommand(args);
         } else {
             writeThisNextCommand(args);
         }
     }
 
     protected abstract void writeThisNextCommand(List<Value> args)
-            throws ExecutionException;
-
+            throws Exception;
 
     @Override
-    public void postResponse(List<Value> args) 
-            throws ExecutionException {
+    public void postResponse(List<Value> args)
+            throws Exception {
         if (namespace == null) {
             throw new IllegalStateException();
         }
         if (active >= 0) {
-            children[active].postResponse(args);
+            children.get(active).postResponse(args);
         } else {
             postThisResponse(args);
         }
     }
 
     protected abstract void postThisResponse(List<Value> args)
-            throws ExecutionException;
+            throws Exception;
 
     @Override
     public void reset() {
@@ -117,11 +113,19 @@ public abstract class CompositeNode extends Node {
         }
         namespace = null;
     }
-    
-    protected Node[] getChildren() {
+
+    protected List<Node> getChildren() {
         return children;
     }
 
-
+    protected void skipActive() {
+        if (active < 0) {
+            return;
+        }
+        active++;
+        if (active >= children.size()) {
+            active = -1;
+        }
+    }
 
 }

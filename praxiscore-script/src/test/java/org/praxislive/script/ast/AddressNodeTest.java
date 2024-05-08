@@ -1,95 +1,51 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.praxislive.script.ast;
 
-import org.praxislive.script.ast.AddressNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.praxislive.core.Value;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.script.Command;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.Variable;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
 
-/**
- *
- * 
- */
+import static org.junit.jupiter.api.Assertions.*;
+
+
 public class AddressNodeTest {
-
-    public AddressNodeTest() {
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-    }
-
-    @AfterClass
-    public static void tearDownClass() throws Exception {
-    }
-
-    @Before
-    public void setUp() {
-    }
-
-    @After
-    public void tearDown() {
-    }
-
-//    /**
-//     * Test of init method, of class AddressNode.
-//     */
-//    @Test
-//    public void testInit() {
-//        System.out.println("init");
-//        Namespace namespace = null;
-//        AddressNode instance = null;
-//        instance.init(namespace);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of reset method, of class AddressNode.
-//     */
-//    @Test
-//    public void testReset() {
-//        System.out.println("reset");
-//        AddressNode instance = null;
-//        instance.reset();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
 
     /**
      * Test of writeResult method, of class AddressNode.
      */
     @Test
     public void testWriteResult() {
-        System.out.println("writeResult");
-        List<Value> args = new ArrayList<Value>();
         Namespace ns = new NS();
-        String[] ads = {"./to/here", "./to/here.control", "./to/here!port", ".control2"};
-        for (String ad : ads) {
-            AddressNode instance = new AddressNode(ad);
-            instance.init(ns);
-            instance.writeResult(args);
-            System.out.println(ad + " : " + args.get(0));
-            args.clear();
-        }
+        List<Value> scratch = new ArrayList<>();
+        List<String> relative = List.of(
+                "./to/here",
+                "./to/here.control",
+                "./to/here!port",
+                ".control2");
+        List<String> absolute = List.of(
+                "/test/address/to/here",
+                "/test/address/to/here.control",
+                "/test/address/to/here!port",
+                "/test/address.control2");
+        List<String> result = relative.stream()
+                .map(address -> {
+                    var addressNode = new AddressNode(address);
+                    addressNode.init(ns);
+                    scratch.clear();
+                    addressNode.writeResult(scratch);
+                    return scratch.get(0).toString();
+                }).toList();
+        assertEquals(absolute, result);
+
     }
 
     private class NS implements Namespace, Variable {
 
+        @Override
         public Variable getVariable(String id) {
             if ("_CTXT".equals(id)) {
                 return this;
@@ -97,26 +53,32 @@ public class AddressNodeTest {
             return null;
         }
 
+        @Override
         public void addVariable(String id, Variable var) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
+        @Override
         public Namespace createChild() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
+        @Override
         public void setValue(Value value) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
+        @Override
         public Value getValue() {
             return ComponentAddress.of("/test/address");
         }
 
+        @Override
         public Command getCommand(String id) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
+        @Override
         public void addCommand(String id, Command cmd) {
             throw new UnsupportedOperationException("Not supported yet.");
         }

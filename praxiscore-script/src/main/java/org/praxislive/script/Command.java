@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,18 +19,28 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script;
 
 import java.util.List;
 import org.praxislive.core.Value;
 
 /**
- *
+ * A script command. The script executor will look up commands by name in the
+ * current {@link Namespace}. Each execution of the command will cause a call
+ * {@link #createStackFrame(org.praxislive.script.Namespace, java.util.List)}.
  */
 public interface Command {
 
+    /**
+     * Create a StackFrame to execute the command with the provided Namespace
+     * and arguments.
+     *
+     * @param namespace current namespace
+     * @param args arguments
+     * @return stack frame to execute command with provided arguments
+     * @throws Exception if stack frame cannot be created
+     */
     public StackFrame createStackFrame(Namespace namespace, List<Value> args)
-            throws ExecutionException;
+            throws Exception;
 
 }
