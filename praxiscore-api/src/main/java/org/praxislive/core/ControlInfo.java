@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -76,6 +76,14 @@ public final class ControlInfo extends PMap.MapBasedValue {
     public static final String KEY_EXPERT = "expert";
 
     /**
+     * Optional map key to mark a control of type function as responding like a
+     * property. The control will always respond with a single output argument
+     * with the bound value. All input is optional. Input values may alter the
+     * bound value, by eg. merging or concatenating.
+     */
+    public static final String KEY_BINDABLE = "bindable";
+
+    /**
      * The types of a control.
      */
     public static enum Type {
@@ -114,8 +122,6 @@ public final class ControlInfo extends PMap.MapBasedValue {
     private final List<ArgumentInfo> inputs;
     private final List<ArgumentInfo> outputs;
     private final List<Value> defaults;
-
-    private volatile String string;
 
     private ControlInfo(Type type,
             List<ArgumentInfo> inputs,

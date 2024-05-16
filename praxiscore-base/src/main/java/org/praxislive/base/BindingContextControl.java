@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -159,13 +159,13 @@ public class BindingContextControl implements Control, BindingContext {
         }
 
     }
-    
+
     private static class BindingSyncElement
             implements Comparable<BindingSyncElement> {
-        
+
         private final BindingImpl binding;
         private final long time;
-        
+
         private BindingSyncElement(BindingImpl binding, long time) {
             this.binding = binding;
             this.time = time;
@@ -179,7 +179,7 @@ public class BindingContextControl implements Control, BindingContext {
             }
             return timeDiff < 0 ? -1 : 1;
         }
-        
+
     }
 
     private class BindingImpl extends Binding {
@@ -189,9 +189,9 @@ public class BindingContextControl implements Control, BindingContext {
         private ControlInfo bindingInfo;
         private long syncPeriod;
 
-//        private int lastCallID;
         private int infoMatchID;
-        private boolean isProperty;
+        private boolean isSyncable;
+        private boolean isWritableProperty;
         private Call activeCall;
         private Adaptor activeAdaptor;
         private List<Value> values;
@@ -228,15 +228,6 @@ public class BindingContextControl implements Control, BindingContext {
             return adaptors.isEmpty();
         }
 
-//        private void removeAll() {
-//            Iterator<Adaptor> itr = adaptors.iterator();
-//            while (itr.hasNext()) {
-//                Adaptor adaptor = itr.next();
-//                unbind(adaptor);
-//                itr.remove();
-//            }
-//            updateSyncConfiguration();
-//        }
         @Override
         protected void send(Adaptor adaptor, List<Value> args) {
             Call call;
@@ -250,10 +241,12 @@ public class BindingContextControl implements Control, BindingContext {
             router.route(call);
             activeCall = call;
             activeAdaptor = adaptor;
-            values = args;
-            for (Adaptor ad : adaptors) {
-                if (ad != adaptor) {
-                    ad.update();
+            if (isWritableProperty) {
+                values = call.args();
+                for (Adaptor ad : adaptors) {
+                    if (ad != adaptor) {
+                        ad.update();
+                    }
                 }
             }
         }
@@ -264,7 +257,7 @@ public class BindingContextControl implements Control, BindingContext {
         }
 
         private void updateSyncConfiguration() {
-            if (isProperty) {
+            if (isSyncable) {
                 LOG.log(System.Logger.Level.DEBUG, "Updating sync configuration on {0}", boundAddress);
                 boolean active = false;
                 SyncRate highRate = SyncRate.None;
@@ -290,15 +283,16 @@ public class BindingContextControl implements Control, BindingContext {
         }
 
         private long delayForRate(SyncRate rate) {
-            switch (rate) {
-                case Low:
-                    return LOW_SYNC_DELAY;
-                case Medium:
-                    return MED_SYNC_DELAY;
-                case High:
-                    return HIGH_SYNC_DELAY;
-            }
-            throw new IllegalArgumentException();
+            return switch (rate) {
+                case Low ->
+                    LOW_SYNC_DELAY;
+                case Medium ->
+                    MED_SYNC_DELAY;
+                case High ->
+                    HIGH_SYNC_DELAY;
+                case None ->
+                    0;
+            };
         }
 
         private void sendInfoRequest() {
@@ -312,18 +306,20 @@ public class BindingContextControl implements Control, BindingContext {
         private void processInfo(Call call) {
             if (call.matchID() == infoMatchID) {
                 List<Value> args = call.args();
-                if (args.size() > 0) {
+                if (!args.isEmpty()) {
                     ComponentInfo compInfo = null;
                     try {
                         compInfo = ComponentInfo.from(args.get(0)).get();
                         // @TODO on null?
                         bindingInfo = compInfo.controlInfo(boundAddress.controlID());
                         ControlInfo.Type type = bindingInfo.controlType();
-                        isProperty = (type == ControlInfo.Type.Property)
-                                || (type == ControlInfo.Type.ReadOnlyProperty);
-
+                        isSyncable = (type == ControlInfo.Type.Property)
+                                || (type == ControlInfo.Type.ReadOnlyProperty)
+                                || (type == ControlInfo.Type.Function
+                                && bindingInfo.properties().getBoolean(ControlInfo.KEY_BINDABLE, false));
+                        isWritableProperty = (type == ControlInfo.Type.Property);
                     } catch (Exception ex) {
-                        isProperty = false;
+                        isSyncable = false;
                         bindingInfo = null;
                         LOG.log(System.Logger.Level.WARNING, "" + call + "\n" + compInfo, ex);
                     }
@@ -336,7 +332,7 @@ public class BindingContextControl implements Control, BindingContext {
         }
 
         private void processInfoError(Call call) {
-            isProperty = false;
+            isSyncable = false;
             bindingInfo = null;
             LOG.log(System.Logger.Level.WARNING, "Couldn't get info for {0}", boundAddress);
             for (Adaptor a : adaptors) {
@@ -359,7 +355,7 @@ public class BindingContextControl implements Control, BindingContext {
                     activeAdaptor.onResponse(call.args());
                     activeAdaptor = null;
                 }
-                if (isProperty) {
+                if (isSyncable) {
                     values = call.args();
                     for (Adaptor a : adaptors) {
                         a.update();
@@ -402,7 +398,7 @@ public class BindingContextControl implements Control, BindingContext {
                     }
                 }
             }
-            if (isProperty) {
+            if (isSyncable) {
                 Call call = Call.create(boundAddress, controlAddress, now);
                 router.route(call);
                 activeCall = call;

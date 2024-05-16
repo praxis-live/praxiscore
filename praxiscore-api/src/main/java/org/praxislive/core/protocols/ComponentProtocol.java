@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -66,7 +66,8 @@ public final class ComponentProtocol implements Protocol {
     public static final ControlInfo META_INFO
             = Info.control(c -> c.function()
             .inputs(a -> a.type(PMap.class).property(ArgumentInfo.KEY_OPTIONAL, true))
-            .outputs(a -> a.type(PMap.class)));
+            .outputs(a -> a.type(PMap.class))
+            .property(ControlInfo.KEY_BINDABLE, true));
 
     /**
      * A component info for this protocol. Can be used with
