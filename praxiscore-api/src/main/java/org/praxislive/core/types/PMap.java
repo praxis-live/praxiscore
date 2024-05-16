@@ -482,7 +482,7 @@ public final class PMap extends Value {
      * empty Optional is returned.
      *
      * @param value value
-     * @return optional PArray
+     * @return optional PMap
      */
     public static Optional<PMap> from(Value value) {
         try {

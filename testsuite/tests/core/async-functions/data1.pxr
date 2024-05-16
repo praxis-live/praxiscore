@@ -176,10 +176,9 @@ import org.praxislive.core.services.SystemManagerService;
                         + response.result().args()
                 );
                 error.send();
-            \} else if (response.error().exceptionType()
-                    != UnsupportedOperationException.class) \{
+            \} else if (!\"UnsupportedOperationException\".equals(response.error().errorType())) \{
                 log(ERROR, \"<FAIL> wrong exception received : \"
-                        + response.error().exceptionType());
+                        + response.error().errorType());
                 error.send();
             \} else \{
                 log(INFO, \"Test 4 : OK\");

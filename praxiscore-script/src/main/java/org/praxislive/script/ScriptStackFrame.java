@@ -186,7 +186,7 @@ public final class ScriptStackFrame implements StackFrame {
             msg = activeCommand + " : Error";
         } else {
             msg = PError.from(response)
-                    .map(err -> activeCommand + " : " + err.exceptionType().getSimpleName()
+                    .map(err -> activeCommand + " : " + err.errorType()
                     + " : " + err.message())
                     .orElse(activeCommand + " : Error : " + response);
         }
