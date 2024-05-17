@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -46,11 +46,6 @@ final class OrderedMapImpl<K, V> implements OrderedMap<K, V> {
     @Override
     public List<K> keys() {
         return keys;
-    }
-
-    @Override
-    public void clear() {
-        map.clear();
     }
 
     @Override
@@ -116,18 +111,8 @@ final class OrderedMapImpl<K, V> implements OrderedMap<K, V> {
     }
 
     @Override
-    public V put(K key, V value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void putAll(Map<? extends K, ? extends V> m) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public V remove(Object key) {
-        throw new UnsupportedOperationException();
+    public OrderedMap<K, V> reversed() {
+        return new OrderedMapImpl<>(List.copyOf(keys.reversed()), map);
     }
 
     @Override
@@ -176,6 +161,26 @@ final class OrderedMapImpl<K, V> implements OrderedMap<K, V> {
         return entrySet().stream()
                 .map(e -> e.getKey() + "=" + e.getValue())
                 .collect(Collectors.joining(", ", "{", "}"));
+    }
+
+    @Override
+    public void clear() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public V put(K key, V value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void putAll(Map<? extends K, ? extends V> m) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public V remove(Object key) {
+        throw new UnsupportedOperationException();
     }
 
 }

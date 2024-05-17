@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -86,7 +86,13 @@ public class OrderedMapTest {
                 .map(Map.Entry::getValue)
                 .toList();
         assertEquals(List.of(v1, v2, v3), values);
-
+        var reversed = map.reversed();
+        assertEquals(map, reversed);
+        assertEquals(List.of(k3, k2, k1), reversed.keys());
+        values = reversed.entrySet().stream()
+                .map(Map.Entry::getValue)
+                .toList();
+        assertEquals(List.of(v3, v2, v1), values);
     }
 
     @Test
