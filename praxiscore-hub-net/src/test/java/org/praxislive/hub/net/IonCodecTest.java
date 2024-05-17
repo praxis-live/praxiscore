@@ -135,8 +135,10 @@ public class IonCodecTest {
         assertEquals(1, msgList.size());
         var decoded = (Message.Error) msgList.get(0);
         assertEquals(matchID, decoded.matchID());
-        var decodedError = PError.from(decoded.args().get(0)).orElseThrow();
-        assertEquals(IllegalStateException.class, decodedError.exceptionType());
+        var decodedArg = decoded.args().get(0);
+        assertTrue(decodedArg instanceof PError);
+        var decodedError = PError.from(decodedArg).orElseThrow();
+        assertEquals(IllegalStateException.class.getSimpleName(), decodedError.errorType());
         assertEquals("FOO", decodedError.message());
     }
 

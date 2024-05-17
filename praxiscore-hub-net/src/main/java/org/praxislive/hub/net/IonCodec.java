@@ -39,6 +39,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PBytes;
+import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -335,7 +336,8 @@ class IonCodec {
                     continue;
                 }
                 var vt = Value.Type.fromName(annotation).orElse(null);
-                if (vt != null && PMap.MapBasedValue.class.isAssignableFrom(vt.asClass())) {
+                if (vt != null && (PError.class == vt.asClass()
+                        || PMap.MapBasedValue.class.isAssignableFrom(vt.asClass()))) {
                     type = vt;
                     break;
                 }
@@ -385,6 +387,8 @@ class IonCodec {
             writer.writeBool(b.value());
         } else if (value instanceof PMap m) {
             writeMap(writer, m, TYPE_MAP);
+        } else if (value instanceof PError e) {
+            writeMap(writer, e.dataMap(), PError.TYPE_NAME, TYPE_MAP);
         } else if (value instanceof PMap.MapBasedValue v) {
             writeMap(writer, v.dataMap(), v.type().name(), TYPE_MAP);
         } else {
@@ -400,7 +404,7 @@ class IonCodec {
         }
     }
 
-    private void writeMap(IonWriter writer, PMap map, String ... annotations) throws IOException {
+    private void writeMap(IonWriter writer, PMap map, String... annotations) throws IOException {
         writer.setTypeAnnotations(annotations);
         writer.stepIn(IonType.LIST);
         for (var key : map.keys()) {
