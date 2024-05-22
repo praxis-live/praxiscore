@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,7 +44,6 @@ public final class MapTreeWriter implements TreeWriter {
 
     private static final String ANNOTATION_PREFIX = "%";
     private static final String CHILD_PREFIX = "@";
-    private static final String PROPERTY_PREFIX = ".";
 
     private static final String TYPE_KEY = ANNOTATION_PREFIX + "type";
     private static final String INFO_KEY = ANNOTATION_PREFIX + "info";
@@ -97,7 +96,7 @@ public final class MapTreeWriter implements TreeWriter {
 
     @Override
     public MapTreeWriter writeProperty(String id, Value value) {
-        map.put(PROPERTY_PREFIX + id, value);
+        map.put(id, value);
         return this;
     }
 
