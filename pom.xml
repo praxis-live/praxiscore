@@ -29,6 +29,7 @@
     <module>praxiscore-hub</module>
     <module>praxiscore-script</module>
     <module>praxiscore-launcher</module>
+    <module>praxiscore-project</module>
     <module>praxiscore-data</module>
     <module>praxiscore-video</module>
     <module>praxiscore-video-code</module>
