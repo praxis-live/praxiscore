@@ -79,7 +79,7 @@ public class GraphModelTest {
         GraphModel model = GraphModel.parse(PARENT_CONTEXT, GRAPH_SCRIPT);
         if (VERBOSE) {
             System.out.println("Constructed model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         verifyFullGraphModel(model);
         assertEquals(1, model.root().comments().size());
@@ -98,7 +98,7 @@ public class GraphModelTest {
         GraphModel model = GraphModel.parse(PARENT_CONTEXT, script);
         if (VERBOSE) {
             System.out.println("Constructed model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         verifyFullGraphModel(model);
         assertEquals(1, model.root().comments().size());
@@ -119,7 +119,7 @@ public class GraphModelTest {
         GraphModel model = GraphModel.parseSubgraph(PARENT_CONTEXT, SUBGRAPH_SCRIPT);
         if (VERBOSE) {
             System.out.println("Constructed subgraph model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         assertTrue(model.root().isSynthetic());
         assertEquals("", model.root().id());
@@ -154,7 +154,7 @@ public class GraphModelTest {
         GraphModel model = GraphModel.parseSubgraph(PARENT_CONTEXT, script);
         if (VERBOSE) {
             System.out.println("Constructed subgraph model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         assertTrue(model.root().isSynthetic());
         assertEquals("", model.root().id());
@@ -216,7 +216,7 @@ public class GraphModelTest {
         GraphModel model = GraphModel.fromSerializedRoot("root", GRAPH_SERIALIZED);
         if (VERBOSE) {
             System.out.println("Constructed model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         verifyFullGraphModel(model);
     }
@@ -227,7 +227,7 @@ public class GraphModelTest {
                 PMap.from(GRAPH_SERIALIZED.get("@container")).orElseThrow());
         if (VERBOSE) {
             System.out.println("Constructed model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         assertTrue(model.root().isSynthetic());
         assertEquals(List.of("foo"), List.copyOf(model.root().children().keySet()));
@@ -246,7 +246,7 @@ public class GraphModelTest {
                 id -> List.of("child1", "container").contains(id));
         if (VERBOSE) {
             System.out.println("Constructed subgraph model");
-            System.out.println(model.root());
+            System.out.println(model);
         }
         assertTrue(model.root().isSynthetic());
         assertEquals("", model.root().id());
@@ -283,7 +283,7 @@ public class GraphModelTest {
         assertEquals(expected, script);
         
         GraphModel roundTrip = GraphModel.parse(PARENT_CONTEXT, script);
-        assertEquals(model.root(), roundTrip.root());
+        assertEquals(model, roundTrip);
     }
     
     @Test
@@ -296,7 +296,7 @@ public class GraphModelTest {
         }
         assertEquals(SUBGRAPH_SCRIPT, script);
         GraphModel roundTrip = GraphModel.parseSubgraph(PARENT_CONTEXT, script);
-        assertEquals(model.root(), roundTrip.root());
+        assertEquals(model, roundTrip);
     }
     
     private void verifyFullGraphModel(GraphModel model) {

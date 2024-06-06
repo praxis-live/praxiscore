@@ -36,6 +36,8 @@ import org.praxislive.core.protocols.SerializableProtocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 
+import static org.praxislive.project.ModelUtils.validateContext;
+
 /**
  * Model for graph and subgraph scripts, encompassing the element tree and
  * related information.
@@ -87,7 +89,7 @@ public final class GraphModel {
      * @return new graph model
      */
     public GraphModel withContext(URI context) {
-        return new GraphModel(root, context);
+        return new GraphModel(root, validateContext(context));
     }
 
     /**
@@ -117,6 +119,24 @@ public final class GraphModel {
             throw new IllegalStateException(ex);
         }
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this
+                || obj instanceof GraphModel other
+                && Objects.equals(root, other.root)
+                && Objects.equals(context, other.context);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(root, context);
+    }
+
+    @Override
+    public String toString() {
+        return "GraphModel {\n  Context : " + context + "\n  Graph :\n" + writeToString().indent(4) + "\n}";
     }
 
     /**
@@ -202,7 +222,7 @@ public final class GraphModel {
      */
     public static GraphModel of(GraphElement.Root root, URI context) {
         return new GraphModel(Objects.requireNonNull(root),
-                Objects.requireNonNull(context));
+                validateContext(Objects.requireNonNull(context)));
     }
 
     /**
@@ -229,7 +249,7 @@ public final class GraphModel {
      * @throws ParseException if the graph is invalid
      */
     public static GraphModel parse(URI context, String graph) throws ParseException {
-        GraphElement.Root root = GraphParser.parse(context, graph);
+        GraphElement.Root root = GraphParser.parse(validateContext(context), graph);
         return new GraphModel(root, context);
     }
 
@@ -257,7 +277,7 @@ public final class GraphModel {
      * @throws ParseException if the subgraph is invalid
      */
     public static GraphModel parseSubgraph(URI context, String graph) throws ParseException {
-        GraphElement.Root root = GraphParser.parseSubgraph(context, graph);
+        GraphElement.Root root = GraphParser.parseSubgraph(validateContext(context), graph);
         return new GraphModel(root, context);
     }
 
