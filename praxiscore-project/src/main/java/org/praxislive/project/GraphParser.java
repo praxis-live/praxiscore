@@ -207,7 +207,7 @@ class GraphParser {
             String txt = token.getText();
             switch (token.getType()) {
                 case COMMENT ->
-                    component.comment(txt);
+                    component.comment(SyntaxUtils.unescapeCommentText(txt));
                 case PLAIN -> {
                     if (txt.startsWith(PROPERTY_PREFIX) && txt.length() > 1) {
                         parseProperty(component, txt.substring(1), tokensToEOL(tokens));

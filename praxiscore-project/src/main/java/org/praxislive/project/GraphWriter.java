@@ -66,11 +66,22 @@ class GraphWriter {
             sb.append("./").append(id);
         }
         sb.append(' ').append(cmp.type().toString()).append(" {\n");
+        writeComments(sb, cmp, level + 1);
         writeProperties(sb, cmp, level + 1);
         writeChildren(sb, cmp, level + 1);
         writeConnections(sb, cmp, level + 1);
         writeIndent(sb, level);
         sb.append("}\n");
+    }
+
+    private void writeComments(Appendable sb, GraphElement.Component cmp, int level)
+            throws IOException {
+        for (GraphElement.Comment comment : cmp.comments()) {
+            writeIndent(sb, level);
+            sb.append("# ");
+            sb.append(SyntaxUtils.escapeCommentText(comment.text()));
+            sb.append('\n');
+        }
     }
 
     private void writeProperties(Appendable sb, GraphElement.Component cmp, int level)

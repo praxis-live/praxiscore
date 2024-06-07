@@ -26,6 +26,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
@@ -81,15 +82,50 @@ public final class GraphModel {
     }
 
     /**
-     * Create a new graph model with a different context. The context is used to
-     * relativize resources when writing. Use {@code null} to create a model
-     * without context.
+     * Create a new graph model based on this one, with a different context. The
+     * context is used to relativize resources when writing. Use {@code null} to
+     * create a model without context.
      *
      * @param context new resource context
      * @return new graph model
      */
     public GraphModel withContext(URI context) {
         return new GraphModel(root, validateContext(context));
+    }
+
+    /**
+     * Create a new graph model based on this one, with a renamed root. All
+     * other elements are kept the same. This method will throw an exception if
+     * called on a (subgraph) model with a synthetic root.
+     *
+     * @param id new root ID
+     * @return new graph model
+     */
+    public GraphModel withRename(String id) {
+        if (root.isSynthetic()) {
+            throw new IllegalStateException("Cannot rename synthetic root");
+        }
+        GraphBuilder.Root builder = GraphBuilder.root(id, root.type());
+        root.comments().forEach(builder::comment);
+        root.commands().forEach(builder::command);
+        root.properties().forEach(builder::property);
+        root.children().forEach(builder::child);
+        root.connections().forEach(builder::connection);
+        return new GraphModel(builder.build(), context);
+    }
+
+    /**
+     * Create a new graph model based on this one after applying the provided
+     * transform function. The builder passed into the transform will be
+     * pre-configured with all the elements of this model.
+     *
+     * @param transform transforming builder consumer
+     * @return new graph model
+     */
+    public GraphModel withTransform(Consumer<GraphBuilder.Root> transform) {
+        GraphBuilder.Root builder = GraphBuilder.root(root);
+        transform.accept(builder);
+        return new GraphModel(builder.build(), context);
     }
 
     /**

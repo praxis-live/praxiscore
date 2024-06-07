@@ -21,7 +21,6 @@
  */
 package org.praxislive.project;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -222,6 +221,67 @@ public class SyntaxUtils {
         writeValueImpl(Objects.requireNonNull(context),
                 Objects.requireNonNull(value),
                 Objects.requireNonNull(out));
+    }
+
+    static String unescapeCommentText(String text) {
+        if (!text.contains("\\")) {
+            return text;
+        }
+        int len = text.length();
+        StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            char c = text.charAt(i);
+            if (c == '\\') {
+                i++;
+                c = text.charAt(i);
+                switch (c) {
+                    case 'n':
+                        sb.append('\n');
+                        continue;
+                    case 't':
+                        sb.append('\t');
+                        continue;
+                    case 'r':
+                        continue;
+                }
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    static String escapeCommentText(String text) {
+        int len = text.length();
+        StringBuilder sb = new StringBuilder(len * 2);
+        for (int i = 0; i < len; i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '{':
+                case '}':
+                case '[':
+                case ']':
+                case '\"':
+                case '\\':
+                    sb.append('\\').append(c);
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                case '\r':
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+
+        // just in case, make sure newline isn't escaped
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\\') {
+            sb.append(' ');
+        }
+        return sb.toString();
     }
 
     private static String doPlain(String input) {
@@ -429,9 +489,6 @@ public class SyntaxUtils {
                 }
             }
             URI uri = context.resolve(new URI(null, null, path, null));
-            if ("file".equals(uri.getScheme())) {
-                uri = new File(uri).toURI();
-            }
             return PResource.of(uri);
         } catch (URISyntaxException ex) {
             throw new IllegalArgumentException(ex);

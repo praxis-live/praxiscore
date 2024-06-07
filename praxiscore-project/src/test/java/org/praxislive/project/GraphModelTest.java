@@ -22,7 +22,9 @@
 package org.praxislive.project;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -266,12 +268,12 @@ public class GraphModelTest {
                         c.targetComponent(), c.targetPort())
                         ).toList());
     }
-    
+
     @Test
     public void testWriteGraph() throws ParseException {
         GraphModel model = GraphModel.fromSerializedRoot("root", GRAPH_SERIALIZED)
                 .withContext(PARENT_CONTEXT);
-        
+
         String script = model.writeToString();
         if (VERBOSE) {
             System.out.println("Written graph");
@@ -281,11 +283,11 @@ public class GraphModelTest {
                 .filter(l -> !l.contains("#"))
                 .collect(Collectors.joining("\n", "", "\n"));
         assertEquals(expected, script);
-        
+
         GraphModel roundTrip = GraphModel.parse(PARENT_CONTEXT, script);
         assertEquals(model, roundTrip);
     }
-    
+
     @Test
     public void testWriteSubgraph() throws ParseException {
         GraphModel model = GraphModel.parseSubgraph(PARENT_CONTEXT, SUBGRAPH_SCRIPT);
@@ -298,7 +300,114 @@ public class GraphModelTest {
         GraphModel roundTrip = GraphModel.parseSubgraph(PARENT_CONTEXT, script);
         assertEquals(model, roundTrip);
     }
-    
+
+    @Test
+    public void testRename() {
+        GraphModel model = GraphModel.fromSerializedRoot("name1", GRAPH_SERIALIZED);
+        assertEquals("name1", model.root().id());
+        GraphModel renamed = model.withRename("name2");
+        if (VERBOSE) {
+            System.out.println("Renamed model");
+            System.out.println(renamed);
+        }
+        assertEquals("name2", renamed.root().id());
+        assertEquals(model.root().comments(), renamed.root().comments());
+        assertEquals(model.root().commands(), renamed.root().commands());
+        assertEquals(model.root().properties(), renamed.root().properties());
+        assertEquals(model.root().children(), renamed.root().children());
+        assertEquals(model.root().connections(), renamed.root().connections());
+        assertSame(model.root().children().firstEntry().getValue(),
+                renamed.root().children().firstEntry().getValue());
+    }
+
+    @Test
+    public void testTransform() throws ParseException {
+        String script = """
+                        @ /root root:custom {
+                          @ ./child1 core:variable {
+                            # %graph.x 21
+                            # %graph.y 42
+                            # must be kept \\{
+                          }
+                          @ ./child2 core:property {
+                            # %graph.x 63
+                            # %graph.y 84
+                            .meta [map foo bar]
+                          }
+                        }
+                        """;
+        GraphModel model = GraphModel.parse(script);
+        GraphModel transformed = model.withTransform(root
+                -> root.transformChildren(children -> children
+                .map(c -> Map.entry(c.getKey(), rewriteMeta(c.getValue())))
+                .toList()));
+        if (VERBOSE) {
+            System.out.println("Transformed model");
+            System.out.println(transformed);
+        }
+        PMap attr1 = PMap.from(transformed.root().children()
+                .get("child1").properties().get("meta").value()).orElseThrow();
+        PMap attr2 = PMap.from(transformed.root().children()
+                .get("child2").properties().get("meta").value()).orElseThrow();
+        assertEquals(List.of("graph.x", "graph.y"), attr1.keys());
+        assertEquals(List.of("foo", "graph.x", "graph.y"), attr2.keys());
+        assertEquals("42", attr1.getString("graph.y", ""));
+        assertEquals("63", attr2.getString("graph.x", ""));
+        assertEquals("bar", attr2.getString("foo", ""));
+        assertEquals(1, transformed.root().children().get("child1").comments().size());
+        assertEquals("must be kept {", transformed.root().children().get("child1").comments().get(0).text());
+        String expectedOutput = """
+                        @ /root root:custom {
+                          @ ./child1 core:variable {
+                            # must be kept \\{
+                            .meta [map graph.x 21 graph.y 42]
+                          }
+                          @ ./child2 core:property {
+                            .meta [map foo bar graph.x 63 graph.y 84]
+                          }
+                        }
+                        """;
+        assertEquals(expectedOutput, transformed.writeToString());
+    }
+
+    private GraphElement.Component rewriteMeta(GraphElement.Component cmp) {
+        PMap.Builder mb = PMap.builder();
+        for (GraphElement.Comment comment : cmp.comments()) {
+            String txt = comment.text().strip();
+            if (txt.startsWith("%")) {
+                int delim = txt.indexOf(" ");
+                if (delim > 1) {
+                    mb.put(txt.substring(1, delim), txt.substring(delim + 1));
+                }
+            }
+        }
+        PMap attr = mb.build();
+        GraphBuilder.Component newCmp = GraphBuilder.component(cmp);
+        newCmp.transformProperties(props -> {
+            List<Map.Entry<String, GraphElement.Property>> result = new ArrayList<>(props.toList());
+            int index = -1;
+            for (int i = 0; i < result.size(); i++) {
+                if ("meta".equals(result.get(i).getKey())) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index > -1) {
+                PMap existing = PMap.from(result.get(index).getValue().value()).orElseThrow();
+                result.set(index, Map.entry("meta",
+                        GraphElement.property(PMap.merge(existing, attr, PMap.REPLACE))));
+            } else {
+                result.add(0, Map.entry("meta", GraphElement.property(attr)));
+            }
+            return result;
+        });
+
+        newCmp.transformComments(comments -> comments
+                .filter(c -> !c.text().strip().startsWith("%"))
+                .toList());
+        return newCmp.build();
+    }
+
     private void verifyFullGraphModel(GraphModel model) {
         assertEquals("root", model.root().id());
         assertFalse(model.root().isSynthetic());
