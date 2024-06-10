@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -114,7 +114,16 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     @Override
     public void write(TreeWriter writer) {
+        super.write(writer);
+        writeChildren(writer);
+        writeConnections(writer);
+    }
+
+    protected final void writeChildren(TreeWriter writer) {
         childMap.forEach((id, child) -> writer.writeChild(id, child::write));
+    }
+
+    protected final void writeConnections(TreeWriter writer) {
         connections.forEach(c -> writer.writeConnection(
                 new Connection(c.get(0).toString(), c.get(1).toString(),
                         c.get(2).toString(), c.get(3).toString())));

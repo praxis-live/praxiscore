@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,6 +21,7 @@
  */
 package org.praxislive.code;
 
+import org.praxislive.base.MetaProperty;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Container;
@@ -32,12 +33,14 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.ComponentType;
+import org.praxislive.core.ControlInfo;
 import org.praxislive.core.ThreadContext;
 import org.praxislive.core.TreeWriter;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
+import org.praxislive.core.types.PMap;
 
 /**
  * A CodeComponent is a Component instance that is rewritable at runtime. The
@@ -50,6 +53,9 @@ import org.praxislive.core.services.LogService;
  */
 public class CodeComponent<D extends CodeDelegate> implements Component {
 
+    private final Control infoProperty;
+    private final MetaProperty metaProperty;
+
     private Container parent;
     private CodeContext<D> codeCtxt;
     private ComponentAddress address;
@@ -59,7 +65,12 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     private ProxyContext proxyContext;
 
     CodeComponent() {
-
+        infoProperty = (call, router) -> {
+            if (call.isReplyRequired()) {
+                router.route(call.reply(getInfo()));
+            }
+        };
+        metaProperty = new MetaProperty();
     }
 
     @Override
@@ -195,6 +206,64 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
 
         logInfo = new LogInfo(level, toAddress);
+    }
+
+    static class ControlWrapper extends ControlDescriptor<ControlWrapper> {
+
+        private final String controlID;
+
+        private CodeComponent<?> component;
+
+        ControlWrapper(String controlID, int index) {
+            super(ControlWrapper.class, controlID, Category.Internal, index);
+            this.controlID = controlID;
+        }
+
+        @Override
+        public void attach(CodeContext<?> context, ControlWrapper previous) {
+            component = context.getComponent();
+        }
+
+        @Override
+        public Control control() {
+            return switch (controlID) {
+                case ComponentProtocol.INFO ->
+                    component.infoProperty;
+                case ComponentProtocol.META ->
+                    component.metaProperty;
+                case ComponentProtocol.META_MERGE ->
+                    component.metaProperty.getMergeControl();
+                default ->
+                    null;
+            };
+        }
+
+        @Override
+        public ControlInfo controlInfo() {
+            return switch (controlID) {
+                case ComponentProtocol.INFO ->
+                    ComponentProtocol.INFO_INFO;
+                case ComponentProtocol.META ->
+                    ComponentProtocol.META_INFO;
+                case ComponentProtocol.META_MERGE ->
+                    ComponentProtocol.META_MERGE_INFO;
+                default ->
+                    null;
+            };
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            switch (controlID) {
+                case ComponentProtocol.META -> {
+                    PMap value = component.metaProperty.getValue();
+                    if (!value.isEmpty()) {
+                        writer.writeProperty(ComponentProtocol.META, value);
+                    }
+                }
+            }
+        }
+
     }
 
     private static class LogInfo {

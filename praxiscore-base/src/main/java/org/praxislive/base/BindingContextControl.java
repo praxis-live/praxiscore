@@ -314,9 +314,7 @@ public class BindingContextControl implements Control, BindingContext {
                         bindingInfo = compInfo.controlInfo(boundAddress.controlID());
                         ControlInfo.Type type = bindingInfo.controlType();
                         isSyncable = (type == ControlInfo.Type.Property)
-                                || (type == ControlInfo.Type.ReadOnlyProperty)
-                                || (type == ControlInfo.Type.Function
-                                && bindingInfo.properties().getBoolean(ControlInfo.KEY_BINDABLE, false));
+                                || (type == ControlInfo.Type.ReadOnlyProperty);
                         isWritableProperty = (type == ControlInfo.Type.Property);
                     } catch (Exception ex) {
                         isSyncable = false;

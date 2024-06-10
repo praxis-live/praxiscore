@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -121,16 +121,16 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     }
 
     /**
-     * Process will be called by the CodeContext. Subclasses may override to
-     * extend, but should ensure to call the superclass method.
+     * Process will be called by the CodeContext.
      */
-    protected void process() {
+    final void process() {
         plugins = ALL_PLUGINS.stream().filter(p -> p.isSupportedConnector(this))
                 .collect(Collectors.toList());
         analyseFields(extractFieldsToBase(delegate, factory.baseClass()));
         analyseMethods(extractMethodsToBase(delegate, factory.baseClass()));
         addDefaultControls();
         addDefaultPorts();
+        addControl(new ResponseHandler(getInternalIndex()));
         buildExternalData();
     }
 
@@ -159,7 +159,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of control descriptors by ID
      */
-    protected Map<String, ControlDescriptor<?>> extractControls() {
+    final Map<String, ControlDescriptor<?>> extractControls() {
         return extControls;
     }
 
@@ -170,7 +170,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of port descriptors by ID
      */
-    protected Map<String, PortDescriptor<?>> extractPorts() {
+    final Map<String, PortDescriptor<?>> extractPorts() {
         return extPorts;
     }
 
@@ -181,7 +181,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return map of reference descriptors by ID
      */
-    protected Map<String, ReferenceDescriptor<?>> extractRefs() {
+    final Map<String, ReferenceDescriptor<?>> extractRefs() {
         return extRefs;
     }
 
@@ -191,11 +191,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return component info
      */
-    protected ComponentInfo extractInfo() {
+    final ComponentInfo extractInfo() {
         return info;
     }
 
-    ComponentType extractComponentType() {
+    final ComponentType extractComponentType() {
         return factory.componentType();
     }
 
@@ -262,7 +262,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param ports map of port IDs and descriptors
      * @return component info
      */
-    protected ComponentInfo buildComponentInfo(Map<String, ControlDescriptor<?>> controls,
+    final ComponentInfo buildComponentInfo(Map<String, ControlDescriptor<?>> controls,
             Map<String, PortDescriptor<?>> ports) {
         var cmp = Info.component();
         buildBaseComponentInfo(cmp);
@@ -353,29 +353,49 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      */
     protected void addDefaultControls() {
         addControl(createInfoControl(getInternalIndex()));
-        addControl(new MetaDescriptor(getInternalIndex()));
+        addControl(createMetaControl(getInternalIndex()));
+        addControl(createMetaMergeControl(getInternalIndex()));
         addControl(createCodeControl(getInternalIndex()));
-        addControl(new ResponseHandler(getInternalIndex()));
     }
 
     /**
-     * Called to create the info property control.
+     * Create the info property control.
      *
      * @param index position of control
      * @return info control descriptor
      */
-    protected ControlDescriptor createInfoControl(int index) {
-        return new InfoProperty.Descriptor(index);
+    protected final ControlDescriptor createInfoControl(int index) {
+        return new CodeComponent.ControlWrapper(ComponentProtocol.INFO, index);
     }
 
     /**
-     * Called to create the code property control.
+     * Create the code property control.
      *
      * @param index position of control
      * @return code control descriptor
      */
-    protected ControlDescriptor<?> createCodeControl(int index) {
+    protected final ControlDescriptor<?> createCodeControl(int index) {
         return new CodeProperty.Descriptor(factory, index);
+    }
+
+    /**
+     * Create the meta property control.
+     *
+     * @param index position of control
+     * @return code control descriptor
+     */
+    protected final ControlDescriptor<?> createMetaControl(int index) {
+        return new CodeComponent.ControlWrapper(ComponentProtocol.META, index);
+    }
+
+    /**
+     * Create the meta-merge function control.
+     *
+     * @param index position of control
+     * @return code control descriptor
+     */
+    protected final ControlDescriptor<?> createMetaMergeControl(int index) {
+        return new CodeComponent.ControlWrapper(ComponentProtocol.META_MERGE, index);
     }
 
     /**
@@ -791,7 +811,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param field field to find ID for
      * @return ID
      */
-    public String findID(Field field) {
+    public final String findID(Field field) {
         ID ann = field.getAnnotation(ID.class);
         if (ann != null) {
             String id = ann.value();
@@ -810,7 +830,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param method method to find ID for
      * @return ID
      */
-    public String findID(Method method) {
+    public final String findID(Method method) {
         ID ann = method.getAnnotation(ID.class);
         if (ann != null) {
             String id = ann.value();
@@ -827,7 +847,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param javaName Java name to convert
      * @return ID for Java name
      */
-    protected String javaNameToID(String javaName) {
+    protected final String javaNameToID(String javaName) {
         String ret = idRegex.matcher(javaName).replaceAll("-");
         return ret.toLowerCase();
     }
@@ -857,7 +877,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return next index
      */
-    public int getSyntheticIndex() {
+    public final int getSyntheticIndex() {
         return syntheticIdx++;
     }
 
@@ -867,7 +887,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @return next index
      */
-    protected int getInternalIndex() {
+    protected final int getInternalIndex() {
         return internalIdx++;
     }
 

@@ -22,7 +22,6 @@
 package org.praxislive.core.protocols;
 
 import java.util.stream.Stream;
-import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ControlInfo;
@@ -47,27 +46,40 @@ public final class ComponentProtocol implements Protocol {
     public static final String META = "meta";
 
     /**
-     * Control info for the info control. A read-only property that returns the
-     * component info. The response to calling this control should be the same
-     * as calling {@link Component#getInfo}.
+     * Name of the optional meta control.
+     */
+    public static final String META_MERGE = "meta-merge";
+
+    /**
+     * Control info for the {@code info} control. A read-only property that
+     * returns the component info. The response to calling this control should
+     * be the same as calling {@link Component#getInfo}.
      */
     public static final ControlInfo INFO_INFO
             = Info.control(c -> c.readOnlyProperty().output(ComponentInfo.class));
 
     /**
-     * Control info for the optional control. This control allows for arbitrary
-     * metadata to be attached to a component. The control works the same as a
-     * map property, except that the optional PMap input is replace merged with
-     * the existing value. This allows callers to replace or delete only the
-     * keys they are interested in.
-     * <p>
-     * See also {@link PMap#REPLACE}.
+     * Control info for the optional {@code meta} property. This property allows
+     * for arbitrary metadata to be attached to a component. Implementations of
+     * this property may only allow the value to be set when the existing value
+     * is empty or the current value is empty. The {@code meta-merge} control
+     * should be used to update an existing meta map - see
+     * {@link #META_MERGE_INFO}.
      */
     public static final ControlInfo META_INFO
+            = Info.control(c -> c.property().input(PMap.class));
+
+    /**
+     * Control info for the optional {@code meta-merge} control. This control
+     * accepts a map to merge into the existing meta map, and returns the full
+     * resulting value.
+     * <p>
+     * The merge is done according to the specification of {@link PMap#REPLACE}.
+     */
+    public static final ControlInfo META_MERGE_INFO
             = Info.control(c -> c.function()
-            .inputs(a -> a.type(PMap.class).property(ArgumentInfo.KEY_OPTIONAL, true))
-            .outputs(a -> a.type(PMap.class))
-            .property(ControlInfo.KEY_BINDABLE, true));
+            .inputs(a -> a.type(PMap.class))
+            .outputs(a -> a.type(PMap.class)));
 
     /**
      * A component info for this protocol. Can be used with
@@ -85,7 +97,7 @@ public final class ComponentProtocol implements Protocol {
 
     @Override
     public Stream<String> optionalControls() {
-        return Stream.of(META);
+        return Stream.of(META, META_MERGE);
     }
 
     @Override
@@ -95,6 +107,8 @@ public final class ComponentProtocol implements Protocol {
                 INFO_INFO;
             case META ->
                 META_INFO;
+            case META_MERGE ->
+                META_MERGE_INFO;
             default ->
                 throw new IllegalArgumentException();
         };
