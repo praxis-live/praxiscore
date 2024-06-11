@@ -63,7 +63,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
     private final static System.Logger LOG = System.getLogger(AbstractContainer.class.getName());
 
     private final Map<String, Component> childMap;
-    private final Set<PArray> connections;
+    private final Set<Connection> connections;
 
     protected AbstractContainer() {
         childMap = new LinkedHashMap<>();
@@ -124,9 +124,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
     }
 
     protected final void writeConnections(TreeWriter writer) {
-        connections.forEach(c -> writer.writeConnection(
-                new Connection(c.get(0).toString(), c.get(1).toString(),
-                        c.get(2).toString(), c.get(3).toString())));
+        connections.forEach(writer::writeConnection);
     }
 
     protected void addChild(String id, Component child) throws VetoException {
@@ -173,34 +171,26 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     protected void connect(String component1, String port1, String component2, String port2)
             throws PortConnectionException {
-        handleConnection(true,
-                PString.of(component1),
-                PString.of(port1),
-                PString.of(component2),
-                PString.of(port2));
+        handleConnection(true, component1, port1, component2, port2);
     }
 
     protected void disconnect(String component1, String port1, String component2, String port2) {
         try {
-            handleConnection(false,
-                    PString.of(component1),
-                    PString.of(port1),
-                    PString.of(component2),
-                    PString.of(port2));
+            handleConnection(false, component1, port1, component2, port2);
         } catch (PortConnectionException ex) {
             LOG.log(System.Logger.Level.ERROR, "", ex);
         }
     }
 
-    private void handleConnection(boolean connect, PString c1id, PString p1id, PString c2id, PString p2id)
+    private void handleConnection(boolean connect, String component1, String port1, String component2, String port2)
             throws PortConnectionException {
         try {
-            Component c1 = getChild(c1id.toString());
-            final Port p1 = c1.getPort(p1id.toString());
-            Component c2 = getChild(c2id.toString());
-            final Port p2 = c2.getPort(p2id.toString());
+            Component c1 = getChild(component1);
+            final Port p1 = c1.getPort(port1);
+            Component c2 = getChild(component2);
+            final Port p2 = c2.getPort(port2);
 
-            final PArray connection = PArray.of(c1id, p1id, c2id, p2id);
+            final Connection connection = Connection.of(component1, port1, component2, port2);
 
             if (connect) {
                 p1.connect(p2);
@@ -214,8 +204,8 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
             }
         } catch (Exception ex) {
             LOG.log(System.Logger.Level.DEBUG, "Can't connect ports.", ex);
-            throw new PortConnectionException("Can't connect " + c1id + "!" + p1id
-                    + " to " + c2id + "!" + p2id);
+            throw new PortConnectionException("Can't connect " + component1 + "!" + port1
+                    + " to " + component2 + "!" + port2);
         }
     }
 
@@ -277,10 +267,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             handleConnection(true,
-                    PString.from(call.args().get(0)).orElseThrow(),
-                    PString.from(call.args().get(1)).orElseThrow(),
-                    PString.from(call.args().get(2)).orElseThrow(),
-                    PString.from(call.args().get(3)).orElseThrow());
+                    call.args().get(0).toString(),
+                    call.args().get(1).toString(),
+                    call.args().get(2).toString(),
+                    call.args().get(3).toString());
             router.route(call.reply());
         }
 
@@ -291,10 +281,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             handleConnection(false,
-                    PString.from(call.args().get(0)).orElseThrow(),
-                    PString.from(call.args().get(1)).orElseThrow(),
-                    PString.from(call.args().get(2)).orElseThrow(),
-                    PString.from(call.args().get(3)).orElseThrow());
+                    call.args().get(0).toString(),
+                    call.args().get(1).toString(),
+                    call.args().get(2).toString(),
+                    call.args().get(3).toString());
             router.route(call.reply());
         }
 
@@ -314,9 +304,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
         Port p1;
         Port p2;
-        PArray connection;
+        Connection connection;
 
-        private ConnectionListener(Port p1, Port p2, PArray connection) {
+        private ConnectionListener(Port p1, Port p2, Connection connection) {
             this.p1 = p1;
             this.p2 = p2;
             this.connection = connection;

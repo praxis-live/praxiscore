@@ -63,8 +63,8 @@ public class MapTreeWriterTest {
                             .writeInfo(ComponentProtocol.API_INFO)
                             .writeProperty("p1", PNumber.of(42));
                 })
-                .writeConnection(new Connection("child1", "out", "child2", "in"))
-                .writeConnection(new Connection("child2", "ready", "child1", "trigger"))
+                .writeConnection(Connection.of("child1", "out", "child2", "in"))
+                .writeConnection(Connection.of("child2", "ready", "child1", "trigger"))
                 .build();
         if (VERBOSE) {
             System.out.println("Writer output\n=================");
@@ -94,8 +94,8 @@ public class MapTreeWriterTest {
                 .build()
         );
         builder.put("%connections", PArray.of(
-                new Connection("child1", "out", "child2", "in").dataArray(),
-                new Connection("child2", "ready", "child1", "trigger").dataArray()
+                Connection.of("child1", "out", "child2", "in").dataArray(),
+                Connection.of("child2", "ready", "child1", "trigger").dataArray()
         ));
         return builder.build();
     }

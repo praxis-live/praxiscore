@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2022 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -320,6 +320,7 @@ public abstract class Value {
             types.add(new Type<>(PortAddress.class, PortAddress.TYPE_NAME, PortAddress::from));
 
             types.add(new Type<>(ComponentType.class, ComponentType.TYPE_NAME, ComponentType::from));
+            types.add(new Type<>(Connection.class, Connection.TYPE_NAME, Connection::from));
 
             Map<Class<? extends Value>, Type<?>> typesByClass = new HashMap<>();
             Map<String, Type<?>> typesByName = new HashMap<>();

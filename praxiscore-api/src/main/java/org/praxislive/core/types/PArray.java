@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
@@ -347,6 +348,80 @@ public final class PArray extends Value implements Iterable<Value> {
                 },
                 PArray::of
         );
+    }
+
+    /**
+     * An abstract superclass for values that are backed solely by a PArray.
+     * Subclassing this type can help with efficient serialization of the
+     * underlying representation. The concrete value type must be able to
+     * construct an equivalent value entirely from the PArray returned from
+     * {@link #dataArray()}.
+     * <p>
+     * The toString, equals, equivalent and hashCode methods are all implemented
+     * based solely on the array data.
+     */
+    public static abstract class ArrayBasedValue extends Value {
+
+        private final PArray data;
+
+        /**
+         * Construct a MapBasedValue using the provided data map.
+         *
+         * @param data data map
+         */
+        protected ArrayBasedValue(PArray data) {
+            this.data = Objects.requireNonNull(data);
+        }
+
+        /**
+         * Access the backing PArray data.
+         *
+         * @return backing array
+         */
+        public final PArray dataArray() {
+            return data;
+        }
+
+        @Override
+        public final String toString() {
+            return data.toString();
+        }
+
+        @Override
+        public final int hashCode() {
+            return data.hashCode();
+        }
+
+        @Override
+        public final boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final ArrayBasedValue other = (ArrayBasedValue) obj;
+            return Objects.equals(this.data, other.data);
+        }
+
+        @Override
+        public final boolean equivalent(Value value) {
+            if (this == value) {
+                return true;
+            }
+            if (value instanceof ArrayBasedValue arrayBased) {
+                return data.equivalent(arrayBased.data);
+            } else {
+                return PMap.from(value)
+                        .map(data::equivalent)
+                        .orElse(false);
+            }
+
+        }
+
     }
 
 }

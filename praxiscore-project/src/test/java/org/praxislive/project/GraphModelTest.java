@@ -517,9 +517,9 @@ public class GraphModelTest {
                 .build()
         );
         builder.put("%connections", PArray.of(
-                new Connection("child1", "out", "child2", "in").dataArray(),
-                new Connection("child1", "out", "container", "in").dataArray(),
-                new Connection("container", "ready", "child1", "trigger").dataArray()
+                Connection.of("child1", "out", "child2", "in"),
+                Connection.of("child1", "out", "container", "in"),
+                Connection.of("container", "ready", "child1", "trigger")
         ));
         return builder.build();
     }

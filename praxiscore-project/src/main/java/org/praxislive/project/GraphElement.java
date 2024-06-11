@@ -420,68 +420,46 @@ public sealed abstract class GraphElement {
 
     public static final class Connection extends GraphElement {
 
-        private final String sourceComponent;
-        private final String sourcePort;
-        private final String targetComponent;
-        private final String targetPort;
+        private final org.praxislive.core.Connection value;
 
         private Connection(String sourceComponent, String sourcePort, String targetComponent, String targetPort) {
-            if (!ComponentAddress.isValidID(Objects.requireNonNull(sourceComponent))) {
-                throw new IllegalArgumentException(sourceComponent + " is not a valid component ID");
-            }
-            if (!ComponentAddress.isValidID(Objects.requireNonNull(targetComponent))) {
-                throw new IllegalArgumentException(targetComponent + " is not a valid component ID");
-            }
-            if (!PortAddress.isValidID(Objects.requireNonNull(sourcePort))) {
-                throw new IllegalArgumentException(sourcePort + " is not a valid port ID");
-            }
-            if (!PortAddress.isValidID(Objects.requireNonNull(targetPort))) {
-                throw new IllegalArgumentException(targetPort + " is not a valid port ID");
-            }
-
-            this.sourceComponent = sourceComponent;
-            this.sourcePort = sourcePort;
-            this.targetComponent = targetComponent;
-            this.targetPort = targetPort;
+            value = org.praxislive.core.Connection.of(sourceComponent, sourcePort, targetComponent, targetPort);
         }
 
         public String sourceComponent() {
-            return sourceComponent;
+            return value.sourceComponent();
         }
 
         public String sourcePort() {
-            return sourcePort;
+            return value.sourcePort();
         }
 
         public String targetComponent() {
-            return targetComponent;
+            return value.targetComponent();
         }
 
         public String targetPort() {
-            return targetPort;
+            return value.targetPort();
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(sourceComponent, sourcePort, targetComponent, targetPort);
+            return Objects.hash(value);
         }
 
         @Override
         public boolean equals(Object obj) {
             return obj == this
-                    || (obj instanceof Connection c
-                    && Objects.equals(this.sourceComponent, c.sourceComponent)
-                    && Objects.equals(this.sourcePort, c.sourcePort)
-                    && Objects.equals(this.targetComponent, c.targetComponent)
-                    && Objects.equals(this.targetPort, c.targetPort));
+                    || obj instanceof Connection c
+                    && Objects.equals(this.value, c.value);
         }
 
         @Override
         public String toString() {
-            return "Connection{" + "sourceComponent=" + sourceComponent
-                    + ", sourcePort=" + sourcePort
-                    + ", targetComponent=" + targetComponent
-                    + ", targetPort=" + targetPort + "}";
+            return "Connection{" + "sourceComponent=" + sourceComponent()
+                    + ", sourcePort=" + sourcePort()
+                    + ", targetComponent=" + targetComponent()
+                    + ", targetPort=" + targetPort() + "}";
         }
 
     }
