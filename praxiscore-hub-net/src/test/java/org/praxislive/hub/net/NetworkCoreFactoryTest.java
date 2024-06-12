@@ -218,6 +218,72 @@ public class NetworkCoreFactoryTest {
         }
     }
 
+    @Test
+    @Timeout(10)
+    public void testAddRemoveRootOnChild() throws Exception {
+        var childCoreFactory = NetworkCoreFactory.builder()
+                .enableServer()
+                .build();
+        var childScriptService = new ChildScriptService();
+        var childHub = Hub.builder()
+                .setCoreRootFactory(childCoreFactory)
+                .addExtension(new RootFactoryImpl())
+                .addExtension(childScriptService)
+                .build();
+        childHub.start();
+        int port = childCoreFactory.awaitInfo(10, TimeUnit.SECONDS)
+                .serverAddress()
+                .map(InetSocketAddress.class::cast)
+                .map(InetSocketAddress::getPort)
+                .orElseThrow();
+
+        var runner = new TestRunner("""
+                                    @ /root root:test
+                                    set X [/root.get-result]
+                                    !@ /root
+                                    echo $X
+                                    """);
+
+        var proxyInfo = new ProxyInfo() {
+            @Override
+            public boolean matches(String rootID, ComponentType rootType) {
+                return true;
+            }
+
+            @Override
+            public SocketAddress socketAddress() {
+                return new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
+            }
+
+            @Override
+            public List<Class<? extends Service>> services() {
+                return List.of(ScriptService.class);
+            }
+
+        };
+        var parentHub = Hub.builder()
+                .setCoreRootFactory(NetworkCoreFactory.builder()
+                        .hubConfiguration(HubConfiguration.builder()
+                                .proxy(proxyInfo)
+                                .build())
+                        .exposeServices(List.of(RootManagerService.class))
+                        .build()
+                )
+                .addExtension(runner)
+                .build();
+        parentHub.start();
+        try {
+            var childCalled = childScriptService.await();
+            assertTrue(childCalled);
+            runner.awaitResult();
+        } finally {
+            parentHub.shutdown();
+            parentHub.await();
+            childHub.shutdown();
+            childHub.await();
+        }
+    }
+
     private static class TestRunner extends AbstractRoot {
 
         private final String script;

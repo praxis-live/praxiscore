@@ -243,7 +243,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
             String id = active.args().get(0).toString();
             getHubAccessor().unregisterRootController(id);
             remotes.remove(id);
-            return call.reply();
+            return active.reply();
         }
 
     }
