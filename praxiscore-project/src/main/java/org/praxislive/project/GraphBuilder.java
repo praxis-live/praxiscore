@@ -35,6 +35,8 @@ import java.util.stream.Stream;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.OrderedMap;
+import org.praxislive.core.OrderedSet;
 import org.praxislive.core.Value;
 
 /**
@@ -341,6 +343,50 @@ public final class GraphBuilder {
             return (B) this;
         }
 
+        /**
+         * Component type.
+         *
+         * @return type
+         */
+        public ComponentType type() {
+            return type;
+        }
+
+        /**
+         * Immutable snapshot of comments.
+         *
+         * @return comments
+         */
+        public List<GraphElement.Comment> comments() {
+            return List.copyOf(comments);
+        }
+
+        /**
+         * Immutable snapshot of properties.
+         *
+         * @return properties
+         */
+        public SequencedMap<String, GraphElement.Property> properties() {
+            return OrderedMap.copyOf(properties);
+        }
+
+        /**
+         * Immutable snapshot of children.
+         *
+         * @return children
+         */
+        public SequencedMap<String, GraphElement.Component> children() {
+            return OrderedMap.copyOf(children);
+        }
+
+        /**
+         * Immutable snapshot of connections.
+         *
+         * @return connections
+         */
+        public SequencedSet<GraphElement.Connection> connections() {
+            return OrderedSet.copyOf(connections);
+        }
     }
 
     /**
@@ -441,6 +487,24 @@ public final class GraphBuilder {
             clearCommands();
             transformed.forEach(c -> command(c));
             return this;
+        }
+
+        /**
+         * Immutable snapshot of commands.
+         *
+         * @return commands
+         */
+        public List<GraphElement.Command> commands() {
+            return List.copyOf(commands);
+        }
+
+        /**
+         * Root ID.
+         *
+         * @return id
+         */
+        public String id() {
+            return id;
         }
 
         /**

@@ -33,7 +33,6 @@ import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.OrderedMap;
 import org.praxislive.core.OrderedSet;
-import org.praxislive.core.PortAddress;
 import org.praxislive.core.Value;
 import org.praxislive.core.syntax.Token;
 import org.praxislive.core.syntax.Tokenizer;
