@@ -41,12 +41,12 @@ public final class ComponentProtocol implements Protocol {
     public static final String INFO = "info";
 
     /**
-     * Name of the optional meta control.
+     * Name of the meta control.
      */
     public static final String META = "meta";
 
     /**
-     * Name of the optional meta control.
+     * Name of the meta-merge control.
      */
     public static final String META_MERGE = "meta-merge";
 
@@ -59,10 +59,10 @@ public final class ComponentProtocol implements Protocol {
             = Info.control(c -> c.readOnlyProperty().output(ComponentInfo.class));
 
     /**
-     * Control info for the optional {@code meta} property. This property allows
-     * for arbitrary metadata to be attached to a component. Implementations of
-     * this property may only allow the value to be set when the existing value
-     * is empty or the current value is empty. The {@code meta-merge} control
+     * Control info for the {@code meta} property. This property allows for
+     * arbitrary metadata to be attached to a component. Implementations of this
+     * property may only allow the value to be set when the existing value is
+     * empty or the current value is empty. The {@code meta-merge} control
      * should be used to update an existing meta map - see
      * {@link #META_MERGE_INFO}.
      */
@@ -70,9 +70,9 @@ public final class ComponentProtocol implements Protocol {
             = Info.control(c -> c.property().input(PMap.class));
 
     /**
-     * Control info for the optional {@code meta-merge} control. This control
-     * accepts a map to merge into the existing meta map, and returns the full
-     * resulting value.
+     * Control info for the {@code meta-merge} control. This control accepts a
+     * map to merge into the existing meta map, and returns the full resulting
+     * value.
      * <p>
      * The merge is done according to the specification of {@link PMap#REPLACE}.
      */
@@ -88,16 +88,13 @@ public final class ComponentProtocol implements Protocol {
     public static final ComponentInfo API_INFO = Info.component(cmp -> cmp
             .protocol(ComponentProtocol.class)
             .control(INFO, INFO_INFO)
+            .control(META, META_INFO)
+            .control(META_MERGE, META_MERGE_INFO)
     );
 
     @Override
     public Stream<String> controls() {
-        return Stream.of(INFO);
-    }
-
-    @Override
-    public Stream<String> optionalControls() {
-        return Stream.of(META, META_MERGE);
+        return Stream.of(INFO, META, META_MERGE);
     }
 
     @Override
