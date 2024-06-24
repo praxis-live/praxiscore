@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,6 +33,7 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
 import org.praxislive.core.Port;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PBoolean;
@@ -120,7 +121,7 @@ public class AudioInput extends AbstractComponent {
                 cmp.control("channels", c -> c.property().input(a -> a
                         .number().min(1).max(MAX_CHANNELS)
                         .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
-                ));
+                ).defaultValue(PNumber.of(2)));
                 for (int i = 0; i < channelCount; i++) {
                     cmp.port(Port.OUT + "-" + (i + 1), p -> p.output(AudioPort.class));
                 }
@@ -128,6 +129,14 @@ public class AudioInput extends AbstractComponent {
             });
         }
         return info;
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (channelCount != 2) {
+            writer.writeProperty("channels", PNumber.of(channelCount));
+        }
     }
 
     private class Client extends AudioContext.InputClient {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -48,6 +48,7 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -57,6 +58,7 @@ import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
@@ -160,7 +162,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         audioCtxt = new AudioCtxt();
 
     }
-
+    
     private void extractLibraryInfo() {
         libraries = new LinkedHashMap<>();
         List<Device> devices = new ArrayList<>();
@@ -481,6 +483,42 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     @Override
     public ComponentInfo getInfo() {
         return info;
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        PMap sharedCodeValue = sharedCode.getValue();
+        if (!sharedCodeValue.isEmpty()) {
+            writer.writeProperty("shared-code", sharedCodeValue);
+        }
+        if (sampleRate.value.toIntValue() != DEFAULT_SAMPLERATE) {
+            writer.writeProperty("sample-rate", sampleRate.value);
+        }
+        if (blockSize.value.toIntValue() != DEFAULT_BLOCKSIZE) {
+            writer.writeProperty("block-size", blockSize.value);
+        }
+        if (!clientName.value.isEmpty()) {
+            writer.writeProperty("client-name", clientName.value);
+        }
+        String lib = audioLib.value.toString();
+        if (!lib.isEmpty()) {
+            writer.writeProperty("library", audioLib.value);
+            if (!"JACK".equals(lib)) {
+                if (!deviceName.value.isEmpty()) {
+                    writer.writeProperty("device", deviceName.value);
+                }
+                if (!inputDeviceName.value.isEmpty()) {
+                    writer.writeProperty("input-device", inputDeviceName.value);
+                }
+                if (extBufferSize.value.toIntValue() != AudioSettings.getBuffersize()) {
+                    writer.writeProperty("ext-buffer-size", extBufferSize.value);
+                }
+                if (!"Blocking".equals(timingMode.value.toString())) {
+                    writer.writeProperty("timing-mode", timingMode.value);
+                }
+            }
+        }
     }
 
     private void handleLog(LogBuilder log) {

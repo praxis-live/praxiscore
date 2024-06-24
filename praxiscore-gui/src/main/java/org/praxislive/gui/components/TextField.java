@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,6 +35,9 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.Keymap;
 import org.praxislive.base.Binding;
 import org.praxislive.base.Binding.Adaptor;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PString;
 import org.praxislive.gui.impl.SingleBindingGuiComponent;
@@ -43,7 +46,7 @@ import org.praxislive.gui.impl.SingleBindingGuiComponent;
  *
  */
 public class TextField extends SingleBindingGuiComponent {
-    
+
     private final static int DEFAULT_COLUMNS = 8;
 
     private Box panel;
@@ -54,9 +57,15 @@ public class TextField extends SingleBindingGuiComponent {
     private Action resetAction;
     private boolean syncing;
     private String labelText;
-    
+
     public TextField() {
         labelText = "";
+    }
+
+    @Override
+    protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
+        super.initControls(cmpInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:textfield"));
     }
 
     @Override
@@ -94,7 +103,7 @@ public class TextField extends SingleBindingGuiComponent {
         map.addActionForKeyStroke(KeyStroke.getKeyStroke("ESCAPE"), resetAction);
 
         text.setKeymap(map);
-        
+
         updateBorders();
     }
 
@@ -106,19 +115,18 @@ public class TextField extends SingleBindingGuiComponent {
         resetAction.setEnabled(active);
         activeEdit = active;
     }
-    
-     private void updateBorders() {
+
+    private void updateBorders() {
         if (panel != null) {
             Border etched = Utils.getBorder();
             if (labelText.isEmpty()) {
                 panel.setBorder(etched);
             } else {
                 panel.setBorder(BorderFactory.createTitledBorder(
-                    etched, labelText));
+                        etched, labelText));
             }
             panel.revalidate();
         }
-            
 
     }
 
@@ -146,7 +154,7 @@ public class TextField extends SingleBindingGuiComponent {
 
         @Override
         public void update() {
-            if (activeEdit|| text.isFocusOwner()) {
+            if (activeEdit || text.isFocusOwner()) {
                 return;
             }
             sync();
@@ -215,7 +223,7 @@ public class TextField extends SingleBindingGuiComponent {
         public void changedUpdate(DocumentEvent e) {
             changed();
         }
-        
+
         private void changed() {
             if (!syncing) {
                 setActiveEdit(true);
@@ -244,7 +252,7 @@ public class TextField extends SingleBindingGuiComponent {
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {           
+        public void actionPerformed(ActionEvent e) {
             setActiveEdit(false);
             adaptor.sync();
         }

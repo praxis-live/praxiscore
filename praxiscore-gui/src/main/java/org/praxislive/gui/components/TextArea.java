@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,6 +41,9 @@ import javax.swing.text.Keymap;
 import net.miginfocom.swing.MigLayout;
 import org.praxislive.base.Binding;
 import org.praxislive.base.Binding.Adaptor;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PString;
 import org.praxislive.gui.impl.SingleBindingGuiComponent;
@@ -57,6 +60,12 @@ public class TextArea extends SingleBindingGuiComponent {
     private Action sendAction;
     private Action resetAction;
     private boolean syncing;
+
+    @Override
+    protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
+        super.initControls(cmpInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:textarea"));
+    }
 
     @Override
     protected Adaptor getBindingAdaptor() {
@@ -185,7 +194,7 @@ public class TextArea extends SingleBindingGuiComponent {
         public void changedUpdate(DocumentEvent e) {
             changed();
         }
-        
+
         private void changed() {
             if (!syncing) {
                 setActiveEdit(true);
@@ -214,7 +223,7 @@ public class TextArea extends SingleBindingGuiComponent {
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {           
+        public void actionPerformed(ActionEvent e) {
             setActiveEdit(false);
             adaptor.sync();
         }

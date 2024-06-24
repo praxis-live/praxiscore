@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -58,7 +58,7 @@ public class SharedCodeProperty implements Control {
     private final Lookup.Provider lookupContext;
     private final Consumer<LogBuilder> logHandler;
 
-    private List<Value> value;
+    private PMap value;
     private long latest;
     private Call activeCall;
     private Call taskCall;
@@ -73,7 +73,7 @@ public class SharedCodeProperty implements Control {
         this.lookupContext = Objects.requireNonNull(lookupContext);
         this.logHandler = Objects.requireNonNull(logHandler);
         context = new SharedCodeContext(this);
-        value = List.of(PMap.EMPTY);
+        value = PMap.EMPTY;
     }
 
     @Override
@@ -96,8 +96,13 @@ public class SharedCodeProperty implements Control {
         return context;
     }
 
-    Value getValue() {
-        return value.get(0);
+    /**
+     * Access the current value as a map.
+     * 
+     * @return current value
+     */
+    public PMap getValue() {
+        return value;
     }
 
     private void processInvoke(Call call, PacketRouter router) throws Exception {
@@ -129,9 +134,9 @@ public class SharedCodeProperty implements Control {
             SharedCodeService.Result result = PReference.from(call.args().get(0))
                     .flatMap(r -> r.as(SharedCodeService.Result.class))
                     .orElseThrow(IllegalArgumentException::new);
+            value = PMap.from(activeCall.args().get(0)).orElseThrow(IllegalArgumentException::new);
             context.update(result);
             logHandler.accept(result.getLog());
-            value = activeCall.args();
             router.route(activeCall.reply(value));
             activeCall = null;
         } catch (Exception ex) {

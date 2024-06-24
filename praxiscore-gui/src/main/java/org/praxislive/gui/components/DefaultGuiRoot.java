@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -48,6 +48,7 @@ import org.praxislive.core.protocols.StartableProtocol;
 import org.praxislive.gui.Keys;
 import org.praxislive.gui.GuiContext;
 import com.formdev.flatlaf.FlatDarkLaf;
+import org.praxislive.core.ComponentType;
 
 /**
  *
@@ -63,6 +64,7 @@ public class DefaultGuiRoot extends AbstractRootContainer {
                 .merge(ComponentProtocol.API_INFO)
                 .merge(ContainerProtocol.API_INFO)
                 .merge(StartableProtocol.API_INFO)
+                .property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("root:gui"))
         );
     }
 

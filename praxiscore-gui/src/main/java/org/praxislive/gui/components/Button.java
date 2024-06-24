@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,11 +44,14 @@ import javax.swing.plaf.basic.BasicGraphicsUtils;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.Binding.Adaptor;
 import org.praxislive.core.Call;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.ScriptService;
 import org.praxislive.core.types.PArray;
@@ -67,7 +70,7 @@ public class Button extends SingleBindingGuiComponent {
     private ActionAdaptor adaptor;
     private List<Value> values;
     private OnClickProperty onClick;
-    
+
     public Button() {
         values = List.of();
     }
@@ -82,6 +85,18 @@ public class Button extends SingleBindingGuiComponent {
         cmpInfo.control("on-click", c -> c.property()
                 .input(i -> i.string().mime("text/x-praxis-script")));
         registerControl("_on-click-log", new OnClickLog());
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:button"));
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (!values.isEmpty()) {
+            writer.writeProperty("values", PArray.of(values));
+        }
+        if (!onClick.value.isEmpty()) {
+            writer.writeProperty("on-click", onClick.value);
+        }
     }
 
     @Override
@@ -154,7 +169,6 @@ public class Button extends SingleBindingGuiComponent {
         }
     }
 
-
     private class ValuesBinding extends AbstractProperty {
 
         private PArray value = PArray.EMPTY;
@@ -176,9 +190,9 @@ public class Button extends SingleBindingGuiComponent {
             return this.value;
         }
     }
-    
+
     private class OnClickProperty extends AbstractProperty {
-        
+
         private PString value = PString.EMPTY;
 
         @Override
@@ -190,7 +204,7 @@ public class Button extends SingleBindingGuiComponent {
         protected Value get() {
             return value;
         }
-        
+
     }
 
     private class OnClickLog implements Control {
@@ -202,7 +216,7 @@ public class Button extends SingleBindingGuiComponent {
             }
 
         }
-    
+
     }
 
     private static class UI extends BasicButtonUI {

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,6 +41,7 @@ import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.Binding.Adaptor;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -71,12 +72,23 @@ class Slider extends SingleBindingGuiComponent {
         super.initControls(cmpInfo);
         registerControl("minimum", new MinBinding());
         registerControl("maximum", new MaxBinding());
-        var rangeInfo = Info.control(c -> c.property()
+        var rangeInfo = Info.control(c -> c.property().input(Value.class)
                 .property(ArgumentInfo.KEY_ALLOW_EMPTY, PBoolean.TRUE)
                 .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE));
         cmpInfo.control("minimum", rangeInfo);
         cmpInfo.control("maximum", rangeInfo);
 
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (prefMin != null) {
+            writer.writeProperty("minimum", prefMin);
+        }
+        if (prefMax != null) {
+            writer.writeProperty("maximum", prefMax);
+        }
     }
 
     @Override

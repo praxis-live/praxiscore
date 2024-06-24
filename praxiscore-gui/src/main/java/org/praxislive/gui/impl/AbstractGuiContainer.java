@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,8 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Container;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.TreeWriter;
+import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -56,6 +58,8 @@ public abstract class AbstractGuiContainer extends AbstractContainer {
                 var cmpInfo = Info.component();
                 cmpInfo.merge(ComponentProtocol.API_INFO);
                 cmpInfo.merge(ContainerProtocol.API_INFO);
+                cmpInfo.control(ContainerProtocol.SUPPORTED_TYPES,
+                        ContainerProtocol.SUPPORTED_TYPES_INFO);
                 label = new LabelBinding(component);
                 label.addPropertyChangeListener(new LabelListener());
                 registerControl("label", label);
@@ -77,7 +81,20 @@ public abstract class AbstractGuiContainer extends AbstractContainer {
     public ComponentInfo getInfo() {
         return info;
     }
-    
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        Value labelValue = label.get();
+        if (!labelValue.isEmpty()) {
+            writer.writeProperty("label", labelValue);
+        }
+        Value layoutValue = layout.get();
+        if (!layoutValue.isEmpty()) {
+            writer.writeProperty("layout", layoutValue);
+        }
+    }
+
     protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
         // no op hook
     }
@@ -124,26 +141,26 @@ public abstract class AbstractGuiContainer extends AbstractContainer {
     }
 
     protected abstract JComponent createSwingContainer();
-    
+
     protected void updateLabel() {
         // no op hook
     }
-    
+
     protected String getLabel() {
         return label.get().toString();
     }
-    
+
     protected boolean isLabelOnParent() {
         return label.isLabelOnParent();
     }
-    
+
     private class LabelListener implements PropertyChangeListener {
 
         @Override
         public void propertyChange(PropertyChangeEvent pce) {
             updateLabel();
         }
-        
+
     }
 
 }

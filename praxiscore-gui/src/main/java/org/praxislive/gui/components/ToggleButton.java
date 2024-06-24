@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,10 @@ import javax.swing.plaf.basic.BasicGraphicsUtils;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.Binding.Adaptor;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.gui.impl.SingleBindingGuiComponent;
@@ -44,7 +47,7 @@ import org.praxislive.gui.impl.ToggleButtonModelAdaptor;
 
 /**
  *
- * 
+ *
  */
 public class ToggleButton extends SingleBindingGuiComponent {
 
@@ -62,7 +65,21 @@ public class ToggleButton extends SingleBindingGuiComponent {
     protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
         super.initControls(cmpInfo);
         registerControl("on-value", new OnBinding());
+        cmpInfo.control("on-value", c -> c.property().input(Value.class).defaultValue(PBoolean.TRUE));
         registerControl("off-value", new OffBinding());
+        cmpInfo.control("off-value", c -> c.property().input(Value.class).defaultValue(PBoolean.FALSE));
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:togglebutton"));
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (!PBoolean.TRUE.equivalent(onArg)) {
+            writer.writeProperty("on-value", onArg);
+        }
+        if (!PBoolean.FALSE.equivalent(offArg)) {
+            writer.writeProperty("off-value", offArg);
+        }
     }
 
     @Override

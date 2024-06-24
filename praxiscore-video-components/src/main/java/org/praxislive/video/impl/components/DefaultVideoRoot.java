@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,6 +33,7 @@ import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -41,6 +42,7 @@ import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 import org.praxislive.video.ClientConfiguration;
@@ -199,6 +201,30 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     @Override
     public ComponentInfo getInfo() {
         return info;
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        PMap sharedCodeValue = sharedCode.getValue();
+        if (!sharedCodeValue.isEmpty()) {
+            writer.writeProperty("shared-code", sharedCodeValue);
+        } 
+        if (!SOFTWARE.equals(renderer)) {
+            writer.writeProperty("renderer", PString.of(renderer));
+        }
+        if (width != WIDTH_DEFAULT) {
+            writer.writeProperty("width", PNumber.of(width));
+        }
+        if (height != HEIGHT_DEFAULT) {
+            writer.writeProperty("height", PNumber.of(height));
+        }
+        if (fps != FPS_DEFAULT) {
+            writer.writeProperty("fps", PNumber.of(fps));
+        }
+        if (!smooth) {
+            writer.writeProperty("smooth", PBoolean.FALSE);
+        }
     }
 
     private void handleLog(LogBuilder log) {
