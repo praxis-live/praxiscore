@@ -271,6 +271,7 @@ public class PropertyControl extends Property implements Control {
         private final PropertyControl control;
         private final Field propertyField;
         private final boolean synthetic;
+        private final boolean writable;
 
         private Descriptor(String id,
                 int index,
@@ -282,15 +283,22 @@ public class PropertyControl extends Property implements Control {
         ) {
             super(Descriptor.class, id, Category.Property, index);
             control = new PropertyControl(info, binding, onChange, onError);
-            this.propertyField = field;
-            this.synthetic = false;
+            propertyField = field;
+            synthetic = false;
+            if (info.controlType() == ControlInfo.Type.ReadOnlyProperty
+                    || info.properties().getBoolean(ControlInfo.KEY_TRANSIENT, false)) {
+                writable = false;
+            } else {
+                writable = true;
+            }
         }
 
         private Descriptor(String id, int index, Binding binding, Field field) {
             super(Descriptor.class, id, Category.Synthetic, index);
             control = new PropertyControl(null, binding, null, null);
             propertyField = field;
-            this.synthetic = true;
+            synthetic = true;
+            writable = false;
         }
 
         @Override
@@ -342,10 +350,12 @@ public class PropertyControl extends Property implements Control {
 
         @Override
         public void write(TreeWriter writer) {
-            Value val = control.get();
-            Value def = control.binding.getDefaultValue();
-            if (val != null && !val.equals(def)) {
-                writer.writeProperty(id(), val);
+            if (writable) {
+                Value val = control.get();
+                Value def = control.binding.getDefaultValue();
+                if (val != null && !val.equals(def)) {
+                    writer.writeProperty(id(), val);
+                }
             }
         }
 

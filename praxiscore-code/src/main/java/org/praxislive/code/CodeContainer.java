@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -412,6 +412,12 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         @Override
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
+        }
+
+        @Override
+        public void write(TreeWriter writer) {
+            writeChildren(writer);
+            writeConnections(writer);
         }
 
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,7 +35,10 @@ import org.praxislive.core.Value;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.ArgumentInfo;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -48,10 +51,10 @@ import org.praxislive.gui.impl.BoundedValueAdaptor;
 public class XYController extends AbstractGuiComponent {
 
     private static Logger logger = Logger.getLogger(XYController.class.getName());
-    
+
     private final Preferences xPrefs;
     private final Preferences yPrefs;
-    
+
     private BindingContext bindingContext;
     private Box container;
     private JXYController controller;
@@ -70,17 +73,17 @@ public class XYController extends AbstractGuiComponent {
         super.initControls(cmpInfo);
         registerControl("binding-x", new XAddressBinding());
         registerControl("binding-y", new YAddressBinding());
-        
+
         var bindingInfo = Info.control(c -> c.property().input(ControlAddress.class)
                 .property(ArgumentInfo.KEY_ALLOW_EMPTY, PBoolean.TRUE));
         cmpInfo.control("binding-x", bindingInfo);
         cmpInfo.control("binding-y", bindingInfo);
-        
+
         registerControl("minimum-x", new MinBinding(xPrefs));
         registerControl("minimum-y", new MinBinding(yPrefs));
         registerControl("maximum-x", new MaxBinding(xPrefs));
         registerControl("maximum-y", new MaxBinding(yPrefs));
-        
+
         var rangeInfo = Info.control(c -> c.property().input(Value.class)
                 .property(ArgumentInfo.KEY_ALLOW_EMPTY, PBoolean.TRUE)
                 .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE)
@@ -89,9 +92,31 @@ public class XYController extends AbstractGuiComponent {
         cmpInfo.control("minimum-y", rangeInfo);
         cmpInfo.control("maximum-x", rangeInfo);
         cmpInfo.control("maximum-y", rangeInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:xy-pad"));
     }
-    
-    
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (xBinding != null) {
+            writer.writeProperty("binding-x", xBinding);
+        }
+        if (yBinding != null) {
+            writer.writeProperty("binding-y", yBinding);
+        }
+        if (xPrefs.minimum != null) {
+            writer.writeProperty("minimum-x", xPrefs.minimum);
+        }
+        if (yPrefs.minimum != null) {
+            writer.writeProperty("minimum-y", yPrefs.minimum);
+        }
+        if (xPrefs.maximum != null) {
+            writer.writeProperty("maximum-x", xPrefs.maximum);
+        }
+        if (yPrefs.maximum != null) {
+            writer.writeProperty("maximum-y", yPrefs.maximum);
+        }
+    }
 
     @Override
     protected JComponent createSwingComponent() {
@@ -195,7 +220,6 @@ public class XYController extends AbstractGuiComponent {
         PNumber maximum;
         PString scale;
     }
-
 
     private class XAddressBinding extends AbstractProperty {
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,6 +38,7 @@ import org.praxislive.base.BindingContext;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
@@ -50,9 +51,9 @@ import org.praxislive.gui.impl.BoundedValueAdaptor;
 class RangeSlider extends AbstractGuiComponent {
 
     private static Logger logger = Logger.getLogger(RangeSlider.class.getName());
-    
+
     private final boolean vertical;
-    
+
     private BindingContext bindingContext;
     private String labelText;
     private Box box;
@@ -62,7 +63,7 @@ class RangeSlider extends AbstractGuiComponent {
     private ControlAddress lowBinding;
     private ControlAddress highBinding;
     private ModelConverter converter;
-    
+
     private PNumber prefMin;
     private PNumber prefMax;
 
@@ -74,10 +75,10 @@ class RangeSlider extends AbstractGuiComponent {
     @Override
     protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
         super.initControls(cmpInfo);
-        
+
         registerControl("binding-low", new AddressBinding(false));
         registerControl("binding-high", new AddressBinding(true));
-        
+
         var bindingInfo = Info.control(c -> c.property().input(ControlAddress.class)
                 .property(ArgumentInfo.KEY_ALLOW_EMPTY, PBoolean.TRUE));
         cmpInfo.control("binding-low", bindingInfo);
@@ -91,9 +92,26 @@ class RangeSlider extends AbstractGuiComponent {
                 .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE));
         cmpInfo.control("minimum", rangeInfo);
         cmpInfo.control("maximum", rangeInfo);
-        
+
     }
 
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (lowBinding != null) {
+            writer.writeProperty("binding-low", lowBinding);
+        }
+        if (highBinding != null) {
+            writer.writeProperty("binding-high", highBinding);
+        }
+        if (prefMin != null) {
+            writer.writeProperty("minimum", prefMin);
+        }
+        if (prefMax != null) {
+            writer.writeProperty("maximum", prefMax);
+        }
+    }
+    
     @Override
     protected JComponent createSwingComponent() {
         if (box == null) {
@@ -101,8 +119,8 @@ class RangeSlider extends AbstractGuiComponent {
         }
         return box;
     }
-    
-        @Override
+
+    @Override
     public void hierarchyChanged() {
         super.hierarchyChanged();
         BindingContext ctxt = getLookup().find(BindingContext.class).orElse(null);
@@ -146,9 +164,9 @@ class RangeSlider extends AbstractGuiComponent {
         BoundedRangeModel highModel = new DefaultBoundedRangeModel(500, 0, 0, 500);
         lowAdaptor = new BoundedValueAdaptor(lowModel);
         highAdaptor = new BoundedValueAdaptor(highModel);
-        
+
         converter = new ModelConverter(rangeModel, lowModel, highModel);
-        
+
         slider.addAncestorListener(new AncestorListener() {
 
             @Override
@@ -241,11 +259,11 @@ class RangeSlider extends AbstractGuiComponent {
             }
         }
     }
-    
+
     private class AddressBinding extends AbstractProperty {
 
         final boolean high;
-        
+
         AddressBinding(boolean high) {
             this.high = high;
         }
@@ -265,7 +283,7 @@ class RangeSlider extends AbstractGuiComponent {
                         bindingContext.unbind(lowBinding, lowAdaptor);
                     }
                 }
-                
+
                 if (arg.isEmpty()) {
                     if (high) {
                         highBinding = null;
@@ -281,7 +299,7 @@ class RangeSlider extends AbstractGuiComponent {
                         bindingContext.bind(lowBinding, lowAdaptor);
                     }
                 }
-                
+
             }
         }
 
@@ -290,17 +308,17 @@ class RangeSlider extends AbstractGuiComponent {
             ControlAddress ret = high ? highBinding : lowBinding;
             return ret == null ? PString.EMPTY : ret;
         }
-        
+
     }
-    
+
     private class ModelConverter implements ChangeListener {
-        
+
         private final BoundedRangeModel rangeModel;
         private final BoundedRangeModel lowModel;
         private final BoundedRangeModel highModel;
-        
+
         private boolean updating;
-        
+
         private ModelConverter(BoundedRangeModel rangeModel,
                 BoundedRangeModel lowModel,
                 BoundedRangeModel highModel) {
@@ -318,7 +336,7 @@ class RangeSlider extends AbstractGuiComponent {
                 return;
             }
             updating = true;
-            
+
             if (e.getSource() == rangeModel) {
                 lowModel.setValueIsAdjusting(rangeModel.getValueIsAdjusting());
                 highModel.setValueIsAdjusting(rangeModel.getValueIsAdjusting());
@@ -331,12 +349,10 @@ class RangeSlider extends AbstractGuiComponent {
                 ext = ext < 0 ? 0 : ext;
                 rangeModel.setRangeProperties(low, ext, 0, 500, false);
             }
-            
+
             updating = false;
         }
-        
-        
+
     }
-    
-    
+
 }

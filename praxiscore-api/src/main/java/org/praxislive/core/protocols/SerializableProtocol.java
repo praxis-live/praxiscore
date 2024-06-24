@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,19 +35,18 @@ import org.praxislive.core.types.PMap;
  * usually be implemented by a root container.
  * <p>
  * The standard format is a hierarchical map. Annotation keys, including type,
- * info and connections, are prefixed by <code>%</code>. Property keys are
- * prefixed by <code>.</code>. Child keys are prefixed by <code>@</code> and the
- * values are maps.
+ * info and connections, are prefixed by <code>%</code>. Child keys are prefixed
+ * by <code>@</code> and the values are maps. Property keys are not prefixed.
  * <pre>
  * {@code
  * %type core:container
  * %info ...
  * %custom-annotation foo
- * .property1 true
+ * property1 true
  * @child1 {
  *   %type core:custom
  *   %info ...
- *   .property1 42
+ *   property1 42
  * }
  * @child2 {
  *   %type core:custom

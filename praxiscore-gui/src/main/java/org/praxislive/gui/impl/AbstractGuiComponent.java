@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,6 +30,8 @@ import org.praxislive.base.AbstractComponent;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.Container;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
+import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.gui.Keys;
@@ -38,7 +40,7 @@ import org.praxislive.gui.GuiContext;
 /**
  * Abstract superclass for default GuiComponent model.
  *
- * 
+ *
  */
 public abstract class AbstractGuiComponent extends AbstractComponent {
 
@@ -75,7 +77,20 @@ public abstract class AbstractGuiComponent extends AbstractComponent {
     public ComponentInfo getInfo() {
         return info;
     }
-    
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        Value labelValue = label.get();
+        if (!labelValue.isEmpty()) {
+            writer.writeProperty("label", labelValue);
+        }
+        Value layoutValue = layout.get();
+        if (!layoutValue.isEmpty()) {
+            writer.writeProperty("layout", layoutValue);
+        }
+    }
+
     protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
         // no op hook
     }

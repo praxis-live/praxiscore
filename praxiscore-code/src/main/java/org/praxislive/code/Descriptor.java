@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -49,7 +49,7 @@ public sealed abstract class Descriptor<T extends Descriptor<T>>
         return id;
     }
 
-    public final Class<T> type() {
+    final Class<T> type() {
         return type;
     }
 

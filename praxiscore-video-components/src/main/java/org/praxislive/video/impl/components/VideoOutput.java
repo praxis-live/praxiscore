@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,6 +33,7 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
@@ -165,9 +166,42 @@ public class VideoOutput extends AbstractComponent {
         return info;
     }
 
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (!title.isEmpty()) {
+            writer.writeProperty("title", PString.of(title));
+        }
+        if (!device.value.isEmpty()) {
+            writer.writeProperty("device", device.value);
+        }
+        if (!width.value.isEmpty()) {
+            writer.writeProperty("width", width.value);
+        }
+        if (!height.value.isEmpty()) {
+            writer.writeProperty("height", height.value);
+        }
+        if (!rotation.value.isEmpty()) {
+            writer.writeProperty("rotation", rotation.value);
+        }
+        if (wHints.isFullScreen()) {
+            writer.writeProperty("full-screen", PBoolean.TRUE);
+        }
+        if (wHints.isAlwaysOnTop()) {
+            writer.writeProperty("always-on-top", PBoolean.TRUE);
+        }
+        if (wHints.isUndecorated()) {
+            writer.writeProperty("undecorated", PBoolean.TRUE);
+        }
+        if (wHints.isShowCursor()) {
+            writer.writeProperty("show-cursor", PBoolean.TRUE);
+        }
+    }
+
+
     private class IntegerProperty extends AbstractProperty {
 
-        private Value value;
+        private Value value = PString.EMPTY;
 
         @Override
         protected void set(long time, Value arg) throws Exception {
@@ -281,7 +315,7 @@ public class VideoOutput extends AbstractComponent {
         public Lookup getLookup() {
             Integer w = getInteger(width.value);
             Integer h = getInteger(height.value);
-            List<Object> items = new ArrayList<Object>();
+            List<Object> items = new ArrayList<>();
             if (w != null && h != null) {
                 items.add(new ClientConfiguration.Dimension(w, h));
             }

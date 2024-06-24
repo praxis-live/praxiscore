@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,9 @@ import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import net.miginfocom.swing.MigLayout;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.Info;
 import org.praxislive.gui.impl.AbstractGuiContainer;
 import org.praxislive.gui.Keys;
 
@@ -44,6 +47,12 @@ public class Panel extends AbstractGuiContainer {
 //    private String labelText;
 
     @Override
+    protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
+        super.initControls(cmpInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:panel"));
+    }
+
+    @Override
     protected JComponent createSwingContainer() {
         if (panel != null) {
             throw new IllegalStateException();
@@ -51,7 +60,7 @@ public class Panel extends AbstractGuiContainer {
         layout = new MigLayout("", "[fill]");
         panel = new JPanel(layout);
         panel.addContainerListener(new ChildrenListener());
-        panel.setMinimumSize(new Dimension(50,20));
+        panel.setMinimumSize(new Dimension(50, 20));
         return panel;
     }
 
@@ -60,7 +69,7 @@ public class Panel extends AbstractGuiContainer {
         super.updateLabel();
         updateBorder();
     }
-    
+
     private void updateBorder() {
         if (isLabelOnParent()) {
             panel.setBorder(null);
@@ -73,7 +82,6 @@ public class Panel extends AbstractGuiContainer {
             }
         }
     }
-
 
     private void setLayoutConstraint(JComponent child) {
         layout.setComponentConstraints(child, child.getClientProperty(Keys.LayoutConstraint));
@@ -117,7 +125,5 @@ public class Panel extends AbstractGuiContainer {
             }
         }
     }
-
-
 
 }

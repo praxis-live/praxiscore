@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -20,16 +20,26 @@
  * have any questions.
  *
  */
-
 package org.praxislive.gui.components;
+
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.Info;
 
 /**
  *
- * 
+ *
  */
 public class HRangeSlider extends RangeSlider {
 
     public HRangeSlider() {
         super(false);
     }
+
+    @Override
+    protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
+        super.initControls(cmpInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:h-rangeslider"));
+    }
+
 }

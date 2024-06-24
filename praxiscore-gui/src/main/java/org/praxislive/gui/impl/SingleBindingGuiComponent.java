@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,7 @@ import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Value;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PString;
 
@@ -36,14 +37,14 @@ import org.praxislive.core.types.PString;
  *
  */
 public abstract class SingleBindingGuiComponent extends AbstractGuiComponent {
-    
+
     private ControlAddress binding;
     private Binding.Adaptor adaptor;
     private BindingContext bindingContext;
-    
+
     protected SingleBindingGuiComponent() {
     }
-    
+
     @Override
     protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
         super.initControls(cmpInfo);
@@ -51,7 +52,7 @@ public abstract class SingleBindingGuiComponent extends AbstractGuiComponent {
         cmpInfo.control("binding", c -> c.property().input(ControlAddress.class)
                 .property(ArgumentInfo.KEY_ALLOW_EMPTY, PBoolean.TRUE));
     }
-    
+
     private class AddressBinding extends AbstractProperty {
 
         @Override
@@ -81,7 +82,7 @@ public abstract class SingleBindingGuiComponent extends AbstractGuiComponent {
             return binding == null ? PString.EMPTY : binding;
         }
     }
-    
+
     @Override
     public void hierarchyChanged() {
         super.hierarchyChanged();
@@ -96,7 +97,15 @@ public abstract class SingleBindingGuiComponent extends AbstractGuiComponent {
             bindingContext = ctxt;
         }
     }
-    
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (binding != null) {
+            writer.writeProperty("binding", binding);
+        }
+    }
+
     protected abstract Binding.Adaptor getBindingAdaptor();
-    
+
 }

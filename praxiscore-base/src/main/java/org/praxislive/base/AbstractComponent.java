@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2021 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,19 +24,24 @@ package org.praxislive.base;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PMap;
 
 /**
  * Abstract base implementation of {@link Component} supporting {@link Control}
@@ -48,13 +53,16 @@ public abstract class AbstractComponent implements Component {
 
     private final Map<String, Control> controls;
     private final Map<String, Port> ports;
+    private final MetaProperty meta;
 
     private Container parent;
 
     protected AbstractComponent() {
         controls = new LinkedHashMap<>();
         controls.put(ComponentProtocol.INFO, new InfoControl());
-        controls.put(ComponentProtocol.META, new MetaControl());
+        meta = new MetaProperty();
+        controls.put(ComponentProtocol.META, meta);
+        controls.put(ComponentProtocol.META_MERGE, meta.getMergeControl());
         ports = new LinkedHashMap<>();
     }
 
@@ -90,6 +98,34 @@ public abstract class AbstractComponent implements Component {
     @Override
     public Port getPort(String id) {
         return ports.get(id);
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        writeTypeAndInfo(writer);
+        writeMeta(writer);
+    }
+
+    protected final void writeTypeAndInfo(TreeWriter writer) {
+        ComponentInfo info = getInfo();
+        if (info == null) {
+            return;
+        }
+        ComponentType type = Optional.ofNullable(
+                info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                .flatMap(ComponentType::from)
+                .orElse(null);
+        if (type != null) {
+            writer.writeType(type);
+        }
+        writer.writeInfo(info);
+    }
+
+    protected final void writeMeta(TreeWriter writer) {
+        PMap value = meta.getValue();
+        if (!value.isEmpty() && getInfo().controls().contains(ComponentProtocol.META)) {
+            writer.writeProperty(ComponentProtocol.META, value);
+        }
     }
 
     protected ComponentAddress getAddress() {

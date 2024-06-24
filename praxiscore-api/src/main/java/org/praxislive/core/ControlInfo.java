@@ -76,14 +76,6 @@ public final class ControlInfo extends PMap.MapBasedValue {
     public static final String KEY_EXPERT = "expert";
 
     /**
-     * Optional map key to mark a control of type function as responding like a
-     * property. The control will always respond with a single output argument
-     * with the bound value. All input is optional. Input values may alter the
-     * bound value, by eg. merging or concatenating.
-     */
-    public static final String KEY_BINDABLE = "bindable";
-
-    /**
      * The types of a control.
      */
     public static enum Type {

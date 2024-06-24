@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,16 +21,66 @@
  */
 package org.praxislive.core;
 
-import org.praxislive.core.protocols.ContainerProtocol;
+import java.util.Optional;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PString;
 
 /**
  * A type representing a connection between two ports.
  */
-public final class Connection {
+public final class Connection extends PArray.ArrayBasedValue {
 
-    private final PArray dataArray;
+    /**
+     * Value type name.
+     */
+    public static final String TYPE_NAME = "Connection";
+
+    private Connection(PArray data) {
+        super(data);
+        if (data.size() != 4) {
+            throw new IllegalArgumentException("Invalid connection data");
+        }
+        verifyChildID(data.get(0).toString());
+        verifyPortID(data.get(1).toString());
+        verifyChildID(data.get(2).toString());
+        verifyPortID(data.get(3).toString());
+    }
+
+    /**
+     * Query the component ID of the source component.
+     *
+     * @return ID of first child
+     */
+    public String sourceComponent() {
+        return dataArray().get(0).toString();
+    }
+
+    /**
+     * Query the port ID of the source port.
+     *
+     * @return ID of port on first child
+     */
+    public String sourcePort() {
+        return dataArray().get(1).toString();
+    }
+
+    /**
+     * Query the component ID of the target component.
+     *
+     * @return ID of the second child
+     */
+    public String targetComponent() {
+        return dataArray().get(2).toString();
+    }
+
+    /**
+     * Query the port ID of the target port.
+     *
+     * @return ID of port on second child
+     */
+    public String targetPort() {
+        return dataArray().get(3).toString();
+    }
 
     /**
      * Create a connection reference. The child IDs must be valid according to
@@ -41,79 +91,32 @@ public final class Connection {
      * @param port1 ID of port on first child
      * @param child2 ID of second child
      * @param port2 ID of port on second child
+     * @return new connection
      * @throws IllegalArgumentException if the IDs are not valid
      */
-    public Connection(String child1, String port1, String child2, String port2) {
-        verifyChildID(child1);
-        verifyChildID(child2);
-        verifyPortID(port1);
-        verifyPortID(port2);
-        dataArray = PArray.of(PString.of(child1), PString.of(port1),
-                PString.of(child2), PString.of(port2));
+    public static Connection of(String child1, String port1, String child2, String port2) {
+        return new Connection(PArray.of(
+                PString.of(child1), PString.of(port1),
+                PString.of(child2), PString.of(port2)
+        ));
     }
 
     /**
-     * Query the component ID of the first connected component.
+     * Coerce the provided value into a Connection if possible.
      *
-     * @return ID of first child
+     * @param value value of unknown type
+     * @return connection or empty optional
      */
-    public String child1() {
-        return dataArray.get(0).toString();
-    }
-
-    /**
-     * Query the port ID of the connected port on the first component.
-     *
-     * @return ID of port on first child
-     */
-    public String port1() {
-        return dataArray.get(1).toString();
-    }
-
-    /**
-     * Query the component ID of the second connected component.
-     *
-     * @return ID of the second child
-     */
-    public String child2() {
-        return dataArray.get(2).toString();
-    }
-
-    /**
-     * Query the port ID of the connected port on the second component.
-     *
-     * @return ID of port on second child
-     */
-    public String port2() {
-        return dataArray.get(3).toString();
-    }
-
-    /**
-     * Access the Connection as the backing PArray data. The data consists of
-     * four values, {@code child1 port1 child2 port2}.
-     * <p>
-     * This is the same format included in the list returned from
-     * {@link ContainerProtocol#CONNECTIONS}.
-     *
-     * @return backing data array
-     */
-    public PArray dataArray() {
-        return dataArray;
-    }
-
-    @Override
-    public String toString() {
-        return dataArray.toString();
-    }
-
-    @Override
-    public int hashCode() {
-        return dataArray.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj == this || (obj instanceof Connection c && dataArray.equals(c.dataArray));
+    public static Optional<Connection> from(Value value) {
+        if (value instanceof Connection connection) {
+            return Optional.of(connection);
+        } else {
+            try {
+                return PArray.from(value).map(Connection::new);
+            } catch (Exception ex) {
+                return Optional.empty();
+            }
+        }
     }
 
     private static void verifyChildID(String childID) {

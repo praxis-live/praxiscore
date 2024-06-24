@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,6 +38,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.plaf.basic.BasicGraphicsUtils;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
+import org.praxislive.core.Info;
 import org.praxislive.gui.Keys;
 import org.praxislive.gui.impl.AbstractGuiContainer;
 
@@ -48,6 +51,13 @@ public class Tabs extends AbstractGuiContainer {
 
     private JTabbedPane tabs;
     private LabelListener addressListener;
+
+    @Override
+    protected void initControls(Info.ComponentInfoBuilder cmpInfo) {
+        super.initControls(cmpInfo);
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:tabs"));
+
+    }
 
     @Override
     protected JComponent createSwingContainer() {

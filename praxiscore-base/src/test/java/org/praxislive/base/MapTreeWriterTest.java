@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -63,8 +63,8 @@ public class MapTreeWriterTest {
                             .writeInfo(ComponentProtocol.API_INFO)
                             .writeProperty("p1", PNumber.of(42));
                 })
-                .writeConnection(new Connection("child1", "out", "child2", "in"))
-                .writeConnection(new Connection("child2", "ready", "child1", "trigger"))
+                .writeConnection(Connection.of("child1", "out", "child2", "in"))
+                .writeConnection(Connection.of("child2", "ready", "child1", "trigger"))
                 .build();
         if (VERBOSE) {
             System.out.println("Writer output\n=================");
@@ -79,23 +79,23 @@ public class MapTreeWriterTest {
         builder.put("%type", ComponentType.of("core:container"));
         builder.put("%info", ContainerProtocol.API_INFO);
         builder.put("%custom", PString.of("FOO"));
-        builder.put(".p1", 1);
-        builder.put(".p2", true);
+        builder.put("p1", 1);
+        builder.put("p2", true);
         builder.put("@child1", PMap.builder()
                 .put("%type", ComponentType.of("core:type1"))
                 .put("%info", ComponentProtocol.API_INFO)
-                .put(".p1", "value")
+                .put("p1", "value")
                 .build()
         );
         builder.put("@child2", PMap.builder()
                 .put("%type", ComponentType.of("core:type2"))
                 .put("%info", ComponentProtocol.API_INFO)
-                .put(".p1", 42)
+                .put("p1", 42)
                 .build()
         );
         builder.put("%connections", PArray.of(
-                new Connection("child1", "out", "child2", "in").dataArray(),
-                new Connection("child2", "ready", "child1", "trigger").dataArray()
+                Connection.of("child1", "out", "child2", "in").dataArray(),
+                Connection.of("child2", "ready", "child1", "trigger").dataArray()
         ));
         return builder.build();
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,10 +38,12 @@ import javax.swing.event.AncestorListener;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.Binding;
 import org.praxislive.core.Value;
-import org.praxislive.core.ValueFormatException;
 import org.praxislive.core.ArgumentInfo;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
+import org.praxislive.core.TreeWriter;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PString;
 import org.praxislive.gui.impl.SingleBindingGuiComponent;
@@ -75,6 +77,15 @@ public class ComboBox extends SingleBindingGuiComponent {
         super.initControls(cmpInfo);
         registerControl("values", new ValuesBinding());
         cmpInfo.control("values", c -> c.property().input(PArray.class));
+        cmpInfo.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("gui:combobox"));
+    }
+
+    @Override
+    public void write(TreeWriter writer) {
+        super.write(writer);
+        if (!userValues.isEmpty()) {
+            writer.writeProperty("values", userValues);
+        }
     }
 
     @Override
@@ -253,9 +264,9 @@ public class ComboBox extends SingleBindingGuiComponent {
         public boolean isBorderOpaque() {
             return false;
         }
-        
+
     }
-    
+
     private class ValuesBinding extends AbstractProperty {
 
         @Override
@@ -325,5 +336,4 @@ public class ComboBox extends SingleBindingGuiComponent {
         }
     }
 
-    
 }

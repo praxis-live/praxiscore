@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@ package org.praxislive.core;
 
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 import java.util.stream.Stream;
 
 /**
@@ -32,7 +33,7 @@ import java.util.stream.Stream;
  * @param <K> key type
  * @param <V> value type
  */
-public sealed interface OrderedMap<K, V> extends Map<K, V> permits OrderedMapImpl {
+public sealed interface OrderedMap<K, V> extends SequencedMap<K, V> permits OrderedMapImpl {
 
     /**
      * A {@link List} containing the keys of this OrderedMap.
@@ -46,6 +47,9 @@ public sealed interface OrderedMap<K, V> extends Map<K, V> permits OrderedMapImp
      * @return map keys as list
      */
     public List<K> keys();
+
+    @Override
+    public OrderedMap<K, V> reversed();
 
     /**
      * Compares the provided object with this map for equality in accordance
@@ -204,7 +208,7 @@ public sealed interface OrderedMap<K, V> extends Map<K, V> permits OrderedMapImp
      * @return an ordered map copy of the provided map
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <K, V> OrderedMap<K, V> copyOf(Map<K, V> map) {
+    public static <K, V> OrderedMap<K, V> copyOf(Map<? extends K, ? extends V> map) {
         if (map instanceof OrderedMapImpl) {
             return (OrderedMap<K, V>) map;
         } else {
