@@ -21,6 +21,7 @@
  */
 package org.praxislive.base;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Connection;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
@@ -63,10 +65,12 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
     private final static System.Logger LOG = System.getLogger(AbstractContainer.class.getName());
 
     private final Map<String, Component> childMap;
+    private final Map<Component, ComponentType> childTypeMap;
     private final Set<Connection> connections;
 
     protected AbstractContainer() {
         childMap = new LinkedHashMap<>();
+        childTypeMap = new HashMap<>();
         connections = new LinkedHashSet<>();
         registerControl(ContainerProtocol.ADD_CHILD, new AddChildControl());
         registerControl(ContainerProtocol.REMOVE_CHILD, new RemoveChildControl());
@@ -100,6 +104,11 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         } else {
             return ComponentAddress.of(containerAddress, childID);
         }
+    }
+
+    @Override
+    public ComponentType getType(Component child) {
+        return childTypeMap.computeIfAbsent(child, Container.super::getType);
     }
 
     @Override
@@ -156,6 +165,7 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
                 LOG.log(System.Logger.Level.ERROR, "Child throwing Veto on removal", ex);
             }
             child.hierarchyChanged();
+            childTypeMap.remove(child);
         }
         return child;
     }
@@ -231,11 +241,15 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
             if (args.size() < 1) {
                 throw new IllegalArgumentException("Invalid response");
             }
-            Component c = PReference.from(args.get(0))
+            Component child = PReference.from(args.get(0))
                     .flatMap(r -> r.as(Component.class))
                     .orElseThrow();
             Call active = getActiveCall();
-            addChild(active.args().get(0).toString(), c);
+            addChild(active.args().get(0).toString(), child);
+            ComponentType type = ComponentType.from(active.args().get(1)).orElse(null);
+            if (type != null) {
+                childTypeMap.put(child, type);
+            }
             return active.reply();
         }
     }
