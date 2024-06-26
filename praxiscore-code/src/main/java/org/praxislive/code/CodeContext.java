@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
@@ -44,7 +43,6 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.ComponentInfo;
-import org.praxislive.core.ComponentType;
 import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.Service;
@@ -70,7 +68,6 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final Map<String, ReferenceDescriptor<?>> refs;
     private final List<Descriptor> descriptors;
     private final ComponentInfo info;
-    private final ComponentType componentType;
 
     private final D delegate;
     private final LogBuilder log;
@@ -114,7 +111,6 @@ public abstract class CodeContext<D extends CodeDelegate> {
             ports = connector.extractPorts();
             refs = connector.extractRefs();
             info = connector.extractInfo();
-            componentType = connector.extractComponentType();
             delegate = connector.getDelegate();
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
@@ -402,15 +398,6 @@ public abstract class CodeContext<D extends CodeDelegate> {
      */
     protected ComponentInfo getInfo() {
         return info;
-    }
-
-    /**
-     * Get the component type.
-     *
-     * @return component type
-     */
-    protected final ComponentType getComponentType() {
-        return componentType;
     }
 
     /**

@@ -21,6 +21,7 @@
  */
 package org.praxislive.core;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.core.protocols.ContainerProtocol;
 
@@ -77,6 +78,25 @@ public interface Container extends Component, Lookup.Provider {
     @Override
     public default void write(TreeWriter writer) {
         // no op
+    }
+
+    /**
+     * Get the {@link ComponentType} of the provided child. The default
+     * implementation looks for {@link ComponentInfo#KEY_COMPONENT_TYPE} in the
+     * child's info. Container's may override to provide a more efficient or
+     * suitable result.
+     * <p>
+     * The default implementation does not check if the provided component is
+     * actually a child of this container.
+     *
+     * @param child child component
+     * @return component type, or null if unavailable
+     */
+    public default ComponentType getType(Component child) {
+        return Optional.ofNullable(child.getInfo())
+                .map(info -> info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                .flatMap(ComponentType::from)
+                .orElse(null);
     }
 
 }

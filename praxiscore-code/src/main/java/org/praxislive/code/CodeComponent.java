@@ -21,6 +21,7 @@
  */
 package org.praxislive.code;
 
+import java.util.Optional;
 import org.praxislive.base.MetaProperty;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
@@ -33,6 +34,7 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.ThreadContext;
 import org.praxislive.core.TreeWriter;
@@ -125,7 +127,19 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
 
     @Override
     public void write(TreeWriter writer) {
-        writer.writeType(codeCtxt.getComponentType());
+        ComponentType type;
+        if (parent == null) {
+            // assume we're a root?!
+            type = Optional.ofNullable(getInfo())
+                    .map(info -> info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                    .flatMap(ComponentType::from)
+                    .orElse(null);
+        } else {
+            type = parent.getType(this);
+        }
+        if (type != null) {
+            writer.writeType(type);
+        }
         writer.writeInfo(getInfo());
         codeCtxt.writeDescriptors(writer);
     }

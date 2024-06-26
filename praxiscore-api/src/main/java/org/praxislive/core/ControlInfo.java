@@ -342,7 +342,7 @@ public final class ControlInfo extends PMap.MapBasedValue {
         var inputs = PArray.from(data.asMap().getOrDefault(KEY_INPUTS, PArray.EMPTY))
                 .map(a -> a.asListOf(ArgumentInfo.class))
                 .orElseThrow(IllegalArgumentException::new);
-        var defaults = PArray.from(data.asMap().getOrDefault(KEY_INPUTS, PArray.EMPTY))
+        var defaults = PArray.from(data.asMap().getOrDefault(KEY_DEFAULTS, PArray.EMPTY))
                 .map(a -> a.asList())
                 .orElseThrow(IllegalArgumentException::new);
 

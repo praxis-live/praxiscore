@@ -101,6 +101,10 @@ public interface Component {
      * component info, and property values, in that order. It may also add
      * custom annotations.
      * <p>
+     * The component should delegate to
+     * {@link Container#getType(org.praxislive.core.Component)} to find its type
+     * rather than relying directly on {@link ComponentInfo#KEY_COMPONENT_TYPE}.
+     * <p>
      * The default implementation of this method does nothing.
      *
      * @param writer TreeWriter to write to

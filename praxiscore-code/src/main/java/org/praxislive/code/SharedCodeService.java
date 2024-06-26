@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,9 +40,16 @@ import org.praxislive.core.types.PReference;
  * {@link CodeCompilerService} implementation for compiling source code (which
  * does support other processes).
  */
-public class SharedCodeService implements Service {
+public final class SharedCodeService implements Service {
 
+    /**
+     * Control ID of the new shared code control.
+     */
     public final static String NEW_SHARED = "new-shared";
+
+    /**
+     * ControlInfo of the new shared code control.
+     */
     public final static ControlInfo NEW_SHARED_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(PReference.info(Task.class)),

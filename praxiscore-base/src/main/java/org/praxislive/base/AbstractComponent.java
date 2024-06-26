@@ -107,18 +107,23 @@ public abstract class AbstractComponent implements Component {
     }
 
     protected final void writeTypeAndInfo(TreeWriter writer) {
-        ComponentInfo info = getInfo();
-        if (info == null) {
-            return;
+        ComponentType type;
+        if (parent == null) {
+            // assume we're a root?!
+            type = Optional.ofNullable(getInfo())
+                    .map(info -> info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                    .flatMap(ComponentType::from)
+                    .orElse(null);
+        } else {
+            type = parent.getType(this);
         }
-        ComponentType type = Optional.ofNullable(
-                info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
-                .flatMap(ComponentType::from)
-                .orElse(null);
         if (type != null) {
             writer.writeType(type);
         }
-        writer.writeInfo(info);
+        ComponentInfo info = getInfo();
+        if (info != null) {
+            writer.writeInfo(info);
+        }
     }
 
     protected final void writeMeta(TreeWriter writer) {

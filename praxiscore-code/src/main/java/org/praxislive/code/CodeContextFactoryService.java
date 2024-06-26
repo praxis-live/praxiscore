@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,9 +37,16 @@ import org.praxislive.core.services.LogLevel;
  * Should make use of a {@link CodeCompilerService} implementation for compiling
  * source code (which does support other processes).
  */
-public class CodeContextFactoryService implements Service {
+public final class CodeContextFactoryService implements Service {
 
+    /**
+     * Control ID of the new context control.
+     */
     public final static String NEW_CONTEXT = "new-context";
+
+    /**
+     * ControlInfo for the new context control.
+     */
     public final static ControlInfo NEW_CONTEXT_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(PReference.info(Task.class)),
@@ -87,7 +94,7 @@ public class CodeContextFactoryService implements Service {
                 Class<D> previous) {
             this(factory, code, logLevel, previous, null);
         }
-        
+
         /**
          * Create task.
          *
@@ -147,13 +154,12 @@ public class CodeContextFactoryService implements Service {
 
         /**
          * Get the shared code classloader to use as parent (optional).
-         * 
+         *
          * @return shared classloader, or null
          */
         public ClassLoader getSharedClassLoader() {
             return sharedClassLoader;
         }
-        
 
     }
 
@@ -180,7 +186,7 @@ public class CodeContextFactoryService implements Service {
 
         /**
          * Get created context.
-         * 
+         *
          * @return context
          */
         public CodeContext<D> getContext() {
@@ -189,7 +195,7 @@ public class CodeContextFactoryService implements Service {
 
         /**
          * Get log builder with any warning or error messages.
-         * 
+         *
          * @return log
          */
         public LogBuilder getLog() {
