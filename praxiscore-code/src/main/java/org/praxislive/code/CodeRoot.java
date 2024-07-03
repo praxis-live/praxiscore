@@ -32,14 +32,11 @@ import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
-import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
-import org.praxislive.core.TreeWriter;
-import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.SerializableProtocol;
 import org.praxislive.core.protocols.StartableProtocol;
@@ -255,13 +252,29 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             addControl(createInfoControl(getInternalIndex()));
             addControl(createMetaControl(getInternalIndex()));
             addControl(createMetaMergeControl(getInternalIndex()));
-            addControl(new RootControlDescriptor(SHARED_CODE, getInternalIndex()));
+            addControl(sharedCodeControl());
             addControl(createCodeControl(getInternalIndex()));
             addControl(new ResponseHandler(getInternalIndex()));
-            addControl(new RootControlDescriptor(StartableProtocol.START, getInternalIndex()));
-            addControl(new RootControlDescriptor(StartableProtocol.STOP, getInternalIndex()));
-            addControl(new RootControlDescriptor(StartableProtocol.IS_RUNNING, getInternalIndex()));
-            addControl(new RootControlDescriptor(SerializableProtocol.SERIALIZE, getInternalIndex()));
+            addControl(new WrapperControlDescriptor(StartableProtocol.START,
+                    StartableProtocol.START_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().startControl : null
+            ));
+            addControl(new WrapperControlDescriptor(StartableProtocol.STOP,
+                    StartableProtocol.STOP_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().stopControl : null
+            ));
+            addControl(new WrapperControlDescriptor(StartableProtocol.IS_RUNNING,
+                    StartableProtocol.IS_RUNNING_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().isRunningControl : null
+            ));
+            addControl(new WrapperControlDescriptor(SerializableProtocol.SERIALIZE,
+                    SerializableProtocol.SERIALIZE_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().serializeControl : null
+            ));
         }
 
         @Override
@@ -302,7 +315,23 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
             return true;
         }
-
+        
+        private ControlDescriptor<?> sharedCodeControl() {
+            return new WrapperControlDescriptor(SHARED_CODE,
+                    SharedCodeProperty.INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().sharedCode : null,
+                    (ctxt, writer) -> {
+                        if (ctxt instanceof Context c) {
+                            PMap value = c.getComponent().sharedCode.getValue();
+                            if (!value.isEmpty()) {
+                                writer.writeProperty(SHARED_CODE, value);
+                            }
+                        }
+                    }
+            );
+        }
+        
     }
 
     private static class RootImpl extends AbstractRoot {
@@ -367,71 +396,6 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                 doUpdate(time);
             }
 
-        }
-
-    }
-
-    private static class RootControlDescriptor
-            extends ControlDescriptor<RootControlDescriptor> {
-
-        private final String controlID;
-
-        private CodeRoot<?> root;
-
-        private RootControlDescriptor(String controlID, int index) {
-            super(RootControlDescriptor.class, controlID, Category.Internal, index);
-            this.controlID = controlID;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, RootControlDescriptor previous) {
-            root = (CodeRoot<?>) context.getComponent();
-        }
-
-        @Override
-        public Control control() {
-            return switch (controlID) {
-                case StartableProtocol.START ->
-                    root.startControl;
-                case StartableProtocol.STOP ->
-                    root.stopControl;
-                case StartableProtocol.IS_RUNNING ->
-                    root.isRunningControl;
-                case SerializableProtocol.SERIALIZE ->
-                    root.serializeControl;
-                case SHARED_CODE ->
-                    root.sharedCode;
-                default ->
-                    null;
-            };
-        }
-
-        @Override
-        public ControlInfo controlInfo() {
-            return switch (controlID) {
-                case StartableProtocol.START ->
-                    StartableProtocol.START_INFO;
-                case StartableProtocol.STOP ->
-                    StartableProtocol.STOP_INFO;
-                case StartableProtocol.IS_RUNNING ->
-                    StartableProtocol.IS_RUNNING_INFO;
-                case SerializableProtocol.SERIALIZE ->
-                    SerializableProtocol.SERIALIZE_INFO;
-                case SHARED_CODE ->
-                    SharedCodeProperty.INFO;
-                default ->
-                    null;
-            };
-        }
-
-        @Override
-        public void write(TreeWriter writer) {
-            if (SHARED_CODE.equals(id())) {
-                Value v = root.sharedCode.getValue();
-                if (!v.isEmpty()) {
-                    writer.writeProperty(SHARED_CODE, v);
-                }
-            }
         }
 
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -197,26 +197,32 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         @Override
         protected void addDefaultControls() {
             super.addDefaultControls();
-            addControl(new ContainerControlDescriptor(ContainerProtocol.ADD_CHILD,
-                    ContainerProtocol.ADD_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.REMOVE_CHILD,
-                    ContainerProtocol.REMOVE_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CHILDREN,
-                    ContainerProtocol.CHILDREN_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECT,
-                    ContainerProtocol.CONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.DISCONNECT,
-                    ContainerProtocol.DISCONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECTIONS,
-                    ContainerProtocol.CONNECTIONS_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.SUPPORTED_TYPES,
-                    ContainerProtocol.SUPPORTED_TYPES_INFO, getInternalIndex()));
+            addControl(containerControl(ContainerProtocol.ADD_CHILD,
+                    ContainerProtocol.ADD_CHILD_INFO));
+            addControl(containerControl(ContainerProtocol.REMOVE_CHILD,
+                    ContainerProtocol.REMOVE_CHILD_INFO));
+            addControl(containerControl(ContainerProtocol.CHILDREN,
+                    ContainerProtocol.CHILDREN_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECT,
+                    ContainerProtocol.CONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.DISCONNECT,
+                    ContainerProtocol.DISCONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECTIONS,
+                    ContainerProtocol.CONNECTIONS_INFO));
+            addControl(containerControl(ContainerProtocol.SUPPORTED_TYPES,
+                    ContainerProtocol.SUPPORTED_TYPES_INFO));
         }
 
         @Override
         protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
             super.buildBaseComponentInfo(cmp);
             cmp.merge(ContainerProtocol.API_INFO);
+        }
+        
+        private ControlDescriptor containerControl(String id, ControlInfo info) {
+            return new WrapperControlDescriptor(id, info, getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().getContainerControl(id) : null
+            );
         }
 
     }
@@ -247,36 +253,6 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         @Override
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
-        }
-
-    }
-
-    private static class ContainerControlDescriptor
-            extends ControlDescriptor<ContainerControlDescriptor> {
-
-        private final ControlInfo info;
-
-        private Control control;
-
-        ContainerControlDescriptor(String id, ControlInfo info, int index) {
-            super(ContainerControlDescriptor.class, id, ControlDescriptor.Category.Internal, index);
-            this.info = info;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, ContainerControlDescriptor previous) {
-            control = ((CodeRootContainer<?>) context.getComponent())
-                    .getContainerControl(id());
-        }
-
-        @Override
-        public Control control() {
-            return control;
-        }
-
-        @Override
-        public ControlInfo controlInfo() {
-            return info;
         }
 
     }
