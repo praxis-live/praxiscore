@@ -21,6 +21,10 @@
  */
 package org.praxislive.code;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.stream.Stream;
 
 /**
@@ -44,6 +48,23 @@ public class CodeRootContainerDelegate extends CodeRootDelegate implements Conta
         } else {
             return Stream.empty();
         }
+    }
+
+    /**
+     * Annotation to add hint to display the component and its children in a
+     * table when editing.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface DisplayTable {
+
+        /**
+         * Array of properties to display as table columns.
+         *
+         * @return property columns
+         */
+        String[] properties();
+
     }
 
 }

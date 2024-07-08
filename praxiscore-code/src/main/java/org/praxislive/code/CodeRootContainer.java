@@ -42,7 +42,9 @@ import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.SerializableProtocol;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
+import org.praxislive.core.types.PString;
 
 /**
  * A {@link Root} container instance that is rewritable at runtime. The
@@ -222,6 +224,7 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     public static class Connector<D extends CodeRootContainerDelegate> extends CodeRoot.Connector<D> {
 
         private CodeContainerSupport.TypesInfo typesInfo;
+        private PMap displayHint;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
             super(task, delegate);
@@ -255,12 +258,24 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
             if (typesInfo == null) {
                 typesInfo = CodeContainerSupport.analyseMethod(method, true);
             }
+            var hint = method.getAnnotation(CodeRootContainerDelegate.DisplayTable.class);
+            if (hint != null) {
+                displayHint = PMap.of(
+                        "type", "table",
+                        "properties", Stream.of(hint.properties())
+                                .map(PString::of)
+                                .collect(PArray.collector())
+                );
+            }
         }
 
         @Override
         protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
             super.buildBaseComponentInfo(cmp);
             cmp.merge(ContainerProtocol.API_INFO);
+            if (displayHint != null) {
+                cmp.property(ComponentInfo.KEY_DISPLAY_HINT, displayHint);
+            }
         }
 
         private ControlDescriptor containerControl(String id, ControlInfo info) {
