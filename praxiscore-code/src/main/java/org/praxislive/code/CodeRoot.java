@@ -149,10 +149,9 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
     @Override
     void install(CodeContext<D> cc) {
-        if (cc instanceof Context) {
+        if (cc instanceof Context<D> pending) {
             if (root.isRunning()) {
-                Context<?> existing = (Context<?>) getCodeContext();
-                Context<?> pending = (Context<?>) cc;
+                Context<D> existing = getCodeContext();
                 boolean compatible = (existing.driverDesc == null && pending.driverDesc == null)
                         || (existing.driverDesc != null && pending.driverDesc != null
                         && existing.driverDesc.isCompatible(pending.driverDesc));
@@ -315,7 +314,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
             return true;
         }
-        
+
         private ControlDescriptor<?> sharedCodeControl() {
             return new WrapperControlDescriptor(SHARED_CODE,
                     SharedCodeProperty.INFO,
@@ -331,7 +330,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     }
             );
         }
-        
+
     }
 
     private static class RootImpl extends AbstractRoot {

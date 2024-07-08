@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -51,17 +51,21 @@ public class FilteredTypes implements SupportedTypes {
     private final Container context;
     private final Predicate<ComponentType> filter;
     private final Supplier<List<ComponentType>> additional;
+    private final boolean includeParentAdditional;
 
     private Result result;
+    private List<ComponentType> addedTypes;
     private SupportedTypes delegate;
     private Result delegateResult;
 
     private FilteredTypes(Container context,
             Predicate<ComponentType> filter,
-            Supplier<List<ComponentType>> additional) {
+            Supplier<List<ComponentType>> additional,
+            boolean includeParentAdditional) {
         this.context = context;
         this.filter = filter;
         this.additional = additional;
+        this.includeParentAdditional = includeParentAdditional;
     }
 
     @Override
@@ -72,12 +76,12 @@ public class FilteredTypes implements SupportedTypes {
                     .filter(d -> d != this)
                     .orElseGet(() -> new BaseDelegate(this));
             delegateResult = delegate.query();
-            result = calculateResult(delegateResult);
+            result = calculateResult(delegate, delegateResult);
         } else {
             var delRes = delegate.query();
             if (delRes != delegateResult) {
                 delegateResult = delRes;
-                result = calculateResult(delegateResult);
+                result = calculateResult(delegate, delegateResult);
             }
         }
         return result;
@@ -91,22 +95,31 @@ public class FilteredTypes implements SupportedTypes {
      */
     public void reset() {
         result = null;
+        addedTypes = null;
         delegate = null;
         delegateResult = null;
     }
 
-    private Result calculateResult(Result delegateResult) {
+    private Result calculateResult(SupportedTypes delegate, Result delegateResult) {
         if (filter == null && additional == null) {
             return delegateResult;
         }
         List<ComponentType> list = new ArrayList<>(delegateResult.types());
+        if (!includeParentAdditional && delegate instanceof FilteredTypes ft) {
+            list.removeAll(ft.addedTypes());
+        }
         if (filter != null) {
             list.removeIf(Predicate.not(filter));
         }
         if (additional != null) {
-            list.addAll(additional.get());
+            addedTypes = List.copyOf(additional.get());
+            list.addAll(addedTypes);
         }
         return new Result(list);
+    }
+
+    private List<ComponentType> addedTypes() {
+        return addedTypes == null ? List.of() : addedTypes;
     }
 
     /**
@@ -119,7 +132,7 @@ public class FilteredTypes implements SupportedTypes {
      * @return instance
      */
     public static FilteredTypes create(Container context) {
-        return create(context, null, null);
+        return create(context, null, null, true);
     }
 
     /**
@@ -135,7 +148,7 @@ public class FilteredTypes implements SupportedTypes {
      */
     public static FilteredTypes create(Container context,
             Predicate<ComponentType> filter) {
-        return create(context, filter, null);
+        return create(context, filter, null, true);
     }
 
     /**
@@ -154,8 +167,33 @@ public class FilteredTypes implements SupportedTypes {
     public static FilteredTypes create(Container context,
             Predicate<ComponentType> filter,
             Supplier<List<ComponentType>> additional) {
+        return create(context, filter, additional, true);
+    }
+
+    /**
+     * Create a FilteredTypes for the provided context, additionally filtering
+     * the available types from the parent by the passed in filter, and adding
+     * in types from the supplied list.
+     * <p>
+     * The boolean flag allows to filter out additional types added by the
+     * parent, if the parent is also using an instance of FilteredTypes.
+     * <p>
+     * If the filter is null then a default filter will be used according to
+     * root type - see {@link #create(org.praxislive.core.Container)}.
+     *
+     * @param context container this will be added to
+     * @param filter filtering to apply to parent result
+     * @param additional supplier of a list of additional types
+     * @param includeParentAdditional whether to include additional types from
+     * the parent
+     * @return instance
+     */
+    public static FilteredTypes create(Container context,
+            Predicate<ComponentType> filter,
+            Supplier<List<ComponentType>> additional,
+            boolean includeParentAdditional) {
         Objects.requireNonNull(context);
-        return new FilteredTypes(context, filter, additional);
+        return new FilteredTypes(context, filter, additional, includeParentAdditional);
     }
 
     private static class BaseDelegate implements SupportedTypes {

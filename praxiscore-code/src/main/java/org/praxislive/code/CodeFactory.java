@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@ package org.praxislive.code;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.praxislive.core.ComponentType;
@@ -64,10 +65,10 @@ public class CodeFactory<D extends CodeDelegate> {
         this.baseImports = base.baseImports;
         this.componentCreator = base.componentCreator;
         this.contextCreator = base.contextCreator;
-        this.lookup = base.lookup;
+        this.lookup = Lookup.of(base.lookup, base);
         this.type = Objects.requireNonNull(type);
-        this.defaultDelegateClass = Objects.requireNonNull(defaultCls);
         this.template = Objects.requireNonNull(template);
+        this.defaultDelegateClass = defaultCls;
     }
 
     /**
@@ -93,8 +94,8 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @return default delegate class
      */
-    public final Class<? extends D> defaultDelegateClass() {
-        return defaultDelegateClass;
+    public final Optional<Class<? extends D>> defaultDelegateClass() {
+        return Optional.ofNullable(defaultDelegateClass);
     }
 
     /**
@@ -118,13 +119,21 @@ public class CodeFactory<D extends CodeDelegate> {
 
     /**
      * Create a task for constructing a context or component from a delegate
-     * class. This will return a suitable Task subclass that should be
-     * configured and used to create a context or component.
+     * class.
      *
      * @return code factory task
      */
     public Task<D> task() {
-        return new Task<>(this, false);
+        return new Task<>(this);
+    }
+
+    /**
+     * Access the lookup associated with this code factory.
+     *
+     * @return lookup
+     */
+    public Lookup lookup() {
+        return lookup;
     }
 
     /**
@@ -216,23 +225,14 @@ public class CodeFactory<D extends CodeDelegate> {
      *
      * @param <D> delegate base type
      */
-    public static class Task<D extends CodeDelegate> {
+    public static final class Task<D extends CodeDelegate> {
 
         private final CodeFactory<D> factory;
 
         private LogBuilder log;
         private Class<D> previous;
 
-        /**
-         * Construct a task for the given factory.
-         *
-         * @param factory
-         */
-        public Task(CodeFactory<D> factory) {
-            this(factory, true);
-        }
-
-        private Task(CodeFactory<D> factory, boolean verify) {
+        private Task(CodeFactory<D> factory) {
             this.factory = Objects.requireNonNull(factory);
         }
 
@@ -260,9 +260,9 @@ public class CodeFactory<D extends CodeDelegate> {
         }
 
         /**
-         * Create a CodeComponent for the provided delegate. By default, this
-         * calls {@link #createContext(org.praxislive.code.CodeDelegate)} and
-         * installs the context on a new instance of CodeComponent.
+         * Create a CodeComponent for the provided delegate. This calls
+         * {@link #createContext(org.praxislive.code.CodeDelegate)} and installs
+         * the context on a new instance of CodeComponent.
          *
          * @param delegate delegate to create component for
          * @return code component
@@ -282,7 +282,7 @@ public class CodeFactory<D extends CodeDelegate> {
          * @return code context
          */
         public CodeContext<D> createContext(D delegate) {
-            return createCodeContext(delegate);
+            return factory.contextCreator.apply(this, delegate);
         }
 
         /**
@@ -311,18 +311,6 @@ public class CodeFactory<D extends CodeDelegate> {
          */
         public CodeFactory<D> getFactory() {
             return factory;
-        }
-
-        /**
-         * Create the code context for the given delegate. A typical
-         * implementation is <code>return new XXXCodeContext(new
-         * XXXCodeConnector(this, delegate));</code>.
-         *
-         * @param delegate delegate to create context for
-         * @return code context
-         */
-        protected CodeContext<D> createCodeContext(D delegate) {
-            return factory.contextCreator.apply(this, delegate);
         }
 
     }
@@ -355,6 +343,50 @@ public class CodeFactory<D extends CodeDelegate> {
             this.componentCreator = Objects.requireNonNull(componentCreator);
             this.contextCreator = Objects.requireNonNull(contextCreator);
             this.lookup = Objects.requireNonNull(lookup);
+        }
+
+        /**
+         * Query the base delegate class that all CodeFactory instances will
+         * create subclasses of.
+         *
+         * @return base delegate class
+         */
+        public final Class<B> baseClass() {
+            return baseClass;
+        }
+
+        /**
+         * Query the base imports that all CodeFactory instance will add to the
+         * source body.
+         *
+         * @return base imports
+         */
+        public final List<String> baseImports() {
+            return baseImports;
+        }
+
+        /**
+         * Create a CodeFactory with the given component type and default
+         * source, without a precompiled delegate class.
+         *
+         * @param type component type
+         * @param defaultSource default source code
+         * @return code factory
+         */
+        public CodeFactory<B> create(String type, String defaultSource) {
+            return create(ComponentType.of(type), defaultSource);
+        }
+
+        /**
+         * Create a CodeFactory with the given component type and default
+         * source, without a precompiled delegate class.
+         *
+         * @param type component type
+         * @param defaultSource default source code
+         * @return code factory
+         */
+        public CodeFactory<B> create(ComponentType type, String defaultSource) {
+            return create(type, null, defaultSource);
         }
 
         /**

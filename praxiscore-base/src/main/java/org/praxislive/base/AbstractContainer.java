@@ -150,6 +150,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         child.hierarchyChanged();
     }
 
+    protected void recordChildType(Component child, ComponentType type) {
+        childTypeMap.put(Objects.requireNonNull(child), Objects.requireNonNull(type));
+    }
+
     protected void notifyChild(Component child) throws VetoException {
         child.parentNotify(this);
     }
@@ -245,11 +249,10 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
                     .flatMap(r -> r.as(Component.class))
                     .orElseThrow();
             Call active = getActiveCall();
-            addChild(active.args().get(0).toString(), child);
+            String id = active.args().get(0).toString();
             ComponentType type = ComponentType.from(active.args().get(1)).orElse(null);
-            if (type != null) {
-                childTypeMap.put(child, type);
-            }
+            addChild(id, child);
+            recordChildType(child, type);
             return active.reply();
         }
     }
@@ -354,6 +357,14 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         @Override
         protected abstract ComponentAddress getAddress();
 
+        /**
+         * Notify the child of its addition to the container by calling through
+         * to {@link Component#parentNotify(org.praxislive.core.Container)} with
+         * the wrapper instance.
+         *
+         * @param child child being notified
+         * @throws VetoException if child vetoes being added
+         */
         @Override
         protected abstract void notifyChild(Component child) throws VetoException;
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -183,6 +183,10 @@ class CodeProperty<D extends CodeDelegate>
     void installContext(ControlAddress address, CodeContext<?> context) {
         this.context.getComponent().install((CodeContext<D>) context);
         // shared code context is now null!
+        checkSharedContext(address);
+    }
+
+    void checkSharedContext(ControlAddress address) {
         sharedCodeCtxt = context.getLookup().find(SharedCodeContext.class).orElse(null);
         if (sharedCodeCtxt != null) {
             sharedCodeCtxt.checkDependency(address, this);
@@ -190,8 +194,11 @@ class CodeProperty<D extends CodeDelegate>
     }
 
     SharedCodeService.DependentTask<D> createSharedCodeReloadTask() {
-        return new SharedCodeService.DependentTask<>(factory,
-                sourceArgs.get(0).toString(), getDelegateClass());
+        String code = sourceArgs.get(0).toString();
+        if (code.isEmpty()) {
+            code = factory.sourceTemplate();
+        }
+        return new SharedCodeService.DependentTask<>(factory, code, getDelegateClass());
     }
 
     static class Descriptor extends ControlDescriptor<CodeProperty.Descriptor> {

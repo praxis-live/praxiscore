@@ -40,6 +40,8 @@ import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.services.ServiceUnavailableException;
 
 /**
  * A CodeComponent is a Component instance that is rewritable at runtime. The
@@ -141,14 +143,6 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         codeCtxt.writeDescriptors(writer);
     }
 
-    Lookup getLookup() {
-        if (parent != null) {
-            return parent.getLookup();
-        } else {
-            return Lookup.EMPTY;
-        }
-    }
-
     void install(CodeContext<D> cc) {
         cc.setComponent(this);
         cc.handleConfigure(this, codeCtxt);
@@ -157,6 +151,21 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
         codeCtxt = cc;
         codeCtxt.handleHierarchyChanged();
+    }
+
+    Lookup getLookup() {
+        if (parent != null) {
+            return parent.getLookup();
+        } else {
+            return Lookup.EMPTY;
+        }
+    }
+
+    ComponentAddress findService(Class<? extends Service> service)
+            throws ServiceUnavailableException {
+        return getLookup().find(Services.class)
+                .flatMap(sm -> sm.locate(service))
+                .orElseThrow(ServiceUnavailableException::new);
     }
 
     CodeContext<D> getCodeContext() {
@@ -203,11 +212,11 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
         return logInfo.toAddress;
     }
-    
+
     Control infoProperty() {
         return infoProperty;
     }
-    
+
     MetaProperty metaProperty() {
         return metaProperty;
     }
