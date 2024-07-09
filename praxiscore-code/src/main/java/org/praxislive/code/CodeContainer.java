@@ -28,9 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.praxislive.base.*;
+import org.praxislive.code.CodeContainerSupport.ChildControl;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlInfo;
@@ -70,9 +72,12 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             = PortInfo.create(ControlPort.class, PortInfo.Direction.BIDI, PMap.EMPTY);
 
     private final ContainerImpl container;
+    private final ChildControl childControl;
     private final Map<String, PortProxy> proxies;
     private final Control proxyProperty;
+    private final FilteredTypes filteredTypes;
 
+    private Lookup lookup;
     private PMap portMap;
     private ComponentInfo baseInfo;
     private ComponentInfo info;
@@ -80,6 +85,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     CodeContainer() {
         container = new ContainerImpl(this);
+        childControl = new ChildControl(this, container::addChild, container::recordChildType);
         proxies = new LinkedHashMap<>();
         portMap = PMap.EMPTY;
         proxyProperty = new AbstractProperty() {
@@ -93,6 +99,10 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
                 setPortMap(PMap.from(arg).orElseThrow(IllegalArgumentException::new));
             }
         };
+        filteredTypes = FilteredTypes.create(this,
+                t -> childControl.supportedSystemType(t),
+                () -> childControl.additionalTypes(),
+                false);
     }
 
     @Override
@@ -154,11 +164,16 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     @Override
     public Lookup getLookup() {
-        return super.getLookup();
+        if (lookup == null) {
+            lookup = Lookup.of(super.getLookup(), filteredTypes);
+        }
+        return lookup;
     }
 
     @Override
     public void hierarchyChanged() {
+        lookup = null;
+        filteredTypes.reset();
         super.hierarchyChanged();
         container.hierarchyChanged();
     }
@@ -170,6 +185,25 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             writer.writeProperty("ports", portMap);
         }
         container.write(writer);
+    }
+
+    @Override
+    Context<D> getCodeContext() {
+        return (Context<D>) super.getCodeContext();
+    }
+
+    @Override
+    void install(CodeContext<D> cc) {
+        if (cc instanceof Context<D> pending) {
+            if (!childControl.isCompatible(pending.typesInfo)) {
+                throw new IllegalStateException("Supported types is not compatible");
+            }
+            super.install(cc);
+            childControl.install(pending.typesInfo);
+            filteredTypes.reset();
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
 
     Control getContainerControl(String id) {
@@ -299,10 +333,14 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     public static class Context<D extends CodeContainerDelegate> extends CodeContext<D> {
 
         private final boolean hasPortProxies;
+        private final CodeContainerSupport.TypesInfo typesInfo;
 
         public Context(CodeContainer.Connector<D> connector) {
             super(connector);
             hasPortProxies = connector.hasPortProxies;
+            typesInfo = connector.typesInfo == null
+                    ? CodeContainerSupport.defaultContainerTypesInfo()
+                    : connector.typesInfo;
         }
 
         @Override
@@ -332,6 +370,7 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     public static class Connector<D extends CodeContainerDelegate> extends CodeConnector<D> {
 
         private boolean hasPortProxies;
+        private CodeContainerSupport.TypesInfo typesInfo;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
             super(task, delegate);
@@ -340,20 +379,23 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         @Override
         protected void addDefaultControls() {
             super.addDefaultControls();
-            addControl(new ContainerControlDescriptor(ContainerProtocol.ADD_CHILD,
-                    ContainerProtocol.ADD_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.REMOVE_CHILD,
-                    ContainerProtocol.REMOVE_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CHILDREN,
-                    ContainerProtocol.CHILDREN_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECT,
-                    ContainerProtocol.CONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.DISCONNECT,
-                    ContainerProtocol.DISCONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECTIONS,
-                    ContainerProtocol.CONNECTIONS_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.SUPPORTED_TYPES,
-                    ContainerProtocol.SUPPORTED_TYPES_INFO, getInternalIndex()));
+            addControl(new WrapperControlDescriptor(
+                    ContainerProtocol.ADD_CHILD,
+                    ContainerProtocol.ADD_CHILD_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().childControl : null));
+            addControl(containerControl(ContainerProtocol.REMOVE_CHILD,
+                    ContainerProtocol.REMOVE_CHILD_INFO));
+            addControl(containerControl(ContainerProtocol.CHILDREN,
+                    ContainerProtocol.CHILDREN_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECT,
+                    ContainerProtocol.CONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.DISCONNECT,
+                    ContainerProtocol.DISCONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECTIONS,
+                    ContainerProtocol.CONNECTIONS_INFO));
+            addControl(containerControl(ContainerProtocol.SUPPORTED_TYPES,
+                    ContainerProtocol.SUPPORTED_TYPES_INFO));
         }
 
         @Override
@@ -370,6 +412,15 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
                 addControl(new PortProxiesControlDescriptor("ports", getInternalIndex()));
                 hasPortProxies = true;
             }
+            if (typesInfo == null) {
+                typesInfo = CodeContainerSupport.analyseMethod(method, true);
+            }
+        }
+
+        private ControlDescriptor<?> containerControl(String id, ControlInfo info) {
+            return new WrapperControlDescriptor(id, info, getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().getContainerControl(id) : null
+            );
         }
 
     }
@@ -404,9 +455,18 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         }
 
         @Override
+        protected void recordChildType(Component child, ComponentType type) {
+            super.recordChildType(child, type);
+        }
+
+        @Override
         protected Component removeChild(String id) {
             wrapper.info = null;
-            return super.removeChild(id);
+            Component child = super.removeChild(id);
+            if (child != null) {
+                wrapper.childControl.notifyChildRemoved(id);
+            }
+            return child;
         }
 
         @Override
@@ -418,35 +478,6 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         public void write(TreeWriter writer) {
             writeChildren(writer);
             writeConnections(writer);
-        }
-
-    }
-
-    private static class ContainerControlDescriptor
-            extends ControlDescriptor<ContainerControlDescriptor> {
-
-        private final ControlInfo info;
-
-        private Control control;
-
-        ContainerControlDescriptor(String id, ControlInfo info, int index) {
-            super(ContainerControlDescriptor.class, id, Category.Internal, index);
-            this.info = info;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, ContainerControlDescriptor previous) {
-            control = ((CodeContainer) context.getComponent()).getContainerControl(id());
-        }
-
-        @Override
-        public Control control() {
-            return control;
-        }
-
-        @Override
-        public ControlInfo controlInfo() {
-            return info;
         }
 
     }

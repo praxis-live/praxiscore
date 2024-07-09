@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2022 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 /**
  * Base class for user rewritable container code.
  */
-public class CodeContainerDelegate extends CodeDelegate {
+public class CodeContainerDelegate extends CodeDelegate implements ContainerDelegateAPI {
 
     public void init() {
     }

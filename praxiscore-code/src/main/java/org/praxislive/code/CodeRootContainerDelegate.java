@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,12 +21,16 @@
  */
 package org.praxislive.code;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.stream.Stream;
 
 /**
  * Base class for user rewritable Root container code.
  */
-public class CodeRootContainerDelegate extends CodeRootDelegate {
+public class CodeRootContainerDelegate extends CodeRootDelegate implements ContainerDelegateAPI {
 
     @Override
     public void init() {
@@ -45,5 +49,22 @@ public class CodeRootContainerDelegate extends CodeRootDelegate {
             return Stream.empty();
         }
     }
-    
+
+    /**
+     * Annotation to add hint to display the component and its children in a
+     * table when editing.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface DisplayTable {
+
+        /**
+         * Array of properties to display as table columns.
+         *
+         * @return property columns
+         */
+        String[] properties();
+
+    }
+
 }

@@ -1,0 +1,13 @@
+hub {
+
+}
+compiler {
+  release 11
+}
+libraries {}
+
+# <<<BUILD>>>
+include [file "custom.pxr"]
+
+# <<<RUN>>>
+/custom.start

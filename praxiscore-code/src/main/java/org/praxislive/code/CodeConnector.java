@@ -365,7 +365,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @return info control descriptor
      */
     protected final ControlDescriptor createInfoControl(int index) {
-        return new CodeComponent.ControlWrapper(ComponentProtocol.INFO, index);
+        return new WrapperControlDescriptor(ComponentProtocol.INFO,
+                ComponentProtocol.INFO_INFO,
+                index,
+                context -> context.getComponent().infoProperty()
+        );
     }
 
     /**
@@ -385,7 +389,17 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @return code control descriptor
      */
     protected final ControlDescriptor<?> createMetaControl(int index) {
-        return new CodeComponent.ControlWrapper(ComponentProtocol.META, index);
+        return new WrapperControlDescriptor(ComponentProtocol.META,
+                ComponentProtocol.META_INFO,
+                index,
+                context -> context.getComponent().metaProperty(),
+                (context, writer) -> {
+                    PMap value = context.getComponent().metaProperty().getValue();
+                    if (!value.isEmpty()) {
+                        writer.writeProperty(ComponentProtocol.META, value);
+                    }
+                }
+        );
     }
 
     /**
@@ -395,7 +409,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @return code control descriptor
      */
     protected final ControlDescriptor<?> createMetaMergeControl(int index) {
-        return new CodeComponent.ControlWrapper(ComponentProtocol.META_MERGE, index);
+        return new WrapperControlDescriptor(ComponentProtocol.META_MERGE,
+                ComponentProtocol.META_MERGE_INFO,
+                index,
+                context -> context.getComponent().metaProperty().getMergeControl()
+        );
     }
 
     /**

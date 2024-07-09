@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.base.AbstractRoot;
+import org.praxislive.code.CodeChildFactoryService;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeComponentFactoryService;
@@ -82,6 +83,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
         controls = Map.of(
                 CodeComponentFactoryService.NEW_INSTANCE, new NewInstanceControl(),
                 CodeRootFactoryService.NEW_ROOT_INSTANCE, new NewRootInstanceControl(),
+                CodeChildFactoryService.NEW_CHILD_INSTANCE, new NewChildInstanceControl(),
                 CodeContextFactoryService.NEW_CONTEXT, new NewContextControl(),
                 SharedCodeService.NEW_SHARED, new NewSharedControl()
         );
@@ -93,6 +95,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
     public List<Class<? extends Service>> services() {
         return List.of(CodeComponentFactoryService.class,
                 CodeRootFactoryService.class,
+                CodeChildFactoryService.class,
                 CodeContextFactoryService.class,
                 SharedCodeService.class);
     }
@@ -108,6 +111,31 @@ public class DefaultCodeFactoryService extends AbstractRoot
             controls.get(call.to().controlID()).call(call, router);
         } catch (Exception ex) {
             router.route(call.error(PError.of(ex)));
+        }
+    }
+
+    private PMap createCompilerTask(CodeFactory<?> codeFactory,
+            LogLevel logLevel,
+            String fullClassName,
+            String code,
+            ClassLoader sharedCodeClassLoader) {
+        String source = wrapClassBody(codeFactory.baseClass(),
+                codeFactory.baseImports(),
+                fullClassName, code);
+        PMap sharedClasses;
+        if (sharedCodeClassLoader instanceof PMapClassLoader pMapCL) {
+            sharedClasses = pMapCL.getClassesMap();
+        } else {
+            sharedClasses = PMap.EMPTY;
+        }
+        if (sharedClasses.isEmpty()) {
+            return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source),
+                    CodeCompilerService.KEY_LOG_LEVEL, logLevel);
+        } else {
+            return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source),
+                    CodeCompilerService.KEY_LOG_LEVEL, logLevel,
+                    CodeCompilerService.KEY_SHARED_CLASSES, sharedClasses);
+
         }
     }
 
@@ -193,15 +221,16 @@ public class DefaultCodeFactoryService extends AbstractRoot
         protected Call processInvoke(Call call) throws Exception {
             var codeFactory = findCodeFactory();
             var src = codeFactory.sourceTemplate();
-            var cls = codeFactory.defaultDelegateClass();
+            var cls = codeFactory.defaultDelegateClass().orElse(null);
             if (cls != null) {
                 return call.reply(PReference.of(createComponent(codeFactory, cls)));
             } else {
+                String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
                 return Call.create(
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(codeFactory, src));
+                        createCompilerTask(codeFactory, LogLevel.ERROR, fullClassName, src, null));
             }
 
         }
@@ -237,22 +266,25 @@ public class DefaultCodeFactoryService extends AbstractRoot
             return codeFactory.task().createComponent(delegateClass.getDeclaredConstructor().newInstance());
         }
 
-        private PMap createCompilerTask(CodeFactory<?> codeFactory, String code) {
-            String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
-            String source = wrapClassBody(codeFactory.baseClass(), codeFactory.baseImports(),
-                    fullClassName, code);
-            return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source));
-        }
-
     }
-    
+
     private class NewRootInstanceControl extends AbstractAsyncControl {
 
         @Override
         protected Call processInvoke(Call call) throws Exception {
             var codeFactory = findCodeFactory();
-            var cls = codeFactory.defaultDelegateClass();
-            return call.reply(PReference.of(createComponent(codeFactory, cls)));
+            var src = codeFactory.sourceTemplate();
+            var cls = codeFactory.defaultDelegateClass().orElse(null);
+            if (cls != null) {
+                return call.reply(PReference.of(createComponent(codeFactory, cls)));
+            } else {
+                String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
+                return Call.create(
+                        findCompilerService(),
+                        call.to(),
+                        call.time(),
+                        createCompilerTask(codeFactory, LogLevel.ERROR, fullClassName, src, null));
+            }
 
         }
 
@@ -289,6 +321,80 @@ public class DefaultCodeFactoryService extends AbstractRoot
 
     }
 
+    private class NewChildInstanceControl extends AbstractAsyncControl {
+
+        CodeFactory<CodeDelegate> activeCodeFactory;
+
+        @Override
+        protected Call processInvoke(Call call) throws Exception {
+            activeCodeFactory = null;
+            CodeChildFactoryService.Task task = findTask();
+            Class<? extends CodeDelegate> baseType = task.baseDelegate();
+            CodeFactory.Base<CodeDelegate> factoryBase = ComponentRegistry.getInstance().findSuitableBase(baseType);
+            if (factoryBase == null) {
+                throw new IllegalArgumentException("No base support found for " + baseType);
+            }
+            ClassLoader shared = baseType.getClassLoader() instanceof PMapClassLoader pmcl
+                    ? pmcl : null;
+            String source = "extends " + baseType.getCanonicalName() + ";";
+            String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
+            activeCodeFactory = factoryBase.create(task.componentType(), source);
+            return Call.create(
+                    findCompilerService(),
+                    call.to(),
+                    call.time(),
+                    createCompilerTask(activeCodeFactory, task.logLevel(), fullClassName, source, shared)
+            );
+        }
+
+        @Override
+        protected Call processResponse(Call call) throws Exception {
+            try {
+                CodeFactory<CodeDelegate> codeFactory = activeCodeFactory;
+                activeCodeFactory = null;
+                PMap data = PMap.from(call.args().get(0)).orElseThrow(IllegalArgumentException::new);
+                CodeChildFactoryService.Task task = findTask();
+                Class<? extends CodeDelegate> cls = extractCodeDelegateClass(
+                        data,
+                        task.baseDelegate().getClassLoader() instanceof PMapClassLoader pmcl
+                        ? pmcl : null);
+                CodeDelegate delegate = cls.getDeclaredConstructor().newInstance();
+                LogBuilder log = new LogBuilder(task.logLevel());
+                extractCompilerLog(data, log);
+                CodeChildFactoryService.Result result = createResult(codeFactory, log, delegate);
+                return getActiveCall().reply(PReference.of(result));
+            } catch (Throwable throwable) {
+                if (throwable instanceof Exception) {
+                    throw (Exception) throwable;
+                } else {
+                    throw new Exception(throwable);
+                }
+            }
+        }
+
+        @Override
+        protected Call processError(Call call) throws Exception {
+            activeCodeFactory = null;
+            return super.processError(call);
+        }
+
+        private CodeChildFactoryService.Task findTask() throws Exception {
+            return PReference.from(getActiveCall().args().get(0))
+                    .flatMap(r -> r.as(CodeChildFactoryService.Task.class))
+                    .orElseThrow();
+        }
+
+        private CodeChildFactoryService.Result createResult(
+                CodeFactory<CodeDelegate> codeFactory,
+                LogBuilder log,
+                CodeDelegate delegate) {
+            CodeComponent<CodeDelegate> context = codeFactory.task()
+                    .attachLogging(log)
+                    .createComponent(delegate);
+            return new CodeChildFactoryService.Result(context, log);
+        }
+    }
+
     private class NewContextControl extends AbstractAsyncControl {
 
         private boolean usingShared;
@@ -303,7 +409,7 @@ public class DefaultCodeFactoryService extends AbstractRoot
             Class<? extends CodeDelegate> cls;
             if (src.isBlank()) {
                 src = factory.sourceTemplate();
-                cls = factory.defaultDelegateClass();
+                cls = factory.defaultDelegateClass().orElse(null);
             } else {
                 // @TODO weak code cache for user code
                 cls = null;
@@ -319,7 +425,11 @@ public class DefaultCodeFactoryService extends AbstractRoot
                         findCompilerService(),
                         call.to(),
                         call.time(),
-                        createCompilerTask(task, fullClassName, src, usingShared));
+                        createCompilerTask(task.getFactory(),
+                                task.getLogLevel(),
+                                fullClassName,
+                                src,
+                                usingShared ? task.getSharedClassLoader() : null));
             }
 
         }
@@ -368,32 +478,6 @@ public class DefaultCodeFactoryService extends AbstractRoot
                     .attachLogging(log)
                     .createContext(delegate);
             return new CodeContextFactoryService.Result<>(context, log);
-        }
-
-        private PMap createCompilerTask(CodeContextFactoryService.Task<?> task,
-                String fullClassName,
-                String code,
-                boolean shared) {
-            var codeFactory = task.getFactory();
-            String source = wrapClassBody(codeFactory.baseClass(),
-                    codeFactory.baseImports(),
-                    fullClassName, code);
-            if (shared) {
-                PMap sharedClasses;
-                ClassLoader sharedCL = task.getSharedClassLoader();
-                if (sharedCL instanceof PMapClassLoader) {
-                    sharedClasses = ((PMapClassLoader) sharedCL).getClassesMap();
-                } else {
-                    sharedClasses = PMap.EMPTY;
-                }
-                return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source),
-                        CodeCompilerService.KEY_LOG_LEVEL, task.getLogLevel(),
-                        CodeCompilerService.KEY_SHARED_CLASSES, sharedClasses);
-            } else {
-                return PMap.of(CodeCompilerService.KEY_SOURCES, PMap.of(fullClassName, source),
-                        CodeCompilerService.KEY_LOG_LEVEL, task.getLogLevel());
-
-            }
         }
 
     }

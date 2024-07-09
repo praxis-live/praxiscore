@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,14 +21,17 @@
  */
 package org.praxislive.code;
 
+import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
 import org.praxislive.base.FilteredTypes;
 import org.praxislive.base.MapTreeWriter;
+import org.praxislive.code.CodeContainerSupport.ChildControl;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.ComponentType;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
@@ -39,7 +42,9 @@ import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.protocols.SerializableProtocol;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
+import org.praxislive.core.types.PString;
 
 /**
  * A {@link Root} container instance that is rewritable at runtime. The
@@ -54,6 +59,7 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         implements Container {
 
     private final ContainerImpl container;
+    private final ChildControl childControl;
     private final FilteredTypes filteredTypes;
 
     private Lookup lookup;
@@ -61,7 +67,10 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
 
     CodeRootContainer() {
         container = new ContainerImpl(this);
-        filteredTypes = FilteredTypes.create(this, type -> type.toString().startsWith("core:"));
+        childControl = new ChildControl(this, container::addChild, container::recordChildType);
+        filteredTypes = FilteredTypes.create(this,
+                t -> childControl.supportedSystemType(t),
+                () -> childControl.additionalTypes());
     }
 
     @Override
@@ -99,6 +108,25 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     public void write(TreeWriter writer) {
         super.write(writer);
         container.write(writer);
+    }
+
+    @Override
+    Context<D> getCodeContext() {
+        return (Context<D>) super.getCodeContext();
+    }
+
+    @Override
+    void install(CodeContext<D> cc) {
+        if (cc instanceof Context<D> pending) {
+            if (!childControl.isCompatible(pending.typesInfo)) {
+                throw new IllegalStateException("Supported types is not compatible");
+            }
+            super.install(cc);
+            childControl.install(pending.typesInfo);
+            filteredTypes.reset();
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
 
     Control getContainerControl(String id) {
@@ -163,8 +191,13 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
      */
     public static class Context<D extends CodeRootContainerDelegate> extends CodeRoot.Context<D> {
 
+        private final CodeContainerSupport.TypesInfo typesInfo;
+
         public Context(Connector<D> connector) {
             super(connector);
+            typesInfo = connector.typesInfo == null
+                    ? CodeContainerSupport.defaultRootTypesInfo()
+                    : connector.typesInfo;
         }
 
         @Override
@@ -190,6 +223,9 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
      */
     public static class Connector<D extends CodeRootContainerDelegate> extends CodeRoot.Connector<D> {
 
+        private CodeContainerSupport.TypesInfo typesInfo;
+        private PMap displayHint;
+
         public Connector(CodeFactory.Task<D> task, D delegate) {
             super(task, delegate);
         }
@@ -197,26 +233,55 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         @Override
         protected void addDefaultControls() {
             super.addDefaultControls();
-            addControl(new ContainerControlDescriptor(ContainerProtocol.ADD_CHILD,
-                    ContainerProtocol.ADD_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.REMOVE_CHILD,
-                    ContainerProtocol.REMOVE_CHILD_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CHILDREN,
-                    ContainerProtocol.CHILDREN_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECT,
-                    ContainerProtocol.CONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.DISCONNECT,
-                    ContainerProtocol.DISCONNECT_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.CONNECTIONS,
-                    ContainerProtocol.CONNECTIONS_INFO, getInternalIndex()));
-            addControl(new ContainerControlDescriptor(ContainerProtocol.SUPPORTED_TYPES,
-                    ContainerProtocol.SUPPORTED_TYPES_INFO, getInternalIndex()));
+            addControl(new WrapperControlDescriptor(
+                    ContainerProtocol.ADD_CHILD,
+                    ContainerProtocol.ADD_CHILD_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().childControl : null));
+            addControl(containerControl(ContainerProtocol.REMOVE_CHILD,
+                    ContainerProtocol.REMOVE_CHILD_INFO));
+            addControl(containerControl(ContainerProtocol.CHILDREN,
+                    ContainerProtocol.CHILDREN_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECT,
+                    ContainerProtocol.CONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.DISCONNECT,
+                    ContainerProtocol.DISCONNECT_INFO));
+            addControl(containerControl(ContainerProtocol.CONNECTIONS,
+                    ContainerProtocol.CONNECTIONS_INFO));
+            addControl(containerControl(ContainerProtocol.SUPPORTED_TYPES,
+                    ContainerProtocol.SUPPORTED_TYPES_INFO));
+        }
+
+        @Override
+        protected void analyseMethod(Method method) {
+            super.analyseMethod(method);
+            if (typesInfo == null) {
+                typesInfo = CodeContainerSupport.analyseMethod(method, true);
+            }
+            var hint = method.getAnnotation(CodeRootContainerDelegate.DisplayTable.class);
+            if (hint != null) {
+                displayHint = PMap.of(
+                        "type", "table",
+                        "properties", Stream.of(hint.properties())
+                                .map(PString::of)
+                                .collect(PArray.collector())
+                );
+            }
         }
 
         @Override
         protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
             super.buildBaseComponentInfo(cmp);
             cmp.merge(ContainerProtocol.API_INFO);
+            if (displayHint != null) {
+                cmp.property(ComponentInfo.KEY_DISPLAY_HINT, displayHint);
+            }
+        }
+
+        private ControlDescriptor containerControl(String id, ControlInfo info) {
+            return new WrapperControlDescriptor(id, info, getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().getContainerControl(id) : null
+            );
         }
 
     }
@@ -245,38 +310,27 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         }
 
         @Override
+        protected void addChild(String id, Component child) throws VetoException {
+            super.addChild(id, child);
+        }
+
+        @Override
+        protected void recordChildType(Component child, ComponentType type) {
+            super.recordChildType(child, type);
+        }
+
+        @Override
+        protected Component removeChild(String id) {
+            Component child = super.removeChild(id);
+            if (child != null) {
+                wrapper.childControl.notifyChildRemoved(id);
+            }
+            return child;
+        }
+
+        @Override
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
-        }
-
-    }
-
-    private static class ContainerControlDescriptor
-            extends ControlDescriptor<ContainerControlDescriptor> {
-
-        private final ControlInfo info;
-
-        private Control control;
-
-        ContainerControlDescriptor(String id, ControlInfo info, int index) {
-            super(ContainerControlDescriptor.class, id, ControlDescriptor.Category.Internal, index);
-            this.info = info;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, ContainerControlDescriptor previous) {
-            control = ((CodeRootContainer<?>) context.getComponent())
-                    .getContainerControl(id());
-        }
-
-        @Override
-        public Control control() {
-            return control;
-        }
-
-        @Override
-        public ControlInfo controlInfo() {
-            return info;
         }
 
     }

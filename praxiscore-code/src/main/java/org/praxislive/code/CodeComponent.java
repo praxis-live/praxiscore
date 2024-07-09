@@ -35,14 +35,13 @@ import org.praxislive.core.Port;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
-import org.praxislive.core.ControlInfo;
 import org.praxislive.core.ThreadContext;
 import org.praxislive.core.TreeWriter;
-import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Services;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
-import org.praxislive.core.types.PMap;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.services.ServiceUnavailableException;
 
 /**
  * A CodeComponent is a Component instance that is rewritable at runtime. The
@@ -144,14 +143,6 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         codeCtxt.writeDescriptors(writer);
     }
 
-    Lookup getLookup() {
-        if (parent != null) {
-            return parent.getLookup();
-        } else {
-            return Lookup.EMPTY;
-        }
-    }
-
     void install(CodeContext<D> cc) {
         cc.setComponent(this);
         cc.handleConfigure(this, codeCtxt);
@@ -160,6 +151,21 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
         codeCtxt = cc;
         codeCtxt.handleHierarchyChanged();
+    }
+
+    Lookup getLookup() {
+        if (parent != null) {
+            return parent.getLookup();
+        } else {
+            return Lookup.EMPTY;
+        }
+    }
+
+    ComponentAddress findService(Class<? extends Service> service)
+            throws ServiceUnavailableException {
+        return getLookup().find(Services.class)
+                .flatMap(sm -> sm.locate(service))
+                .orElseThrow(ServiceUnavailableException::new);
     }
 
     CodeContext<D> getCodeContext() {
@@ -207,6 +213,14 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         return logInfo.toAddress;
     }
 
+    Control infoProperty() {
+        return infoProperty;
+    }
+
+    MetaProperty metaProperty() {
+        return metaProperty;
+    }
+
     private void initLogInfo() {
         ControlAddress toAddress = getLookup().find(Services.class)
                 .flatMap(srvs -> srvs.locate(LogService.class))
@@ -220,64 +234,6 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         }
 
         logInfo = new LogInfo(level, toAddress);
-    }
-
-    static class ControlWrapper extends ControlDescriptor<ControlWrapper> {
-
-        private final String controlID;
-
-        private CodeComponent<?> component;
-
-        ControlWrapper(String controlID, int index) {
-            super(ControlWrapper.class, controlID, Category.Internal, index);
-            this.controlID = controlID;
-        }
-
-        @Override
-        public void attach(CodeContext<?> context, ControlWrapper previous) {
-            component = context.getComponent();
-        }
-
-        @Override
-        public Control control() {
-            return switch (controlID) {
-                case ComponentProtocol.INFO ->
-                    component.infoProperty;
-                case ComponentProtocol.META ->
-                    component.metaProperty;
-                case ComponentProtocol.META_MERGE ->
-                    component.metaProperty.getMergeControl();
-                default ->
-                    null;
-            };
-        }
-
-        @Override
-        public ControlInfo controlInfo() {
-            return switch (controlID) {
-                case ComponentProtocol.INFO ->
-                    ComponentProtocol.INFO_INFO;
-                case ComponentProtocol.META ->
-                    ComponentProtocol.META_INFO;
-                case ComponentProtocol.META_MERGE ->
-                    ComponentProtocol.META_MERGE_INFO;
-                default ->
-                    null;
-            };
-        }
-
-        @Override
-        public void write(TreeWriter writer) {
-            switch (controlID) {
-                case ComponentProtocol.META -> {
-                    PMap value = component.metaProperty.getValue();
-                    if (!value.isEmpty()) {
-                        writer.writeProperty(ComponentProtocol.META, value);
-                    }
-                }
-            }
-        }
-
     }
 
     private static class LogInfo {

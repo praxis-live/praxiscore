@@ -69,6 +69,13 @@ public class ComponentInfo extends PMap.MapBasedValue {
      */
     public static final String KEY_DYNAMIC = "dynamic";
 
+    /**
+     * Optional key for adding a hint how the component, and its children if a
+     * container, should be displayed. Value must be a map. The {@code type} key
+     * is mandatory. Other keys may be used to provide additional configuration.
+     */
+    public static final String KEY_DISPLAY_HINT = "display-hint";
+
     private final OrderedMap<String, ControlInfo> controls;
     private final OrderedMap<String, PortInfo> ports;
     private final List<String> protocols;
