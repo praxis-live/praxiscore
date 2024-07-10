@@ -47,7 +47,7 @@
     <module>praxiscore-gui</module>
     <module>praxiscore-midi</module>
     <module>praxiscore-osc</module>
-    <module>praxiscore-code-ivy</module>
+    <module>praxiscore-code-mima</module>
     <module>praxiscore-launcher-jline</module>
     <module>praxiscore-purl</module>
     <module>praxiscore-bin</module>
