@@ -108,7 +108,7 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>praxiscore-code-ivy</artifactId>
+      <artifactId>praxiscore-code-mima</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
