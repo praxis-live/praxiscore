@@ -18,39 +18,38 @@
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
- *
  */
-package org.praxislive.core.code;
+package org.praxislive.core.components;
 
-import java.lang.reflect.Method;
-import org.praxislive.code.CodeConnector;
-import org.praxislive.code.CodeFactory;
+import org.praxislive.code.GenerateTemplate;
 
-class CoreCodeConnector extends CodeConnector<CoreCodeDelegate> {
+import org.praxislive.core.code.CoreRootContainerDelegate;
 
-    private final static String UPDATE = "update";
+// default imports
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
 
-    private boolean foundUpdate;
+import static org.praxislive.code.userapi.Constants.*;
+import org.praxislive.core.code.DataRootContainerDelegate;
 
-    public CoreCodeConnector(CodeFactory.Task<CoreCodeDelegate> contextCreator,
-            CoreCodeDelegate delegate) {
-        super(contextCreator, delegate);
-    }
+/**
+ * Acts as a base type for a custom root supporting non-realtime safe behaviour.
+ */
+@GenerateTemplate(DataRootCustom.TEMPLATE_PATH)
+public class DataRootCustom extends DataRootContainerDelegate {
 
+    final static String TEMPLATE_PATH = "resources/root_data.pxj";
+
+    // PXJ-BEGIN:body
     @Override
-    protected boolean requiresClock() {
-        return super.requiresClock() || foundUpdate;
+    @SupportedTypes(filter = "core:*|data:*")
+    public void init() {
+
     }
 
-    @Override
-    protected void analyseMethod(Method method) {
-
-        if (UPDATE.equals(method.getName())
-                && method.getParameterCount() == 0) {
-            foundUpdate = true;
-        }
-
-        super.analyseMethod(method);
-    }
-
+    // PXJ-END:body
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,7 +26,7 @@ import org.praxislive.code.CodeFactory;
 import org.praxislive.code.CodeUtils;
 
 /**
- * Code code utility functions.
+ * Core code component utility functions.
  */
 public class CoreCode {
 
@@ -41,7 +41,7 @@ public class CoreCode {
             = CodeFactory.containerBase(CoreContainerDelegate.class,
                     DEFAULT_IMPORTS,
                     (task, delegate) -> new CoreContainerCodeContext(new CoreContainerCodeConnector(task, delegate)));
-    
+
     private final static CodeFactory.Base<CoreRootContainerDelegate> ROOT_CONTAINER_BASE
             = CodeFactory.rootContainerBase(CoreRootContainerDelegate.class,
                     DEFAULT_IMPORTS,
@@ -58,7 +58,7 @@ public class CoreCode {
     public static CodeFactory.Base<CoreCodeDelegate> base() {
         return BASE;
     }
-    
+
     /**
      * Access {@link CodeFactory.Base} for {@link CoreContainerDelegate}.
      *
@@ -67,7 +67,7 @@ public class CoreCode {
     public static CodeFactory.Base<CoreContainerDelegate> containerBase() {
         return CONTAINER_BASE;
     }
-    
+
     /**
      * Access {@link CodeFactory.Base} for {@link CoreRootContainerDelegate}.
      *

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,6 +24,7 @@ package org.praxislive.core.components;
 import org.praxislive.code.AbstractComponentFactory;
 import org.praxislive.core.code.CoreCode;
 import org.praxislive.core.code.CoreCodeDelegate;
+import org.praxislive.core.code.DataCode;
 import org.praxislive.core.services.ComponentFactory;
 import org.praxislive.core.services.ComponentFactoryProvider;
 
@@ -49,7 +50,7 @@ public class CoreComponents implements ComponentFactoryProvider {
 
             // custom
             add("core:custom", CoreCustom.class, CoreCustom.TEMPLATE_PATH);
-            
+
             // built-in
             // CORE
             add("core:property", CoreProperty.class, CoreProperty.TEMPLATE_PATH);
@@ -85,11 +86,20 @@ public class CoreComponents implements ComponentFactoryProvider {
             add(CoreCode.containerBase().create(
                     "core:container", CoreContainer.class,
                     source(CoreContainer.TEMPLATE_PATH)));
-            
+
             // ROOT
             addRoot(CoreCode.rootContainerBase().create(
                     "root:custom", CoreRootCustom.class,
                     source(CoreRootCustom.TEMPLATE_PATH)));
+
+            // DATA (non-realtime)
+            add(DataCode.base().create(
+                    "data:custom", DataCustom.class,
+                    source(DataCustom.TEMPLATE_PATH)));
+            addRoot(DataCode.rootContainerBase().create(
+                    "root:data", DataRootCustom.class,
+                    source(DataRootCustom.TEMPLATE_PATH)));
+
         }
 
         private void add(String type, Class<? extends CoreCodeDelegate> cls, String path) {
