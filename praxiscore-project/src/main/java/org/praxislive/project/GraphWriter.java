@@ -46,11 +46,20 @@ class GraphWriter {
         var root = model.root();
         if (root.isSynthetic()) {
             // sub graph
+            writeCommands(target, root);
             writeChildren(target, root, 0);
             writeConnections(target, root, 0);
         } else {
             // full graph
+            writeCommands(target, root);
             writeComponent(target, root.id(), root, 0);
+        }
+    }
+
+    private void writeCommands(Appendable sb, GraphElement.Root root)
+            throws IOException {
+        for (GraphElement.Command cmd : root.commands()) {
+            sb.append(cmd.command()).append('\n');
         }
     }
 

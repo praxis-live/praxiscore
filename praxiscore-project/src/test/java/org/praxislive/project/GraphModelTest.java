@@ -95,7 +95,6 @@ public class GraphModelTest {
                         libraries {
                             pkg:maven/org.praxislive/praxiscore-api
                         }
-                        # comment
                         """ + GRAPH_SCRIPT;
         GraphModel model = GraphModel.parse(PARENT_CONTEXT, script);
         if (VERBOSE) {
@@ -114,6 +113,8 @@ public class GraphModelTest {
         assertEquals(Token.Type.BRACED, command.get(1).getType());
         assertEquals("pkg:maven/org.praxislive/praxiscore-api",
                 command.get(1).getText().strip());
+        String out = model.writeToString();
+        assertEquals(script, out);
     }
 
     @Test
@@ -187,6 +188,8 @@ public class GraphModelTest {
         assertEquals(Token.Type.PLAIN, command.get(0).getType());
         assertEquals("shared-code", command.get(0).getText());
         assertEquals(Token.Type.BRACED, command.get(1).getType());
+        String out = model.writeToString();
+        assertEquals(script, out);
     }
 
     @Test
