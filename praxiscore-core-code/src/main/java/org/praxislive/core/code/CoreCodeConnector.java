@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,11 +26,7 @@ import java.lang.reflect.Method;
 import org.praxislive.code.CodeConnector;
 import org.praxislive.code.CodeFactory;
 
-/**
- *
- * 
- */
-public class CoreCodeConnector extends CodeConnector<CoreCodeDelegate> {
+class CoreCodeConnector extends CodeConnector<CoreCodeDelegate> {
 
     private final static String UPDATE = "update";
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,8 +25,7 @@ import org.praxislive.code.CodeContainerDelegate;
 import org.praxislive.code.DefaultDelegateAPI;
 
 /**
- *
- *
+ * Basic core code container delegate base class.
  */
 public class CoreContainerDelegate extends CodeContainerDelegate implements DefaultDelegateAPI {
 

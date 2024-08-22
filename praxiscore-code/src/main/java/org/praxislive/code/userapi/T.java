@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.code.userapi;
 
 import java.lang.annotation.ElementType;
@@ -30,19 +29,20 @@ import java.lang.annotation.Target;
 /**
  * Mark a field or method as a trigger (action). A control and port will be
  * automatically created unless otherwise overridden. The @T annotation may be
- * used on zero-parameter methods, and fields of type {@link Trigger} and boolean.
- * NB. Note that boolean fields will be set to true when the trigger occurs and
- * must be manually set back to false.
+ * used on zero-parameter methods, and fields of type {@link Trigger} and
+ * boolean. NB. Note that boolean fields will be set to true when the trigger
+ * occurs and must be manually set back to false.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
 public @interface T {
 
     /**
-     * Relative position compared to other @T elements. Values must be unique.
-     * They do not have to be contiguous.
+     * Relative weight compared to other {@code @T} elements. Elements will be
+     * sorted by weight, and then alphabetically. Higher weight elements will
+     * sort after lower weight elements.
      *
-     * @return position
+     * @return weight
      */
-    int value();
+    int value() default 0;
 }

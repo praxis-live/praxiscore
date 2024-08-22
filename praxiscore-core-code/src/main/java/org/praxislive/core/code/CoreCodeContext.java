@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,11 +26,7 @@ import org.praxislive.code.CodeContext;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
 
-/**
- *
- *
- */
-public class CoreCodeContext extends CodeContext<CoreCodeDelegate> {
+class CoreCodeContext extends CodeContext<CoreCodeDelegate> {
 
     public CoreCodeContext(CoreCodeConnector connector) {
         super(connector);

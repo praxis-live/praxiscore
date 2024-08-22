@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,8 +24,7 @@ package org.praxislive.core.code;
 import org.praxislive.code.DefaultCodeDelegate;
 
 /**
- *
- *
+ * Basic core code delegate base class.
  */
 public class CoreCodeDelegate extends DefaultCodeDelegate {
 
@@ -34,17 +33,8 @@ public class CoreCodeDelegate extends DefaultCodeDelegate {
      * when the root is started, on adding a component to a running root, and
      * any time the code is updated. Because this code is called in a running
      * root, the code should be suitable for real-time usage.
-     * <p>
-     * Implementation detail : this method calls the deprecated setup() by
-     * default().
      */
-    @SuppressWarnings("deprecation")
     public void init() {
-        setup();
-    }
-
-    @Deprecated
-    public void setup() {
     }
 
     /**
