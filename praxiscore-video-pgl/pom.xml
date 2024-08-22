@@ -15,7 +15,7 @@
       <dependency>
         <groupId>org.lwjgl</groupId>
         <artifactId>lwjgl-bom</artifactId>
-        <version>3.3.2</version>
+        <version>3.3.4</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -36,12 +36,12 @@
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-core</artifactId>
-      <version>0.353.0-beta-4</version>
+      <version>4.430.0</version>
     </dependency>
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-lwjgl</artifactId>
-      <version>0.353.0-beta-4</version>
+      <version>4.430.0</version>
     </dependency>
 
     <dependency>
