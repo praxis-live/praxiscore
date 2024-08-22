@@ -76,6 +76,7 @@ public class MimaResolver implements LibraryResolver {
                 }
                 provides.add(purl);
                 files.add(file);
+                context.log().log(LogLevel.INFO, "Installing dependency " + purl);
             } else {
                 if (!Objects.equals(dep.getVersion(), ex.getVersion())) {
                         context.log().log(LogLevel.WARNING,
