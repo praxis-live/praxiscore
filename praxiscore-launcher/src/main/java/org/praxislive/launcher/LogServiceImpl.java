@@ -26,8 +26,10 @@ import java.util.List;
 import java.util.Objects;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
+import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Service;
@@ -63,16 +65,20 @@ class LogServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
     }
 
     private void processLog(Call call) throws Exception {
-        var src = call.from().component();
-        var args = call.args();
-        var sb = new StringBuilder();
+        ComponentAddress src = call.from().component();
+        List<Value> args = call.args();
+        StringBuilder sb = new StringBuilder();
+        LogLevel lastLevel = null;
         for (int i = 1; i < args.size(); i += 2) {
-            var level = LogLevel.valueOf(args.get(i - 1).toString());
+            LogLevel level = LogLevel.valueOf(args.get(i - 1).toString());
             if (!logLevel.isLoggable(level)) {
                 continue;
             }
-            var arg = args.get(i);
-            sb.append(level.name()).append(" : ").append(src.toString()).append(NEWLINE);
+            Value arg = args.get(i);
+            if (level != lastLevel) {
+                lastLevel = level;
+                sb.append(level.name()).append(" : ").append(src.toString()).append(NEWLINE);
+            }
             PError.from(arg).ifPresentOrElse(err -> {
                 sb.append(err.errorType()).append(" - ").append(err.message()).append(NEWLINE);
                 var stack = err.stackTrace();
@@ -82,7 +88,7 @@ class LogServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
             }, () -> {
                 sb.append(arg.toString()).append(NEWLINE);
             });
-            System.err.println(sb.toString());
+            System.err.print(sb.toString());
             sb.setLength(0);
         }
         System.err.flush();
