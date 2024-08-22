@@ -575,17 +575,17 @@ public class PShape {
         shape.setNormal(index, (float)nx, (float)ny, (float)nz);
     }
 
-    public void setAttrib(String name, int index, double... values) {
-        shape.setAttrib(name, index, doublesToFloats(values));
-    }
-
-    public void setAttrib(String name, int index, int... values) {
-        shape.setAttrib(name, index, values);
-    }
-
-    public void setAttrib(String name, int index, boolean... values) {
-        shape.setAttrib(name, index, values);
-    }
+//    public void setAttrib(String name, int index, double... values) {
+//        shape.setAttrib(name, index, doublesToFloats(values));
+//    }
+//
+//    public void setAttrib(String name, int index, int... values) {
+//        shape.setAttrib(name, index, values);
+//    }
+//
+//    public void setAttrib(String name, int index, boolean... values) {
+//        shape.setAttrib(name, index, values);
+//    }
 
     public double getTextureU(int index) {
         return shape.getTextureU(index);
