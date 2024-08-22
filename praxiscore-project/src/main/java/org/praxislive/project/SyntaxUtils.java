@@ -399,6 +399,10 @@ public class SyntaxUtils {
                 mapFromCommand(context, tokens);
             case "file" ->
                 fileFromCommand(context, tokens);
+            // don't break on legacy file-list but also cannot support so
+            // return empty array
+            case "file-list" ->
+                PArray.EMPTY;
             default ->
                 throw new IllegalArgumentException("Unsupported subcommand : " + token.getText());
         };
