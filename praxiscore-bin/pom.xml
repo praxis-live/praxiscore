@@ -200,10 +200,5 @@
     </dependency>
   </dependencies>
 
-  <properties>
-    <maven.javadoc.skip>true</maven.javadoc.skip>
-    <maven.deploy.skip>true</maven.deploy.skip>
-  </properties>
-    
     
 </project>
