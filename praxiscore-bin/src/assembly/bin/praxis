@@ -112,6 +112,7 @@ if $cygwin; then
 fi
 
 exec "$JAVACMD" $JAVA_OPTS  \
+  --add-modules=ALL-DEFAULT \
   -p "$REPO" \
   -Dapp.name="praxis" \
   -Dapp.pid="$$" \

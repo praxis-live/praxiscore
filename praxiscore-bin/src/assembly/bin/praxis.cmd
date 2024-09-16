@@ -79,7 +79,7 @@ if "%REPO%"=="" set REPO=%BASEDIR%\mods
 @REM Reaching here means variables are defined and arguments have been captured
 :endInit
 
-"%JAVACMD%" %JAVA_OPTS%  -p "%REPO%" -Dapp.name="praxis" -Dapp.repo="%REPO%" -Dapp.home="%BASEDIR%" -Dbasedir="%BASEDIR%" -m "org.praxislive.bin/org.praxislive.bin.Main" %CMD_LINE_ARGS%
+"%JAVACMD%" %JAVA_OPTS% --add-modules=ALL-DEFAULT -p "%REPO%" -Dapp.name="praxis" -Dapp.repo="%REPO%" -Dapp.home="%BASEDIR%" -Dbasedir="%BASEDIR%" -m "org.praxislive.bin/org.praxislive.bin.Main" %CMD_LINE_ARGS%
 if %ERRORLEVEL% NEQ 0 goto error
 goto end
 
