@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -56,6 +56,7 @@ public class Main {
                 cmd.add(classPath);
                 cmd.add("org.praxislive.bin.Main");
             } else {
+                cmd.add("--add-modules=ALL-DEFAULT");
                 cmd.add("-p");// -p %classpath -m org.praxislive.bin/org.praxislive.bin.Main
                 cmd.add(modulePath);
                 cmd.add("-m");
