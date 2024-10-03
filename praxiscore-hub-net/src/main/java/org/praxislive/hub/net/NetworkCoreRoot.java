@@ -52,7 +52,9 @@ import org.praxislive.hub.Hub;
  */
 class NetworkCoreRoot extends BasicCoreRoot {
 
-    private final static String PROXY_PREFIX = Hub.SYS_PREFIX + "proxy_";
+    static final int TIMEOUT = Integer.getInteger("praxis.hub.network.timeout", 60);
+
+    private static final String PROXY_PREFIX = Hub.SYS_PREFIX + "proxy_";
 
     private final Hub.Accessor hubAccess;
     private final List<ProxyData> proxies;
@@ -136,8 +138,8 @@ class NetworkCoreRoot extends BasicCoreRoot {
                 var ctrl = installRoot(id, new ProxyClientRoot(info, clientEventLoopGroup,
                         services, childLauncher, serverInfo));
                 info.services().forEach(cls -> {
-                    var address = ComponentAddress.of("/" + id + "/services/" +
-                            Protocol.Type.of(cls).name());
+                    var address = ComponentAddress.of("/" + id + "/services/"
+                            + Protocol.Type.of(cls).name());
                     hubAccess.registerService(cls, address);
                 });
                 proxies.add(new ProxyData(info, ComponentAddress.of("/" + id), ctrl));
@@ -161,8 +163,9 @@ class NetworkCoreRoot extends BasicCoreRoot {
         return null;
     }
 
-    private record ProxyData(ProxyInfo info, ComponentAddress address, Root.Controller controller) {}
+    private record ProxyData(ProxyInfo info, ComponentAddress address, Root.Controller controller) {
 
+    }
 
     private class AddRootControl extends AbstractAsyncControl {
 

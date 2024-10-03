@@ -161,7 +161,7 @@ class ProxyClientRoot extends AbstractRoot {
         var source = getExecutionContext();
         if ((source.getTime() - lastPurgeTime) > TimeUnit.SECONDS.toNanos(1)) {
 //            LOG.fine("Triggering dispatcher purge");
-            dispatcher.purge(10, TimeUnit.SECONDS);
+            dispatcher.purge(NetworkCoreRoot.TIMEOUT, TimeUnit.SECONDS);
             lastPurgeTime = source.getTime();
         }
     }

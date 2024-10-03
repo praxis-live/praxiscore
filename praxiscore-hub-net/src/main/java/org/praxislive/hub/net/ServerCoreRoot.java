@@ -174,7 +174,7 @@ class ServerCoreRoot extends NetworkCoreRoot {
         long time = getExecutionContext().getTime();
         if ((time - lastPurgeTime) > TimeUnit.SECONDS.toNanos(1)) {
             LOG.log(Level.TRACE, "Triggering dispatcher purge");
-            dispatcher.purge(10, TimeUnit.SECONDS);
+            dispatcher.purge(NetworkCoreRoot.TIMEOUT, TimeUnit.SECONDS);
             lastPurgeTime = time;
         }
     }
