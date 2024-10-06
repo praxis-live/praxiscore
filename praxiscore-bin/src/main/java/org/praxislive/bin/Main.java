@@ -30,6 +30,10 @@ import org.praxislive.launcher.Launcher;
 public class Main {
 
     public static void main(String[] args) {
+        // @TODO replace with flag to disable hash checks when available
+        if (System.getProperty("os.name", "").contains("Mac")) {
+            System.setProperty("org.lwjgl.util.NoChecks", "true");
+        }
         Launcher.main(new LauncherCtxt(), args);
     }
 
