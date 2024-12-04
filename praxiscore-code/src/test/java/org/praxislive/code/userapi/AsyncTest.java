@@ -6,6 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.praxislive.core.types.PError;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.praxislive.core.Call;
+import org.praxislive.core.ControlAddress;
+import org.praxislive.core.Value;
+import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PReference;
+import org.praxislive.core.types.PString;
 
 /**
  *
@@ -40,6 +46,74 @@ public class AsyncTest {
         assertFalse(async.fail(err2));
         assertEquals(err1, async.error());
         assertNull(async.result());
+    }
+
+    @Test
+    public void testExtractArg() {
+        // Test Value extract
+        Async<Call> asyncCall = new Async<>();
+        Async<Value> asyncValue = Async.extractArg(asyncCall, Value.class);
+        asyncCall.complete(createCall().reply(Value.ofObject("TEST")));
+        assertTrue(asyncValue.done());
+        assertEquals(PString.of("TEST"), asyncValue.result());
+
+        // Test coerced Value extract
+        asyncCall = new Async<>();
+        Async<PBoolean> asyncBoolean = Async.extractArg(asyncCall, PBoolean.class);
+        asyncCall.complete(createCall().reply(Value.ofObject("true")));
+        assertTrue(asyncBoolean.done());
+        assertEquals(PBoolean.TRUE, asyncBoolean.result());
+
+        // Test String extract
+        asyncCall = new Async<>();
+        Async<String> asyncMessage = Async.extractArg(asyncCall, String.class);
+        asyncCall.complete(createCall().reply(Value.ofObject("TEST")));
+        assertTrue(asyncMessage.done());
+        assertEquals("TEST", asyncMessage.result());
+
+        // Test String extract after precompletion
+        asyncCall = new Async<>();
+        asyncCall.complete(createCall().reply(Value.ofObject("TEST")));
+        asyncMessage = Async.extractArg(asyncCall, String.class);
+        assertTrue(asyncMessage.done());
+        assertEquals("TEST", asyncMessage.result());
+
+        // Test failed int extract
+        asyncCall = new Async<>();
+        Async<Integer> asyncInt = Async.extractArg(asyncCall, Integer.class);
+        asyncCall.complete(createCall().reply(Value.ofObject("NOT A NUMBER")));
+        assertTrue(asyncInt.done());
+        assertTrue(asyncInt.failed());
+        assertNotNull(asyncInt.error());
+
+        // Test int extract from second arg
+        asyncCall = new Async<>();
+        asyncInt = Async.extractArg(asyncCall, Integer.class, 1);
+        asyncCall.complete(createCall().reply(List.of(
+                Value.ofObject("TEST"), Value.ofObject(42))));
+        assertTrue(asyncInt.done());
+        assertEquals(42, asyncInt.result());
+
+        // Test Call error passed through
+        asyncCall = new Async<>();
+        PError err = PError.of("ERROR");
+        asyncMessage = Async.extractArg(asyncCall, String.class);
+        asyncCall.complete(createCall().error(err));
+        assertTrue(asyncMessage.done());
+        assertTrue(asyncMessage.failed());
+        assertEquals(err, asyncMessage.error());
+
+        // Test extract of custom reference
+        record Foo(int value) {
+
+        }
+        asyncCall = new Async<>();
+        Async<Foo> asyncFoo = Async.extractArg(asyncCall, Foo.class);
+        asyncCall.complete(createCall().reply(PReference.of(new Foo(42))));
+        assertTrue(asyncFoo.done());
+        assertInstanceOf(Foo.class, asyncFoo.result());
+        assertEquals(42, asyncFoo.result().value());
+
     }
 
     @Test
@@ -102,42 +176,48 @@ public class AsyncTest {
         assertNull(queue.poll());
 
     }
-    
+
     @Test
     public void testQueueHandler() {
         Async<Integer> async1 = new Async<>();
         Async<Integer> async2 = new Async<>();
         Async<Integer> async3 = new Async<>();
         Async<Integer> async4 = new Async<>();
-        
+
         Async.Queue<Integer> queue = new Async.Queue<>();
-        
+
         List<Integer> results = new ArrayList<>();
         List<PError> errors = new ArrayList<>();
-        
+
         queue.onDone(results::add, errors::add);
-        
+
         async3.complete(3);
         queue.add(async1);
         queue.add(async2);
         queue.add(async3);
         queue.add(async4);
-        
+
         assertEquals(1, results.size());
         assertEquals(3, results.get(0));
-        
+
         async1.complete(1);
         async2.fail(PError.of("TWO"));
         assertEquals(2, results.size());
         assertEquals(1, results.get(1));
         assertEquals(1, errors.size());
         assertEquals("TWO", errors.get(0).message());
-        
+
         queue.clear();
         async4.complete(4);
         assertEquals(2, results.size());
         assertEquals(1, errors.size());
-        
+
+    }
+
+    private static Call createCall() {
+        return Call.create(ControlAddress.of("/root/component.control"),
+                ControlAddress.of("/test/component.control"),
+                System.nanoTime());
     }
 
 }

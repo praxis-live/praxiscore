@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,7 +21,6 @@
  */
 package org.praxislive.code;
 
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +34,6 @@ import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PError;
 
-/**
- *
- */
 class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Control {
 
     static final String ID = "_reply";
@@ -64,20 +60,19 @@ class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Cont
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isReply()) {
-            var asyncRef = resultMap.remove(call.matchID());
+            AsyncReference<?> asyncRef = resultMap.remove(call.matchID());
             if (asyncRef != null) {
                 asyncRef.complete(call);
             }
         } else if (call.isError()) {
-            var error = extractError(call.args());
-            var asyncRef = resultMap.remove(call.matchID());
+            PError error = extractError(call.args());
+            AsyncReference<?> asyncRef = resultMap.remove(call.matchID());
             if (asyncRef == null || !asyncRef.completeWithError(error)) {
                 context.getLog().log(LogLevel.ERROR, error);
             }
         } else if (call.isReplyRequired()) {
             router.route(call.error(PError.of("Unexpected call")));
         }
-        cleanResultMap();
     }
 
     @Override
@@ -93,10 +88,7 @@ class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Cont
     @Override
     public void dispose() {
         resultMap.forEach((id, ref) -> {
-            Async<?> async = ref.get();
-            if (async != null) {
-                async.fail(PError.of("Disposed"));
-            }
+            ref.completeWithError(PError.of("Disposed"));
         });
         resultMap.clear();
     }
@@ -104,14 +96,9 @@ class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Cont
     void register(Call call, Async<Call> async) {
         register(call, async, Function.identity());
     }
-    
-    <T> void register(Call call, Async<T> async, Function<Call, T> converter) {
-        cleanResultMap();
-        resultMap.put(call.matchID(), new AsyncReference(async, converter));
-    }
 
-    private void cleanResultMap() {
-        resultMap.entrySet().removeIf(e -> e.getValue().get() == null);
+    <T> void register(Call call, Async<T> async, Function<Call, T> converter) {
+        resultMap.put(call.matchID(), new AsyncReference(call, async, converter));
     }
 
     private PError extractError(List<Value> args) {
@@ -119,39 +106,37 @@ class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Cont
             return UNKNOWN_ERROR;
         } else {
             return PError.from(args.get(0))
-                    .orElse(PError.of(args.get(0).toString()));
+                    .orElseGet(() -> PError.of(args.get(0).toString()));
         }
     }
 
-    private static class AsyncReference<T> extends WeakReference<Async<T>> {
+    private static class AsyncReference<T> {
 
+        private final Call call;
+        private final Async<T> async;
         private final Function<Call, T> converter;
-        
-        private AsyncReference(Async<T> referent, Function<Call, T> converter) {
-            super(referent);
+
+        private AsyncReference(Call call, Async<T> async, Function<Call, T> converter) {
+            this.call = call;
+            this.async = async;
             this.converter = converter;
         }
-        
-        private void complete(Call call) {
-            Async<T> async = get();
-            if (async != null) {
-                try {
-                    T value = converter.apply(call);
-                    async.complete(value);
-                } catch (Exception ex) {
-                    async.fail(PError.of(ex));
-                }
-            }
-            
+
+        private Call call() {
+            return call;
         }
-        
-        private boolean completeWithError(PError error) {
-            Async<T> async = get();
-            if (async != null) {
-                return async.fail(error);
-            } else {
-                return false;
+
+        private void complete(Call call) {
+            try {
+                T value = converter.apply(call);
+                async.complete(value);
+            } catch (Exception ex) {
+                async.fail(PError.of(ex));
             }
+        }
+
+        private boolean completeWithError(PError error) {
+            return async.fail(error);
         }
 
     }

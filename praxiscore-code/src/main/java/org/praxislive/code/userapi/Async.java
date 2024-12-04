@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,11 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import org.praxislive.core.Call;
+import org.praxislive.core.Value;
+import org.praxislive.core.ValueMapper;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PReference;
 
 /**
  * A lightweight holder for a future value, the result of an asynchronous
@@ -147,6 +151,91 @@ public final class Async<T> {
     }
 
     /**
+     * Create an Async that will complete when the provided async call
+     * completes, by extracting the first call argument and attempting to map to
+     * the given type. The returned Async will complete with an error if the
+     * call completes with an error, the argument isn't available, or the
+     * argument cannot be mapped to the given type.
+     * <p>
+     * Any existing {@link Link} on the passed in async call will be removed.
+     *
+     * @param <T> type of created async
+     * @param asyncCall async call
+     * @param type class type of created async
+     * @return created async
+     */
+    public static <T> Async<T> extractArg(Async<Call> asyncCall, Class<T> type) {
+        return extractArg(asyncCall, type, 0);
+    }
+
+    /**
+     * Create an Async that will complete when the provided async call
+     * completes, by extracting the indexed call argument and attempting to map
+     * to the given type. The returned Async will complete with an error if the
+     * call completes with an error, the argument isn't available, or the
+     * argument cannot be mapped to the given type.
+     * <p>
+     * Any existing {@link Link} on the passed in async call will be removed.
+     *
+     * @param <T> type of created async
+     * @param asyncCall async call
+     * @param type class type of created async
+     * @param argIdx index of argument to extract
+     * @return created async
+     */
+    public static <T> Async<T> extractArg(Async<Call> asyncCall, Class<T> type, int argIdx) {
+        Objects.requireNonNull(type);
+        Async<T> asyncValue = new Async<>();
+        if (asyncCall.done()) {
+            completeExtract(asyncCall, asyncValue, type, argIdx);
+        } else {
+            asyncCall.link(new Handler<>(
+                    async -> completeExtract(async, asyncValue, type, argIdx),
+                    async -> asyncValue.fail(PError.of("unlinked"))
+            ));
+        }
+        return asyncValue;
+    }
+
+    private static <T> void completeExtract(Async<Call> asyncCall, Async<T> asyncValue, Class<T> type, int argIdx) {
+        try {
+            if (asyncCall.failed()) {
+                asyncValue.fail(asyncCall.error());
+            } else {
+                Call call = asyncCall.result();
+                List<Value> args = call.args();
+                if (call.isError()) {
+                    PError err;
+                    if (args.isEmpty()) {
+                        err = PError.of("Unknown error");
+                    } else {
+                        err = PError.from(args.get(0))
+                                .orElseGet(() -> PError.of(args.get(0).toString()));
+                    }
+                    asyncValue.fail(err);
+                } else {
+                    Value value = args.get(argIdx);
+                    T result;
+                    if (Value.class == type) {
+                        result = type.cast(value);
+                    } else if (value instanceof PReference ref) {
+                        if (PReference.class == type) {
+                            result = type.cast(ref);
+                        } else {
+                            result = ref.as(type).orElseThrow(ClassCastException::new);
+                        }
+                    } else {
+                        result = ValueMapper.find(type).fromValue(value);
+                    }
+                    asyncValue.complete(result);
+                }
+            }
+        } catch (Exception ex) {
+            asyncValue.fail(PError.of(ex));
+        }
+    }
+
+    /**
      * A task intended to be run asynchronously and outside of the main
      * component context. All data required to complete the task should be
      * passed in as input data, and implementations should be careful not to use
@@ -172,7 +261,19 @@ public final class Async<T> {
 
     }
 
-    private static abstract class Link<T> {
+    /**
+     * A Link is something attached to an Async to react to its completion. An
+     * Async may only have one Link at a time. Calling any function or passing
+     * an Async to a type that adds a Link to an Async will remove any other
+     * Link attached to it.
+     *
+     * @param <T> Async result type
+     */
+    public static sealed abstract class Link<T> {
+
+        Link() {
+
+        }
 
         abstract void processDone(Async<T> async);
 
@@ -187,8 +288,10 @@ public final class Async<T> {
      * Async instances that have completed, or a handler can be attached to run
      * on completion.
      * <p>
-     * An Async may only be in one queue at a time. Adding to the queue will
-     * automatically remove from any previous queue.
+     * An Async may only have one {@link Link} at a time. Adding an Async to the
+     * queue will automatically remove any previous link. After adding to the
+     * queue, calling any function that replaces the link will remove it from
+     * the queue.
      * <p>
      * A queue cannot be constructed directly. Use the {@link Inject} annotation
      * on a field. Queues will have handlers and limits automatically removed on
@@ -378,6 +481,28 @@ public final class Async<T> {
         @Override
         void removeOnRelink(Async<T> async) {
             deque.remove(async);
+        }
+
+    }
+
+    static final class Handler<T> extends Link<T> {
+
+        private final Consumer<Async<T>> onDoneHandler;
+        private final Consumer<Async<T>> onRelinkHandler;
+
+        Handler(Consumer<Async<T>> onDoneHandler, Consumer<Async<T>> onRelinkHandler) {
+            this.onDoneHandler = onDoneHandler;
+            this.onRelinkHandler = onRelinkHandler;
+        }
+
+        @Override
+        void processDone(Async<T> async) {
+            onDoneHandler.accept(async);
+        }
+
+        @Override
+        void removeOnRelink(Async<T> async) {
+            onRelinkHandler.accept(async);
         }
 
     }
