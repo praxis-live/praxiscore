@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
@@ -40,7 +41,7 @@ import org.praxislive.core.types.PReference;
  * An Async can be explicitly completed, with a value or error. Completion can
  * only happen once.
  * <p>
- * <b>Async is not thread safe and is not designed for concurrent operation.</b>
+ * <strong>Async is not thread safe and is not designed for concurrent operation.</strong>
  * Use from a single thread, or protect appropriately.
  *
  * @param <T> result type
@@ -197,6 +198,49 @@ public final class Async<T> {
         return asyncValue;
     }
 
+    /**
+     * A utility method for linking an Async with a {@link CompletableFuture}
+     * for passing to external APIs.
+     * <p>
+     * <strong>IMPORTANT : do not use completable futures returned from this
+     * method inside component code.</strong> To react to Async completion from
+     * within component code, use an {@link Async.Queue}.
+     * <p>
+     * The completable future will automatically complete with the result or
+     * failure of the Async. The link is one way - the Async will not respond to
+     * any changes to the future.
+     * <p>
+     * Any existing {@link Link} on the passed in Async will be removed. If the
+     * link on the Async is subsequently removed (eg. the Async is added to a
+     * Queue) then the future will be cancelled.
+     *
+     * @param <T> async and future type
+     * @param async async to link to created future
+     * @return created future
+     */
+    public static <T> CompletableFuture<T> toCompletableFuture(Async<T> async) {
+        if (async.done()) {
+            if (async.failed()) {
+                return CompletableFuture.failedFuture(extractError(async));
+            } else {
+                return CompletableFuture.completedFuture(async.result());
+            }
+        } else {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            async.link(new Handler<>(
+                    a -> {
+                        if (a.failed()) {
+                            future.completeExceptionally(extractError(a));
+                        } else {
+                            future.complete(a.result());
+                        }
+                    },
+                    a -> future.cancel(false)
+            ));
+            return future;
+        }
+    }
+
     private static <T> void completeExtract(Async<Call> asyncCall, Async<T> asyncValue, Class<T> type, int argIdx) {
         try {
             if (asyncCall.failed()) {
@@ -233,6 +277,11 @@ public final class Async<T> {
         } catch (Exception ex) {
             asyncValue.fail(PError.of(ex));
         }
+    }
+
+    private static Throwable extractError(Async failed) {
+        return failed.error().exception()
+                .orElseGet(() -> new Exception(failed.error().toString()));
     }
 
     /**

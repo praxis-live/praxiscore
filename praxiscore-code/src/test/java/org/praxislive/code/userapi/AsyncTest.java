@@ -2,6 +2,7 @@ package org.praxislive.code.userapi;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.praxislive.core.types.PError;
 
@@ -114,6 +115,53 @@ public class AsyncTest {
         assertInstanceOf(Foo.class, asyncFoo.result());
         assertEquals(42, asyncFoo.result().value());
 
+    }
+
+    @Test
+    public void testToCompletableFuture() {
+        // completed after link
+        Async<String> asyncString = new Async<>();
+        CompletableFuture<String> futureString
+                = Async.toCompletableFuture(asyncString)
+                        .thenApply(s -> "Hello " + s);
+        asyncString.complete("World");
+        assertTrue(futureString.isDone());
+        assertEquals("Hello World", futureString.resultNow());
+
+        // completed before link
+        asyncString = new Async<>();
+        asyncString.complete("Universe");
+        futureString
+                = Async.toCompletableFuture(asyncString)
+                        .thenApply(s -> "Hello " + s);
+        assertTrue(futureString.isDone());
+        assertEquals("Hello Universe", futureString.resultNow());
+
+        // error after link
+        asyncString = new Async<>();
+        Exception ex = new Exception("FOO");
+        futureString = Async.toCompletableFuture(asyncString);
+        asyncString.fail(PError.of(ex));
+        assertTrue(futureString.isCompletedExceptionally());
+        assertSame(ex, futureString.exceptionNow());
+        
+        // error before link
+        asyncString = new Async<>();
+        ex = new Exception("FOO");
+        asyncString.fail(PError.of(ex));
+        futureString = Async.toCompletableFuture(asyncString);
+        assertTrue(futureString.isCompletedExceptionally());
+        assertSame(ex, futureString.exceptionNow());
+        
+        // cancelled on queued
+        asyncString = new Async<>();
+        futureString = Async.toCompletableFuture(asyncString);
+        Async.Queue<String> queue = new Async.Queue<>();
+        queue.add(asyncString);
+        assertTrue(futureString.isCancelled());
+        assertNull(queue.poll());
+        asyncString.complete("QUEUED");
+        assertSame(asyncString, queue.poll());
     }
 
     @Test
