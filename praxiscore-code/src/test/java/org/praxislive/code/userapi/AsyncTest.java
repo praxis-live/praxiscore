@@ -153,15 +153,16 @@ public class AsyncTest {
         assertTrue(futureString.isCompletedExceptionally());
         assertSame(ex, futureString.exceptionNow());
         
-        // cancelled on queued
+        // test queued and future
         asyncString = new Async<>();
         futureString = Async.toCompletableFuture(asyncString);
         Async.Queue<String> queue = new Async.Queue<>();
         queue.add(asyncString);
-        assertTrue(futureString.isCancelled());
         assertNull(queue.poll());
         asyncString.complete("QUEUED");
         assertSame(asyncString, queue.poll());
+        assertTrue(futureString.isDone());
+        assertEquals("QUEUED", futureString.resultNow());
     }
 
     @Test

@@ -26,7 +26,9 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
@@ -41,8 +43,8 @@ import org.praxislive.core.types.PReference;
  * An Async can be explicitly completed, with a value or error. Completion can
  * only happen once.
  * <p>
- * <strong>Async is not thread safe and is not designed for concurrent operation.</strong>
- * Use from a single thread, or protect appropriately.
+ * <strong>Async is not thread safe and is not designed for concurrent
+ * operation.</strong> Use from a single thread, or protect appropriately.
  *
  * @param <T> result type
  */
@@ -139,15 +141,21 @@ public final class Async<T> {
     }
 
     private void link(Link<T> link) {
-        if (this.link != null && this.link != link) {
-            this.link.removeOnRelink(this);
+        if (this.link == null) {
+            this.link = link;
+        } else if (this.link instanceof CompoundLink compound) {
+            compound.addLink(link);
+        } else {
+            this.link = new CompoundLink<>(this.link, link);
         }
-        this.link = link;
+
     }
 
     private void unlink(Link<T> link) {
         if (this.link == link) {
             this.link = null;
+        } else if (this.link instanceof CompoundLink compound) {
+            compound.removeLink(link);
         }
     }
 
@@ -157,8 +165,6 @@ public final class Async<T> {
      * the given type. The returned Async will complete with an error if the
      * call completes with an error, the argument isn't available, or the
      * argument cannot be mapped to the given type.
-     * <p>
-     * Any existing {@link Link} on the passed in async call will be removed.
      *
      * @param <T> type of created async
      * @param asyncCall async call
@@ -175,8 +181,6 @@ public final class Async<T> {
      * to the given type. The returned Async will complete with an error if the
      * call completes with an error, the argument isn't available, or the
      * argument cannot be mapped to the given type.
-     * <p>
-     * Any existing {@link Link} on the passed in async call will be removed.
      *
      * @param <T> type of created async
      * @param asyncCall async call
@@ -190,9 +194,8 @@ public final class Async<T> {
         if (asyncCall.done()) {
             completeExtract(asyncCall, asyncValue, type, argIdx);
         } else {
-            asyncCall.link(new Handler<>(
-                    async -> completeExtract(async, asyncValue, type, argIdx),
-                    async -> asyncValue.fail(PError.of("unlinked"))
+            asyncCall.link(handler(
+                    async -> completeExtract(async, asyncValue, type, argIdx)
             ));
         }
         return asyncValue;
@@ -209,10 +212,6 @@ public final class Async<T> {
      * The completable future will automatically complete with the result or
      * failure of the Async. The link is one way - the Async will not respond to
      * any changes to the future.
-     * <p>
-     * Any existing {@link Link} on the passed in Async will be removed. If the
-     * link on the Async is subsequently removed (eg. the Async is added to a
-     * Queue) then the future will be cancelled.
      *
      * @param <T> async and future type
      * @param async async to link to created future
@@ -227,15 +226,14 @@ public final class Async<T> {
             }
         } else {
             CompletableFuture<T> future = new CompletableFuture<>();
-            async.link(new Handler<>(
+            async.link(handler(
                     a -> {
                         if (a.failed()) {
                             future.completeExceptionally(extractError(a));
                         } else {
                             future.complete(a.result());
                         }
-                    },
-                    a -> future.cancel(false)
+                    }
             ));
             return future;
         }
@@ -284,6 +282,10 @@ public final class Async<T> {
                 .orElseGet(() -> new Exception(failed.error().toString()));
     }
 
+    private static <T> Handler<T> handler(Consumer<Async<T>> consumer) {
+        return new Handler<>(consumer);
+    }
+
     /**
      * A task intended to be run asynchronously and outside of the main
      * component context. All data required to complete the task should be
@@ -311,14 +313,11 @@ public final class Async<T> {
     }
 
     /**
-     * A Link is something attached to an Async to react to its completion. An
-     * Async may only have one Link at a time. Calling any function or passing
-     * an Async to a type that adds a Link to an Async will remove any other
-     * Link attached to it.
+     * A Link is something attached to an Async to react to its completion.
      *
      * @param <T> Async result type
      */
-    public static sealed abstract class Link<T> {
+    static sealed abstract class Link<T> {
 
         Link() {
 
@@ -326,21 +325,12 @@ public final class Async<T> {
 
         abstract void processDone(Async<T> async);
 
-        void removeOnRelink(Async<T> async) {
-
-        }
-
     }
 
     /**
      * A queue for handling Async instances. The queue can be polled for added
      * Async instances that have completed, or a handler can be attached to run
      * on completion.
-     * <p>
-     * An Async may only have one {@link Link} at a time. Adding an Async to the
-     * queue will automatically remove any previous link. After adding to the
-     * queue, calling any function that replaces the link will remove it from
-     * the queue.
      * <p>
      * A queue cannot be constructed directly. Use the {@link Inject} annotation
      * on a field. Queues will have handlers and limits automatically removed on
@@ -527,21 +517,14 @@ public final class Async<T> {
             }
         }
 
-        @Override
-        void removeOnRelink(Async<T> async) {
-            deque.remove(async);
-        }
-
     }
 
     static final class Handler<T> extends Link<T> {
 
         private final Consumer<Async<T>> onDoneHandler;
-        private final Consumer<Async<T>> onRelinkHandler;
 
-        Handler(Consumer<Async<T>> onDoneHandler, Consumer<Async<T>> onRelinkHandler) {
+        Handler(Consumer<Async<T>> onDoneHandler) {
             this.onDoneHandler = onDoneHandler;
-            this.onRelinkHandler = onRelinkHandler;
         }
 
         @Override
@@ -549,11 +532,28 @@ public final class Async<T> {
             onDoneHandler.accept(async);
         }
 
+    }
+
+    static final class CompoundLink<T> extends Link<T> {
+
+        private final Set<Link<T>> links;
+
+        CompoundLink(Link<T> link1, Link<T> link2) {
+            links = new CopyOnWriteArraySet<>(List.of(link1, link2));
+        }
+
         @Override
-        void removeOnRelink(Async<T> async) {
-            onRelinkHandler.accept(async);
+        void processDone(Async<T> async) {
+            links.forEach(link -> link.processDone(async));
+        }
+
+        void addLink(Link<T> link) {
+            links.add(link);
+        }
+
+        void removeLink(Link<T> link) {
+            links.remove(link);
         }
 
     }
-
 }
