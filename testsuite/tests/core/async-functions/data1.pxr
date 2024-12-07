@@ -1,37 +1,34 @@
 @ /data1 root:data {
-  #%praxis.version 5.7.0-SNAPSHOT
+  .meta [map praxis.version 5.7.0-SNAPSHOT]
   @ ./exit core:custom {
-    #%graph.x 680
-    #%graph.y 659
-    .code "import org.praxislive.core.services.Services;
+    .meta [map graph.x 589 graph.y 685]
+    .code {import org.praxislive.core.services.Services;
 import org.praxislive.core.services.SystemManagerService;
 
 
     @T(1)
-    void exitOK() \{
+    void exitOK() {
         exit(0);
-    \}
+    }
 
     @T(2)
-    void exitFail() \{
+    void exitFail() {
         exit(1);
-    \}
+    }
 
-    private void exit(int exitValue) \{
+    private void exit(int exitValue) {
         find(Services.class)
                 .flatMap(s -> s.locate(SystemManagerService.class))
-                .ifPresent(s -> tell(ControlAddress.of(s, \"system-exit\"), exitValue));
-    \}
+                .ifPresent(s -> tell(ControlAddress.of(s, "system-exit"), exitValue));
+    }
 
-"
+}
   }
   @ ./test1 core:custom {
-    #%graph.x 124
-    #%graph.y 74
-    #%graph.comment Call uppercase function
-    .code "
+    .meta [map graph.x 124 graph.y 74 graph.comment "Call uppercase function"]
+    .code {
 
-    String lowercase = \"hello world\";
+    String lowercase = "hello world";
     String uppercase = lowercase.toUpperCase(Locale.ROOT);
 
     @Out(1) Output ok;
@@ -40,42 +37,40 @@ import org.praxislive.core.services.SystemManagerService;
     @Persist Async<Call> response;
 
     @Override
-    public void update() \{
-        if (response != null && response.done()) \{
-            if (response.failed()) \{
-                log(ERROR, \"<FAIL> \" + response.error());
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
                 error.send();
-            \} else \{
+            } else {
                 String result = response.result().args().get(0).toString();
-                if (!result.equals(uppercase)) \{
-                    log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + result);
+                if (!result.equals(uppercase)) {
+                    log(ERROR, "<FAIL> expected " + uppercase + " but got " + result);
                     error.send();
-                \} else \{
-                    log(INFO, \"Test 1 : OK\");
+                } else {
+                    log(INFO, "Test 1 : OK");
                     ok.send();
-                \}
-            \}
+                }
+            }
             response = null;
-        \}
-    \}
+        }
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 1 : Calling /data2/functions.uppercase\");
-        response = ask(ControlAddress.of(\"/data2/functions.uppercase\"),
+    void test() {
+        log(INFO, "Test 1 : Calling /data2/functions.uppercase");
+        response = ask(ControlAddress.of("/data2/functions.uppercase"),
                 List.of(V(lowercase)));
-    \}
+    }
 
 
-"
+}
   }
   @ ./test2 core:custom {
-    #%graph.x 124
-    #%graph.y 231
-    #%graph.comment Call uppercase function with extra args
-    .code "
+    .meta [map graph.x 124 graph.y 231 graph.comment "Call uppercase function with extra args"]
+    .code {
 
-    String lowercase = \"hello world\";
+    String lowercase = "hello world";
     String uppercase = lowercase.toUpperCase(Locale.ROOT);
 
     @Out(1) Output ok;
@@ -84,42 +79,40 @@ import org.praxislive.core.services.SystemManagerService;
     @Persist Async<Call> response;
 
     @Override
-    public void update() \{
-        if (response != null && response.done()) \{
-            if (response.failed()) \{
-                log(ERROR, \"<FAIL> \" + response.error());
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
                 error.send();
-            \} else \{
+            } else {
                 String result = response.result().args().get(0).toString();
-                if (!result.equals(uppercase)) \{
-                    log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + result);
+                if (!result.equals(uppercase)) {
+                    log(ERROR, "<FAIL> expected " + uppercase + " but got " + result);
                     error.send();
-                \} else \{
-                    log(INFO, \"Test 2 : OK\");
+                } else {
+                    log(INFO, "Test 2 : OK");
                     ok.send();
-                \}
-            \}
+                }
+            }
             response = null;
-        \}
-    \}
+        }
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 2 : Calling /data2/functions.uppercase with extra argument\");
-        response = ask(ControlAddress.of(\"/data2/functions.uppercase\"),
-                lowercase, \"extra argument\");
-    \}
+    void test() {
+        log(INFO, "Test 2 : Calling /data2/functions.uppercase with extra argument");
+        response = ask(ControlAddress.of("/data2/functions.uppercase"),
+                lowercase, "extra argument");
+    }
 
 
-"
+}
   }
   @ ./test3 core:custom {
-    #%graph.x 124
-    #%graph.y 391
-    #%graph.comment Call no-op function
-    .code "
+    .meta [map graph.x 124 graph.y 391 graph.comment "Call no-op function"]
+    .code {
 
-    String lowercase = \"hello world\";
+    String lowercase = "hello world";
     String uppercase = lowercase.toUpperCase(Locale.ROOT);
 
     @Out(1) Output ok;
@@ -128,39 +121,37 @@ import org.praxislive.core.services.SystemManagerService;
     @Persist Async<Call> response;
 
     @Override
-    public void update() \{
-        if (response != null && response.done()) \{
-            if (response.failed()) \{
-                log(ERROR, \"<FAIL> \" + response.error());
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
                 error.send();
-            \} else \{
-                if (!response.result().args().isEmpty()) \{
-                    log(ERROR, \"<FAIL> expected no response args but received \"
+            } else {
+                if (!response.result().args().isEmpty()) {
+                    log(ERROR, "<FAIL> expected no response args but received "
                             + response.result().args());
                     error.send();
-                \} else \{
-                    log(INFO, \"Test 3 : OK\");
+                } else {
+                    log(INFO, "Test 3 : OK");
                     ok.send();
-                \}
-            \}
+                }
+            }
             response = null;
-        \}
-    \}
+        }
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 3 : Calling /data2/functions.no-op\");
-        response = ask(ControlAddress.of(\"/data2/functions.no-op\"));
-    \}
+    void test() {
+        log(INFO, "Test 3 : Calling /data2/functions.no-op");
+        response = ask(ControlAddress.of("/data2/functions.no-op"));
+    }
 
 
-"
+}
   }
   @ ./test4 core:custom {
-    #%graph.x 124
-    #%graph.y 555
-    #%graph.comment Call error function
-    .code "
+    .meta [map graph.x 124 graph.y 555 graph.comment "Call error function"]
+    .code {
 
     @Out(1) Output ok;
     @Out(2) Output error;
@@ -168,42 +159,40 @@ import org.praxislive.core.services.SystemManagerService;
     @Persist Async<Call> response;
 
     @Override
-    public void update() \{
-        if (response != null && response.done()) \{
-            if (!response.failed()) \{
+    public void update() {
+        if (response != null && response.done()) {
+            if (!response.failed()) {
                 log(ERROR,
-                        \"<FAIL> exception expected but call completed successfully with args \"
+                        "<FAIL> exception expected but call completed successfully with args "
                         + response.result().args()
                 );
                 error.send();
-            \} else if (!\"UnsupportedOperationException\".equals(response.error().errorType())) \{
-                log(ERROR, \"<FAIL> wrong exception received : \"
+            } else if (!"UnsupportedOperationException".equals(response.error().errorType())) {
+                log(ERROR, "<FAIL> wrong exception received : "
                         + response.error().errorType());
                 error.send();
-            \} else \{
-                log(INFO, \"Test 4 : OK\");
+            } else {
+                log(INFO, "Test 4 : OK");
                 ok.send();
-            \}
+            }
             response = null;
-        \}
-    \}
+        }
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 4 : Calling /data2/functions.error\");
-        response = ask(ControlAddress.of(\"/data2/functions.error\"), \"FOO\");
-    \}
+    void test() {
+        log(INFO, "Test 4 : Calling /data2/functions.error");
+        response = ask(ControlAddress.of("/data2/functions.error"), "FOO");
+    }
 
 
-"
+}
   }
   @ ./test5 core:custom {
-    #%graph.x 433
-    #%graph.y 74
-    #%graph.comment Run async task
-    .code "
+    .meta [map graph.x 433 graph.y 74 graph.comment "Run async task"]
+    .code {
 
-    String lowercase = \"hello world\";
+    String lowercase = "hello world";
     String uppercase = lowercase.toUpperCase(Locale.ROOT);
 
     @Out(1) Output ok;
@@ -212,39 +201,37 @@ import org.praxislive.core.services.SystemManagerService;
     @Persist Async<String> response;
 
     @Override
-    public void update() \{
-        if (response != null && response.done()) \{
-            if (response.failed()) \{
-                log(ERROR, \"<FAIL> \" + response.error());
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
                 error.send();
-            \} else \{
+            } else {
                 String result = response.result();
-                if (!result.equals(uppercase)) \{
-                    log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + result);
+                if (!result.equals(uppercase)) {
+                    log(ERROR, "<FAIL> expected " + uppercase + " but got " + result);
                     error.send();
-                \} else \{
-                    log(INFO, \"Test 5 : OK\");
+                } else {
+                    log(INFO, "Test 5 : OK");
                     ok.send();
-                \}
-            \}
+                }
+            }
             response = null;
-        \}
-    \}
+        }
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 5 : Running async task\");
+    void test() {
+        log(INFO, "Test 5 : Running async task");
         response = async(lowercase, s -> s.toUpperCase(Locale.ROOT));
-    \}
+    }
 
-"
+}
   }
   @ ./test6 core:custom {
-    #%graph.x 433
-    #%graph.y 231
-    #%graph.comment Run async task w/ Async.Queue
-    .code "
-    String lowercase = \"hello world\";
+    .meta [map graph.x 433 graph.y 231 graph.comment "Run async task w/ Async.Queue"]
+    .code {
+    String lowercase = "hello world";
     String uppercase = lowercase.toUpperCase(Locale.ROOT);
 
     @Out(1) Output ok;
@@ -253,28 +240,70 @@ import org.praxislive.core.services.SystemManagerService;
     @Inject Async.Queue<String> queue;
 
     @Override
-    public void init() \{
-        queue.onDone(res -> \{
-            if (!res.equals(uppercase)) \{
-                log(ERROR, \"<FAIL> expected \" + uppercase + \" but got \" + res);
+    public void init() {
+        queue.onDone(res -> {
+            if (!res.equals(uppercase)) {
+                log(ERROR, "<FAIL> expected " + uppercase + " but got " + res);
                 error.send();
-            \} else \{
-                log(INFO, \"Test 6 : OK\");
+            } else {
+                log(INFO, "Test 6 : OK");
                 ok.send();
-            \}
-        \}, err -> \{
-            log(ERROR, \"<FAIL> \" + err);
+            }
+        }, err -> {
+            log(ERROR, "<FAIL> " + err);
             error.send();
-        \});
-    \}
+        });
+    }
 
     @T(1)
-    void test() \{
-        log(INFO, \"Test 6 : Running async task w/ Async.Queue\");
+    void test() {
+        log(INFO, "Test 6 : Running async task w/ Async.Queue");
         queue.add(async(lowercase, s -> s.toUpperCase(Locale.ROOT)));
-    \}
+    }
 
-"
+}
+  }
+  @ ./test7 core:custom {
+    .meta [map graph.x 433 graph.y 391 graph.comment "Call uppercase-async function"]
+    .code {
+
+    String lowercase = "hello world";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Persist Async<Call> response;
+
+    @Override
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
+                error.send();
+            } else {
+                String result = response.result().args().get(0).toString();
+                if (!result.equals(uppercase)) {
+                    log(ERROR, "<FAIL> expected " + uppercase + " but got " + result);
+                    error.send();
+                } else {
+                    log(INFO, "Test 1 : OK");
+                    ok.send();
+                }
+            }
+            response = null;
+        }
+    }
+
+    @T(1)
+    void test() {
+        log(INFO, "Test 7 : Calling /data2/functions.uppercase-async");
+        response = ask(ControlAddress.of("/data2/functions.uppercase-async"),
+                List.of(V(lowercase)));
+    }
+
+
+}
   }
   ~ ./test1!error ./exit!exit-fail
   ~ ./test2!error ./exit!exit-fail
@@ -286,6 +315,8 @@ import org.praxislive.core.services.SystemManagerService;
   ~ ./test4!ok ./test5!test
   ~ ./test5!error ./exit!exit-fail
   ~ ./test5!ok ./test6!test
-  ~ ./test6!ok ./exit!exit-ok
   ~ ./test6!error ./exit!exit-fail
+  ~ ./test6!ok ./test7!test
+  ~ ./test7!ok ./exit!exit-ok
+  ~ ./test7!error ./exit!exit-fail
 }

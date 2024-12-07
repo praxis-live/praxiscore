@@ -1,31 +1,29 @@
 @ /data2 root:data {
-  #%praxis.version 5.7.0-SNAPSHOT
+  .meta [map praxis.version 5.7.0-SNAPSHOT]
   @ ./functions core:custom {
-    #%graph.x 264
-    #%graph.y 184
-    .code "
-
-
-    
-    @FN String uppercase(String input) \{
+    .meta [map graph.x 265 graph.y 184]
+    .code {
+    @FN String uppercase(String input) {
         return input.toUpperCase(Locale.ROOT);
-    \}
+    }
     
-    @FN void noOp() \{\}
+    @FN Async<String> uppercaseAsync(String input) {
+        return async(input, s -> s.toUpperCase(Locale.ROOT));
+    }
     
-    @FN String error() \{
+    @FN void noOp() {}
+    
+    @FN String error() {
         throw new UnsupportedOperationException();
-    \}
+    }
     
-"
+}
   }
   @ ./start-trigger core:start-trigger {
-    #%graph.x 70
-    #%graph.y 59
+    .meta [map graph.x 70 graph.y 59]
   }
   @ ./send core:routing:send {
-    #%graph.x 455
-    #%graph.y 76
+    .meta [map graph.x 455 graph.y 76]
     .address /data1/test1.test
   }
   ~ ./start-trigger!out ./send!in
