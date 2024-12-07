@@ -23,7 +23,6 @@ package org.praxislive.code;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
-import java.util.function.Function;
 import org.praxislive.code.userapi.AuxOut;
 import org.praxislive.code.userapi.Out;
 import org.praxislive.code.userapi.Ref;
