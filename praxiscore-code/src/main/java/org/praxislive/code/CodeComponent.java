@@ -83,8 +83,9 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
     public void parentNotify(Container parent) throws VetoException {
         if (parent == null) {
             if (this.parent != null) {
-                this.parent = null;
                 disconnectAll();
+                codeCtxt.handleDispose();
+                this.parent = null;
             }
         } else {
             if (this.parent != null) {
@@ -104,9 +105,6 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         router = null;
         logInfo = null;
         codeCtxt.handleHierarchyChanged();
-        if (getAddress() == null) {
-            codeCtxt.handleDispose();
-        }
     }
 
     @Override

@@ -294,8 +294,6 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     final void handleDispose() {
-        cmp = null;
-        handleHierarchyChanged();
         refs.values().forEach(ReferenceDescriptor::dispose);
         refs.clear();
         controls.values().forEach(ControlDescriptor::dispose);
@@ -303,6 +301,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
         ports.values().forEach(PortDescriptor::dispose);
         ports.clear();
         dispose();
+        cmp = null;
+        handleHierarchyChanged();
     }
 
     /**

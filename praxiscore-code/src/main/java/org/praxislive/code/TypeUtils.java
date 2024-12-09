@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,13 +60,47 @@ class TypeUtils {
      */
     static Type extractTypeParameter(Field field, Class<?> baseType) {
         if (field.getType().equals(baseType)) {
-            var fieldType = field.getGenericType();
-            if (fieldType instanceof ParameterizedType) {
-                var paramType = (ParameterizedType) fieldType;
-                var types = paramType.getActualTypeArguments();
-                if (types.length == 1) {
-                    return types[0];
-                }
+            return extractTypeParameter(field.getGenericType());
+        }
+        return null;
+    }
+
+    /**
+     * Extract the type parameter from a type if it is a parameterized type with
+     * single type parameter. eg. for a type of {@code Ref<List<String>>} return
+     * the type of {@code List<String>}.
+     *
+     * @param type generic type
+     * @return extracted parameter type or null
+     */
+    static Type extractTypeParameter(Type type) {
+        if (type instanceof ParameterizedType paramType) {
+            Type[] types = paramType.getActualTypeArguments();
+            if (types.length == 1) {
+                return types[0];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract the raw Class type from a type, if one exists. Supports Class or
+     * ParameterizedType. Supports null input for chaining with other methods.
+     *
+     * @param type type or null
+     * @return class or null
+     */
+    static Class<?> extractRawType(Type type) {
+        if (type == null) {
+            return null;
+        }
+        if (type instanceof Class cls) {
+            return cls;
+        }
+        if (type instanceof ParameterizedType paramType) {
+            Type raw = paramType.getRawType();
+            if (raw instanceof Class cls) {
+                return cls;
             }
         }
         return null;

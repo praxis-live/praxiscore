@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,8 +26,15 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
+import org.praxislive.core.Call;
+import org.praxislive.core.Value;
+import org.praxislive.core.ValueMapper;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PReference;
 
 /**
  * A lightweight holder for a future value, the result of an asynchronous
@@ -36,8 +43,8 @@ import org.praxislive.core.types.PError;
  * An Async can be explicitly completed, with a value or error. Completion can
  * only happen once.
  * <p>
- * <b>Async is not thread safe and is not designed for concurrent operation.</b>
- * Use from a single thread, or protect appropriately.
+ * <strong>Async is not thread safe and is not designed for concurrent
+ * operation.</strong> Use from a single thread, or protect appropriately.
  *
  * @param <T> result type
  */
@@ -134,16 +141,175 @@ public final class Async<T> {
     }
 
     private void link(Link<T> link) {
-        if (this.link != null && this.link != link) {
-            this.link.removeOnRelink(this);
+        if (this.link == null) {
+            this.link = link;
+        } else if (this.link instanceof CompoundLink compound) {
+            compound.addLink(link);
+        } else {
+            this.link = new CompoundLink<>(this.link, link);
         }
-        this.link = link;
+
     }
 
     private void unlink(Link<T> link) {
         if (this.link == link) {
             this.link = null;
+        } else if (this.link instanceof CompoundLink compound) {
+            compound.removeLink(link);
         }
+    }
+
+    /**
+     * Bind a target Async to complete when a source Async completes. When the
+     * source Async completes, the target will be completed with the same result
+     * or error.
+     *
+     * @param <T> result type
+     * @param source source async
+     * @param target target async
+     */
+    public static <T> void bind(Async<T> source, Async<? super T> target) {
+        Objects.requireNonNull(target);
+        if (source.done()) {
+            complete(source, target);
+        } else {
+            source.link(handler(async -> complete(async, target)));
+        }
+    }
+
+    /**
+     * Create an Async that will complete when the provided async call
+     * completes, by extracting the first call argument and attempting to map to
+     * the given type. The returned Async will complete with an error if the
+     * call completes with an error, the argument isn't available, or the
+     * argument cannot be mapped to the given type.
+     *
+     * @param <T> type of created async
+     * @param asyncCall async call
+     * @param type class type of created async
+     * @return created async
+     */
+    public static <T> Async<T> extractArg(Async<Call> asyncCall, Class<T> type) {
+        return extractArg(asyncCall, type, 0);
+    }
+
+    /**
+     * Create an Async that will complete when the provided async call
+     * completes, by extracting the indexed call argument and attempting to map
+     * to the given type. The returned Async will complete with an error if the
+     * call completes with an error, the argument isn't available, or the
+     * argument cannot be mapped to the given type.
+     *
+     * @param <T> type of created async
+     * @param asyncCall async call
+     * @param type class type of created async
+     * @param argIdx index of argument to extract
+     * @return created async
+     */
+    public static <T> Async<T> extractArg(Async<Call> asyncCall, Class<T> type, int argIdx) {
+        Objects.requireNonNull(type);
+        Async<T> asyncValue = new Async<>();
+        if (asyncCall.done()) {
+            completeExtract(asyncCall, asyncValue, type, argIdx);
+        } else {
+            asyncCall.link(handler(
+                    async -> completeExtract(async, asyncValue, type, argIdx)
+            ));
+        }
+        return asyncValue;
+    }
+
+    /**
+     * A utility method for linking an Async with a {@link CompletableFuture}
+     * for passing to external APIs.
+     * <p>
+     * <strong>IMPORTANT : do not use completable futures returned from this
+     * method inside component code.</strong> To react to Async completion from
+     * within component code, use an {@link Async.Queue}.
+     * <p>
+     * The completable future will automatically complete with the result or
+     * failure of the Async. The link is one way - the Async will not respond to
+     * any changes to the future.
+     *
+     * @param <T> async and future type
+     * @param async async to link to created future
+     * @return created future
+     */
+    public static <T> CompletableFuture<T> toCompletableFuture(Async<T> async) {
+        if (async.done()) {
+            if (async.failed()) {
+                return CompletableFuture.failedFuture(extractError(async));
+            } else {
+                return CompletableFuture.completedFuture(async.result());
+            }
+        } else {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            async.link(handler(
+                    a -> {
+                        if (a.failed()) {
+                            future.completeExceptionally(extractError(a));
+                        } else {
+                            future.complete(a.result());
+                        }
+                    }
+            ));
+            return future;
+        }
+    }
+
+    private static <T> void complete(Async<T> source, Async<? super T> target) {
+        if (source.failed()) {
+            target.fail(source.error());
+        } else {
+            target.complete(source.result());
+        }
+    }
+
+    private static <T> void completeExtract(Async<Call> asyncCall, Async<T> asyncValue, Class<T> type, int argIdx) {
+        try {
+            if (asyncCall.failed()) {
+                asyncValue.fail(asyncCall.error());
+            } else {
+                Call call = asyncCall.result();
+                List<Value> args = call.args();
+                if (call.isError()) {
+                    PError err;
+                    if (args.isEmpty()) {
+                        err = PError.of("Unknown error");
+                    } else {
+                        err = PError.from(args.get(0))
+                                .orElseGet(() -> PError.of(args.get(0).toString()));
+                    }
+                    asyncValue.fail(err);
+                } else {
+                    Value value = args.get(argIdx);
+                    T result;
+                    if (Value.class == type) {
+                        result = type.cast(value);
+                    } else if (value instanceof PReference ref) {
+                        if (PReference.class == type) {
+                            result = type.cast(ref);
+                        } else {
+                            result = ref.as(type).orElseThrow(ClassCastException::new);
+                        }
+                    } else {
+                        result = ValueMapper.find(type).fromValue(value);
+                    }
+                    asyncValue.complete(result);
+                }
+            }
+        } catch (Exception ex) {
+            asyncValue.fail(PError.of(ex));
+        }
+    }
+
+    private static Throwable extractError(Async failed) {
+        return failed.error().exception()
+                .orElseGet(() -> new Exception(failed.error().toString()));
+    }
+
+    private static <T> Handler<T> handler(Consumer<Async<T>> consumer) {
+        return new Handler<>(consumer);
     }
 
     /**
@@ -172,13 +338,18 @@ public final class Async<T> {
 
     }
 
-    private static abstract class Link<T> {
+    /**
+     * A Link is something attached to an Async to react to its completion.
+     *
+     * @param <T> Async result type
+     */
+    static sealed abstract class Link<T> {
 
-        abstract void processDone(Async<T> async);
-
-        void removeOnRelink(Async<T> async) {
+        Link() {
 
         }
+
+        abstract void processDone(Async<T> async);
 
     }
 
@@ -186,9 +357,6 @@ public final class Async<T> {
      * A queue for handling Async instances. The queue can be polled for added
      * Async instances that have completed, or a handler can be attached to run
      * on completion.
-     * <p>
-     * An Async may only be in one queue at a time. Adding to the queue will
-     * automatically remove from any previous queue.
      * <p>
      * A queue cannot be constructed directly. Use the {@link Inject} annotation
      * on a field. Queues will have handlers and limits automatically removed on
@@ -375,11 +543,43 @@ public final class Async<T> {
             }
         }
 
+    }
+
+    static final class Handler<T> extends Link<T> {
+
+        private final Consumer<Async<T>> onDoneHandler;
+
+        Handler(Consumer<Async<T>> onDoneHandler) {
+            this.onDoneHandler = onDoneHandler;
+        }
+
         @Override
-        void removeOnRelink(Async<T> async) {
-            deque.remove(async);
+        void processDone(Async<T> async) {
+            onDoneHandler.accept(async);
         }
 
     }
 
+    static final class CompoundLink<T> extends Link<T> {
+
+        private final Set<Link<T>> links;
+
+        CompoundLink(Link<T> link1, Link<T> link2) {
+            links = new CopyOnWriteArraySet<>(List.of(link1, link2));
+        }
+
+        @Override
+        void processDone(Async<T> async) {
+            links.forEach(link -> link.processDone(async));
+        }
+
+        void addLink(Link<T> link) {
+            links.add(link);
+        }
+
+        void removeLink(Link<T> link) {
+            links.remove(link);
+        }
+
+    }
 }
