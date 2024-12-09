@@ -50,6 +50,31 @@ public class AsyncTest {
     }
 
     @Test
+    public void testBind() {
+        Async<String> source = new Async<>();
+        Async<Object> target = new Async<>();
+        Async.bind(source, target);
+        source.complete("FOO");
+        assertTrue(target.done());
+        assertEquals("FOO", target.result());
+
+        source = new Async<>();
+        target = new Async<>();
+        source.complete("BAR");
+        Async.bind(source, target);
+        assertTrue(target.done());
+        assertEquals("BAR", target.result());
+
+        source = new Async<>();
+        target = new Async<>();
+        Async.bind(source, target);
+        PError error = PError.of("ERROR");
+        source.fail(error);
+        assertTrue(target.done());
+        assertSame(error, target.error());
+    }
+
+    @Test
     public void testExtractArg() {
         // Test Value extract
         Async<Call> asyncCall = new Async<>();
@@ -144,7 +169,7 @@ public class AsyncTest {
         asyncString.fail(PError.of(ex));
         assertTrue(futureString.isCompletedExceptionally());
         assertSame(ex, futureString.exceptionNow());
-        
+
         // error before link
         asyncString = new Async<>();
         ex = new Exception("FOO");
@@ -152,7 +177,7 @@ public class AsyncTest {
         futureString = Async.toCompletableFuture(asyncString);
         assertTrue(futureString.isCompletedExceptionally());
         assertSame(ex, futureString.exceptionNow());
-        
+
         // test queued and future
         asyncString = new Async<>();
         futureString = Async.toCompletableFuture(asyncString);

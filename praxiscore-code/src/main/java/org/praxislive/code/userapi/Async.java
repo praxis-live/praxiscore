@@ -160,6 +160,24 @@ public final class Async<T> {
     }
 
     /**
+     * Bind a target Async to complete when a source Async completes. When the
+     * source Async completes, the target will be completed with the same result
+     * or error.
+     *
+     * @param <T> result type
+     * @param source source async
+     * @param target target async
+     */
+    public static <T> void bind(Async<T> source, Async<? super T> target) {
+        Objects.requireNonNull(target);
+        if (source.done()) {
+            complete(source, target);
+        } else {
+            source.link(handler(async -> complete(async, target)));
+        }
+    }
+
+    /**
      * Create an Async that will complete when the provided async call
      * completes, by extracting the first call argument and attempting to map to
      * the given type. The returned Async will complete with an error if the
@@ -236,6 +254,14 @@ public final class Async<T> {
                     }
             ));
             return future;
+        }
+    }
+
+    private static <T> void complete(Async<T> source, Async<? super T> target) {
+        if (source.failed()) {
+            target.fail(source.error());
+        } else {
+            target.complete(source.result());
         }
     }
 
