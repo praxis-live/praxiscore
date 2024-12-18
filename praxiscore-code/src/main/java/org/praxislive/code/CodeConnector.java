@@ -33,7 +33,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -66,6 +68,7 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PArray;
 
 /**
  * Base class for analysing a {@link CodeDelegate} and creating the resources
@@ -95,6 +98,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private final Map<String, ControlDescriptor<?>> controls;
     private final Map<String, PortDescriptor<?>> ports;
     private final Map<String, ReferenceDescriptor<?>> refs;
+    private final Set<String> expose;
 
     private List<Plugin> plugins;
     private Map<String, ControlDescriptor<?>> extControls;
@@ -118,6 +122,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         controls = new TreeMap<>();
         ports = new TreeMap<>();
         refs = new TreeMap<>();
+        expose = new CopyOnWriteArraySet<>();
     }
 
     /**
@@ -150,6 +155,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      */
     public LogBuilder getLog() {
         return log;
+    }
+
+    // TODO - remove when @Config.Preferred removed.
+    @Deprecated(forRemoval = true)
+    final void exposeForPreferred(String id) {
+        expose.add(id);
     }
 
     /**
@@ -281,6 +292,12 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         cmp.merge(ComponentProtocol.API_INFO);
         cmp.property(ComponentInfo.KEY_DYNAMIC, true);
         cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.componentType());
+        if (!expose.isEmpty()) {
+            cmp.property(ComponentInfo.KEY_EXPOSE,
+                    expose.stream()
+                            .map(PString::of)
+                            .collect(PArray.collector()));
+        }
     }
 
     /**
@@ -531,6 +548,11 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      * @param method discovered method
      */
     protected void analyseMethod(Method method) {
+
+        Config.Expose exp = method.getAnnotation(Config.Expose.class);
+        if (exp != null) {
+            expose.addAll(Arrays.asList(exp.value()));
+        }
 
         for (Plugin p : plugins) {
             if (p.analyseMethod(this, method)) {

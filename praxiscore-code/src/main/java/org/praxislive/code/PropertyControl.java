@@ -397,6 +397,9 @@ public class PropertyControl extends Property implements Control {
                         binding.getDefaultValue(),
                         buildProperties(field));
             }
+            if (info.properties().getBoolean("preferred", false)) {
+                connector.exposeForPreferred(id);
+            }
             return new Descriptor(id, index, info, binding, propertyField, onChange, onError);
         }
 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,17 +21,21 @@
  */
 package org.praxislive.code.userapi;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import org.praxislive.core.ComponentInfo;
 
 /**
+ * Various annotations and support to control component configuration.
  *
- * 
  */
 public final class Config {
 
-    private Config() {}
-    
+    private Config() {
+    }
+
     /**
      * Control automatic port creation for properties, triggers, etc.
      */
@@ -53,10 +57,32 @@ public final class Config {
      * This will add a key to the info for this feature. It is up to an editor
      * whether to use or ignore this key (eg. the PraxisLIVE graph editor will
      * show properties marked this way on the graph itself).
+     * <p>
+     * This option is deprecated in favour of {@link Expose}.
      */
     @Retention(RetentionPolicy.RUNTIME)
+    @Deprecated(forRemoval = true)
     public @interface Preferred {
 
+    }
+
+    /**
+     * Default list of control IDs to give extra priority to exposing to the
+     * user.
+     * <p>
+     * The list of controls is added under the key
+     * {@link ComponentInfo#KEY_EXPOSE} in the component info.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface Expose {
+
+        /**
+         * List of control IDs to expose.
+         *
+         * @return list of IDs
+         */
+        String[] value();
     }
 
 }
