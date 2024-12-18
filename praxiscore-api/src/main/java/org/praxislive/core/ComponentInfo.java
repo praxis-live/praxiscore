@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2024 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -75,6 +75,18 @@ public class ComponentInfo extends PMap.MapBasedValue {
      * is mandatory. Other keys may be used to provide additional configuration.
      */
     public static final String KEY_DISPLAY_HINT = "display-hint";
+
+    /**
+     * Optional key for adding a default list of control IDs to give extra
+     * priority to exposing to the user. Value must be an array.
+     * <p>
+     * It is up to any editor whether to use or ignore this property (eg. the
+     * PraxisLIVE graph editor will show exposed controls on the graph itself).
+     * If the editor supports overriding the default list of exposed controls,
+     * it should add the altered list under the same key in the
+     * {@link ComponentProtocol#META} property.
+     */
+    public static final String KEY_EXPOSE = "expose";
 
     private final OrderedMap<String, ControlInfo> controls;
     private final OrderedMap<String, PortInfo> ports;
