@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,4 +42,38 @@ public @interface FN {
      * @return weight
      */
     int value() default 0;
+
+    /**
+     * Annotate a method as a {@link Watch} function.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface Watch {
+
+        /**
+         * The mime type of the returned data. Will be included in the Watch
+         * info.
+         *
+         * @return data mime type
+         */
+        String mime();
+
+        /**
+         * Optional name of a port on the component to relate the watch data to.
+         *
+         * @return related port ID
+         */
+        String relatedPort() default "";
+
+        /**
+         * Relative weight compared to other @FN elements. Functions will be
+         * sorted by weight, and then alphabetically. Higher weight elements
+         * will sort after lower weight elements.
+         *
+         * @return weight
+         */
+        int weight() default 0;
+
+    }
+
 }

@@ -178,6 +178,32 @@ public final class Async<T> {
     }
 
     /**
+     * Create an Async that is already completed with the given value.
+     *
+     * @param <T> value type
+     * @param value value to complete the Async
+     * @return new completed Async
+     */
+    public static <T> Async<T> completed(T value) {
+        Async<T> async = new Async<>();
+        async.complete(value);
+        return async;
+    }
+
+    /**
+     * Create an Async that is already failed with the given error.
+     *
+     * @param <T> value type
+     * @param error error to fail the Async
+     * @return new failed Async
+     */
+    public static <T> Async<T> failed(PError error) {
+        Async<T> async = new Async<>();
+        async.fail(error);
+        return async;
+    }
+
+    /**
      * Create an Async that will complete when the provided async call
      * completes, by extracting the first call argument and attempting to map to
      * the given type. The returned Async will complete with an error if the

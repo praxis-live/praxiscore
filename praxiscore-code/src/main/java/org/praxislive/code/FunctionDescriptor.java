@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,6 +40,7 @@ import org.praxislive.core.Info;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueMapper;
+import org.praxislive.core.Watch;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
@@ -122,8 +123,34 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
     }
 
     static FunctionDescriptor create(CodeConnector<?> connector, FN ann, Method method) {
+        return createImpl(connector, method, ann.value(), null);
+    }
+
+    static FunctionDescriptor createWatch(CodeConnector<?> connector, FN.Watch ann, Method method) {
+        String mime = ann.mime();
+        String relatedPort = ann.relatedPort();
+        if (mime.isBlank()) {
+            connector.getLog().log(LogLevel.ERROR,
+                    "No mime type specified for watch method " + method.getName());
+            return null;
+        }
+        PMap watchInfo;
+        if (relatedPort.isBlank()) {
+            watchInfo = PMap.of(Watch.MIME_KEY, mime);
+        } else {
+            watchInfo = PMap.of(Watch.MIME_KEY, mime, Watch.RELATED_PORT_KEY, relatedPort);
+        }
+        return createImpl(connector, method, ann.weight(), watchInfo);
+    }
+
+    private static FunctionDescriptor createImpl(CodeConnector<?> connector,
+            Method method, int index, PMap watchInfo) {
         method.setAccessible(true);
         Class<?>[] parameterTypes = method.getParameterTypes();
+        if (watchInfo != null && parameterTypes.length > 1) {
+            connector.getLog().log(LogLevel.ERROR,
+                    "Watch has more than one parameter in method " + method.getName());
+        }
         ValueMapper<?>[] parameterMappers = new ValueMapper<?>[parameterTypes.length];
         for (int i = 0; i < parameterMappers.length; i++) {
             Class<?> type = parameterTypes[i];
@@ -141,7 +168,13 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         Class<?> returnType = method.getReturnType();
         ValueMapper<?> returnMapper;
         if (returnType == Void.TYPE) {
-            returnMapper = null;
+            if (watchInfo != null) {
+                connector.getLog().log(LogLevel.ERROR,
+                        "Watch must return a value at " + method.getName());
+                return null;
+            } else {
+                returnMapper = null;
+            }
         } else if (returnType == Async.class) {
             async = true;
             Class<?> asyncReturnType = TypeUtils.extractRawType(
@@ -188,12 +221,21 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
             outputArgInfo = new ArgumentInfo[0];
         }
 
-        ControlInfo controlInfo = Info.control().function()
-                .inputs(inputArgInfo)
-                .outputs(outputArgInfo)
-                .build();
+        ControlInfo controlInfo;
+        if (watchInfo != null) {
+            controlInfo = Info.control().function()
+                    .inputs(inputArgInfo)
+                    .outputs(outputArgInfo)
+                    .property(Watch.WATCH_KEY, watchInfo)
+                    .build();
+        } else {
+            controlInfo = Info.control().function()
+                    .inputs(inputArgInfo)
+                    .outputs(outputArgInfo)
+                    .build();
+        }
 
-        return new FunctionDescriptor(id, ann.value(), method, controlInfo,
+        return new FunctionDescriptor(id, index, method, controlInfo,
                 List.of(parameterMappers), returnMapper, async);
     }
 
