@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,10 +38,10 @@ import org.praxislive.video.render.utils.BufferedImageSurface;
 
 /**
  *
- * 
+ *
  */
 class ImageLoader extends ResourceProperty.Loader<PImage> {
-    
+
     private final static ImageLoader INSTANCE = new ImageLoader();
 
     private ImageLoader() {
@@ -57,8 +57,8 @@ class ImageLoader extends ResourceProperty.Loader<PImage> {
     static ImageLoader getDefault() {
         return INSTANCE;
     }
-    
-    private static class PImageImpl extends PImage {
+
+    private static class PImageImpl extends PImage implements SurfaceBackedImage {
 
         private final Surface surface;
 
@@ -68,7 +68,7 @@ class ImageLoader extends ResourceProperty.Loader<PImage> {
         }
 
         @Override
-        protected Surface getSurface() {
+        public Surface getSurface() {
             return surface;
         }
 

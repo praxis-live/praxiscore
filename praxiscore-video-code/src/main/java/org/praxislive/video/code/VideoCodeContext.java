@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -255,7 +255,7 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
     }
 
-    private static class SurfacePGraphics extends PGraphics {
+    private static class SurfacePGraphics extends PGraphics implements SurfaceBackedImage {
 
         private final Surface surface;
 
@@ -265,13 +265,13 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
         }
 
         @Override
-        protected Surface getSurface() {
+        public Surface getSurface() {
             return surface;
         }
 
     }
 
-    private static class SurfacePImage extends PImage {
+    private static class SurfacePImage extends PImage implements SurfaceBackedImage {
 
         private final Surface surface;
 
@@ -281,7 +281,7 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
         }
 
         @Override
-        protected Surface getSurface() {
+        public Surface getSurface() {
             return surface;
         }
 

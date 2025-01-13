@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,26 +27,35 @@
  * Copyright (c) 2001-04 Massachusetts Institute of Technology
  *
  */
-
 package org.praxislive.video.code;
 
+import java.awt.image.BufferedImage;
 import java.util.function.UnaryOperator;
+import javax.imageio.ImageIO;
 import org.praxislive.code.DefaultCodeDelegate;
+import org.praxislive.code.userapi.Async;
+import org.praxislive.core.types.PBytes;
+import org.praxislive.core.types.PError;
 import org.praxislive.video.code.userapi.PFont;
 import org.praxislive.video.code.userapi.PGraphics;
 import org.praxislive.video.code.userapi.PImage;
 import org.praxislive.video.code.userapi.VideoConstants;
+import org.praxislive.video.render.Surface;
 import org.praxislive.video.render.SurfaceOp;
+import org.praxislive.video.render.ops.Blit;
+import org.praxislive.video.render.utils.BufferedImageSurface;
 
 /**
  *
- * 
+ *
  */
 public class VideoCodeDelegate extends DefaultCodeDelegate {
-    
+
+    public static final String MIME_PNG = "image/png";
+
     public int width;
     public int height;
-    
+
     VideoCodeContext context;
     PGraphics pg;
 
@@ -56,26 +65,57 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
         this.height = height;
     }
 
-    public void init(){}
-    
-    public void update(){}
-    
-    public void setup(){}
-    
-    public void draw(){}
-    
+    public void init() {
+    }
+
+    public void update() {
+    }
+
+    public void setup() {
+
+    }
+
+    public void draw() {
+    }
+
     public final void attachAlphaQuery(String source, UnaryOperator<Boolean> query) {
         context.attachAlphaQuery(source, query);
     }
-    
+
     public final void attachRenderQuery(UnaryOperator<Boolean> query) {
         context.attachRenderQuery(query);
     }
-    
+
     public final void attachRenderQuery(String source, UnaryOperator<Boolean> query) {
         context.attachRenderQuery(source, query);
     }
-    
+
+    public final Async<PBytes> write(String mimeType, PImage image) {
+        return write(mimeType, image, 0, 0, image.width, image.height);
+    }
+
+    public final Async<PBytes> write(String mimeType, PImage image,
+            double x, double y, double width, double height) {
+        if (!MIME_PNG.equals(mimeType)) {
+            return Async.failed(PError.of(IllegalArgumentException.class, "Unsupported mime type"));
+        }
+        if (image instanceof SurfaceBackedImage surfaceImage) {
+            try {
+                WriteImageSurface wis = new WriteImageSurface(width, height);
+                wis.render(surfaceImage.getSurface(), x, y);
+                return async(wis.getImage(), im -> {
+                    PBytes.OutputStream os = new PBytes.OutputStream();
+                    ImageIO.write(im, "PNG", os);
+                    return os.toBytes();
+                });
+            } catch (Exception ex) {
+                return Async.failed(PError.of(ex));
+            }
+        } else {
+            return Async.failed(PError.of(IllegalArgumentException.class, "Unsupported PImage type"));
+        }
+    }
+
     // Start generated PGraphics 
     public void background(double grey) {
         pg.background(grey);
@@ -216,7 +256,7 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
     public void release(PImage image) {
         pg.release(image);
     }
-    
+
     public void resetMatrix() {
         pg.resetMatrix();
     }
@@ -281,6 +321,26 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
         pg.vertex(x, y);
     }
     // End generated PGraphics
-    
-    
+
+    private static class WriteImageSurface extends BufferedImageSurface {
+
+        private final Blit blit;
+
+        private WriteImageSurface(double width, double height) {
+            super((int) (width + 0.5), (int) (height + 0.5), true);
+            this.blit = new Blit();
+        }
+
+        private void render(Surface source, double x, double y) {
+            blit.setX((int) (x + 0.5));
+            blit.setY((int) (y + 0.5));
+            process(blit, source);
+        }
+
+        @Override
+        protected BufferedImage getImage() {
+            return super.getImage();
+        }
+
+    }
 }
