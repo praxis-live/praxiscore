@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -166,7 +166,8 @@ abstract class MessageDispatcher {
     private void handleReplyMessage(SocketAddress sender, Message.Reply msg) throws Exception {
         SentCallInfo info = sentCalls.remove(msg.matchID());
         if (info == null) {
-            throw new IllegalArgumentException("Unexpected response");
+            LOG.log(Level.DEBUG, "Unexpected message response\n{0}", msg);
+            return;
         }
         Call call = info.localCall().reply(msg.args());
         dispatchCall(call);
@@ -175,7 +176,8 @@ abstract class MessageDispatcher {
     private void handleErrorMessage(SocketAddress sender, Message.Error msg) throws Exception {
         SentCallInfo info = sentCalls.remove(msg.matchID());
         if (info == null) {
-            throw new IllegalArgumentException("Unexpected response");
+            LOG.log(Level.DEBUG, "Unexpected message response\n{0}", msg);
+            return;
         }
         Call call = info.localCall().error(msg.args());
         dispatchCall(call);

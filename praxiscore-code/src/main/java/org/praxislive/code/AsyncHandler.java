@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,23 +33,24 @@ import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PError;
+import org.praxislive.core.types.PReference;
 
-class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Control {
+class AsyncHandler extends ControlDescriptor<AsyncHandler> implements Control {
 
-    static final String ID = "_reply";
+    static final String ID = "_async-handler";
     private static final PError UNKNOWN_ERROR = PError.of("Unknown error");
 
     private final Map<Integer, AsyncReference<?>> resultMap;
 
     private CodeContext<?> context;
 
-    ResponseHandler(int index) {
-        super(ResponseHandler.class, ID, Category.Internal, index);
+    AsyncHandler(int index) {
+        super(AsyncHandler.class, ID, Category.Internal, index);
         this.resultMap = new HashMap<>();
     }
 
     @Override
-    public void attach(CodeContext<?> context, ResponseHandler previous) {
+    public void attach(CodeContext<?> context, AsyncHandler previous) {
         if (previous != null) {
             resultMap.putAll(previous.resultMap);
             previous.resultMap.clear();
@@ -70,8 +71,17 @@ class ResponseHandler extends ControlDescriptor<ResponseHandler> implements Cont
             if (asyncRef == null || !asyncRef.completeWithError(error)) {
                 context.getLog().log(LogLevel.ERROR, error);
             }
-        } else if (call.isReplyRequired()) {
-            router.route(call.error(PError.of("Unexpected call")));
+        } else if (call.isRequest()) {
+            if (call.to().equals(call.from()) && !call.isReplyRequired()) {
+                Async<?> timeout = PReference.from(call.args().get(0))
+                        .flatMap(ref -> ref.as(Async.class))
+                        .orElseThrow();
+                if (!timeout.done()) {
+                    timeout.fail(PError.of("Timeout"));
+                }
+            } else {
+                router.route(call.error(PError.of("Unexpected call")));
+            }
         }
     }
 

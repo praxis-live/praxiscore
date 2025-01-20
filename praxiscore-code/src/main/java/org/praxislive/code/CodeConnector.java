@@ -135,7 +135,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         analyseMethods(extractMethodsToBase(delegate, factory.baseClass()));
         addDefaultControls();
         addDefaultPorts();
-        addControl(new ResponseHandler(getInternalIndex()));
+        addControl(new AsyncHandler(getInternalIndex()));
         buildExternalData();
     }
 

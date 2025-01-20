@@ -347,25 +347,29 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
                             () -> method.invoke(context.getDelegate(), parameters));
                     if (call.isReplyRequired()) {
                         Async<Object> async = (Async<Object>) response;
-                        CompletableFuture<Object> future = Async.toCompletableFuture(async);
-                        pending.put(call, future);
-                        future.whenComplete((result, error) -> {
-                            if (pending.remove(call) != null) {
-                                PacketRouter rtr = context.getComponent().getPacketRouter();
-                                if (result != null) {
-                                    try {
-                                        rtr.route(call.reply(returnMapper.toValue(result)));
-                                    } catch (Exception ex) {
-                                        rtr.route(call.error(PError.of(ex)));
-                                    }
-                                } else {
-                                    PError pe = PError.of(error instanceof Exception e
-                                            ? e : new Exception(error));
-                                    rtr.route(call.error(pe));
-                                }
+                        if (async.done()) {
+                            if (async.failed()) {
+                                handleError(call, async.error(), router);
+                            } else {
+                                handleComplete(call, async.result(), router);
                             }
+                        } else {
+                            CompletableFuture<Object> future = Async.toCompletableFuture(async);
+                            pending.put(call, future);
+                            future.whenComplete((result, error) -> {
+                                if (pending.remove(call) != null) {
+                                    PacketRouter rtr = context.getComponent().getPacketRouter();
+                                    if (result != null) {
+                                        handleComplete(call, result, rtr);
+                                    } else {
+                                        PError pe = PError.of(error instanceof Exception e
+                                                ? e : new Exception(error));
+                                        rtr.route(call.error(pe));
+                                    }
+                                }
 
-                        });
+                            });
+                        }
                     }
                 } catch (InvocationTargetException ex) {
                     if (ex.getCause() instanceof Exception exc) {
@@ -397,6 +401,18 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
             onStop();
             this.context = null;
             this.method = null;
+        }
+
+        private void handleComplete(Call call, Object result, PacketRouter router) {
+            try {
+                router.route(call.reply(returnMapper.toValue(result)));
+            } catch (Exception ex) {
+                router.route(call.error(PError.of(ex)));
+            }
+        }
+
+        private void handleError(Call call, PError error, PacketRouter router) {
+            router.route(call.error(error));
         }
 
     }

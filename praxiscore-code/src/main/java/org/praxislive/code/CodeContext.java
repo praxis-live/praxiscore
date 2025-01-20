@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -74,13 +74,13 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private final Driver driver;
     private final boolean requireClock;
     private final List<ClockListener> clockListeners;
-    private final ResponseHandler responseHandler;
+    private final AsyncHandler asyncHandler;
 
     private ExecutionContext execCtxt;
     private ExecutionContext.State execState = ExecutionContext.State.NEW;
     private CodeComponent<D> cmp;
     private long time;
-    private ControlAddress responseAddress;
+    private ControlAddress asyncHandlerAddress;
 
     /**
      * Create a CodeContext by processing the provided {@link CodeConnector}
@@ -114,7 +114,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
             delegate = connector.getDelegate();
             log = new LogBuilder(LogLevel.ERROR);
             this.requireClock = requireClock || connector.requiresClock();
-            this.responseHandler = Objects.requireNonNull((ResponseHandler) controls.get(ResponseHandler.ID));
+            this.asyncHandler = Objects.requireNonNull((AsyncHandler) controls.get(AsyncHandler.ID));
             descriptors = new ArrayList<>(controls.values());
             descriptors.addAll(ports.values());
             descriptors.addAll(refs.values());
@@ -185,9 +185,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 execCtxt.removeClockListener(driver);
             }
             execCtxt = ctxt;
-            responseAddress = null;
+            asyncHandlerAddress = null;
             if (ctxt != null) {
-                responseAddress = ControlAddress.of(cmp.getAddress(), ResponseHandler.ID);
+                asyncHandlerAddress = ControlAddress.of(cmp.getAddress(), AsyncHandler.ID);
                 ctxt.addStateListener(driver);
                 if (requireClock) {
                     ctxt.addClockListener(driver);
@@ -634,7 +634,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
     private void log(List<Value> args) {
         PacketRouter router = cmp.getPacketRouter();
         ControlAddress to = cmp.getLogToAddress();
-        ControlAddress from = responseAddress;
+        ControlAddress from = asyncHandlerAddress;
         if (router == null || to == null) {
             return;
         }
@@ -642,22 +642,26 @@ public abstract class CodeContext<D extends CodeDelegate> {
     }
 
     final void tell(ControlAddress destination, Value value) {
-        Call call = Call.createQuiet(destination, responseAddress, getTime(), value);
+        Call call = Call.createQuiet(destination, asyncHandlerAddress, getTime(), value);
         getComponent().getPacketRouter().route(call);
     }
 
     final void tellIn(double seconds, ControlAddress destination, Value value) {
         long timeCode = getTime() + ((long) (seconds * 1_000_000_000));
-        Call call = Call.createQuiet(destination, responseAddress, timeCode, value);
+        Call call = Call.createQuiet(destination, asyncHandlerAddress, timeCode, value);
         getComponent().getPacketRouter().route(call);
     }
 
     final Async<Call> ask(ControlAddress destination, List<Value> args) {
-        Call call = Call.create(destination, responseAddress, time, args);
+        Call call = Call.create(destination, asyncHandlerAddress, time, args);
         getComponent().getPacketRouter().route(call);
         Async<Call> async = new Async<>();
-        responseHandler.register(call, async);
+        asyncHandler.register(call, async);
         return async;
+    }
+
+    final void timeoutAsync(double seconds, Async<?> async) {
+        tellIn(seconds, asyncHandlerAddress, PReference.of(async));
     }
 
     final <T, R> Async<R> async(T input, Async.Task<T, R> task) {
@@ -667,9 +671,9 @@ public abstract class CodeContext<D extends CodeDelegate> {
                     .map(c -> ControlAddress.of(c, TaskService.SUBMIT))
                     .orElseThrow(ServiceUnavailableException::new);
             TaskService.Task wrapper = () -> PReference.of(task.execute(input));
-            Call call = Call.create(to, responseAddress, time, PReference.of(wrapper));
+            Call call = Call.create(to, asyncHandlerAddress, time, PReference.of(wrapper));
             getComponent().getPacketRouter().route(call);
-            responseHandler.register(call, async, c -> {
+            asyncHandler.register(call, async, c -> {
                 @SuppressWarnings("unchecked")
                 R result = (R) PReference.from(c.args().get(0))
                         .flatMap(ref -> ref.as(Object.class))
