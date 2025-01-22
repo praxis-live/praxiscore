@@ -102,14 +102,12 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
      *
      * @param mimeType mime type of image format
      * @param image image to write
-     * @param width output width
-     * @param height output height
+     * @param scale output scale (1.0 == normal size)
      * @return async bytes
      */
-    public final Async<PBytes> write(String mimeType, PImage image,
-            double width, double height) {
+    public final Async<PBytes> write(String mimeType, PImage image, double scale) {
         return context.writeImpl(mimeType, image,
-                (int) (width + 0.5), (int) (height + 0.5));
+                (int) (image.width * scale), (int) (image.height * scale));
     }
 
     // Start generated PGraphics 

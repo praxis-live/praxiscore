@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,38 +38,66 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * 
+ *
  */
 @GenerateTemplate(VideoComposite.TEMPLATE_PATH)
 public class VideoComposite extends VideoCodeDelegate {
-    
+
     final static String TEMPLATE_PATH = "resources/composite.pxj";
 
     // PXJ-BEGIN:body
-    
+
     @In(1) PImage in;
     @In(2) PImage src;
-    
-    @P(1)
-    BlendMode mode;
-    @P(2) @Type.Number(min = 0, max = 1, def = 1)
-    double mix;
-    @P(3)
-    boolean forceAlpha;
-    
+
+    @P(1) BlendMode mode;
+    @P(2) @Type.Number(min = 0, max = 1, def = 1) double mix;
+    @P(3) boolean forceAlpha;
+
+    @Persist Async<PBytes> watchInResponse, watchSrcResponse;
+
     @Override
     public void init() {
         attachAlphaQuery("src", outAlpha -> outAlpha || forceAlpha);
     }
-    
+
     @Override
     public void draw() {
+        checkWatches();
         copy(in);
         release(in);
         blendMode(mode, mix);
         image(src, 0, 0);
     }
-    
+
+    @FN.Watch(mime = MIME_PNG, relatedPort = "in")
+    Async<PBytes> watchIn() {
+        if (watchInResponse == null || watchInResponse.failed()) {
+            watchInResponse = timeout(1, new Async<>());
+        }
+        return watchInResponse;
+    }
+
+    @FN.Watch(mime = MIME_PNG, relatedPort = "src")
+    Async<PBytes> watchSrc() {
+        if (watchSrcResponse == null || watchSrcResponse.failed()) {
+            watchSrcResponse = timeout(1, new Async<>());
+        }
+        return watchSrcResponse;
+    }
+
+    private void checkWatches() {
+        double size = max(width, height);
+        double scale = size > 800 ? 400 / size : 0.5;
+        if (watchInResponse != null) {
+            Async.bind(write(MIME_PNG, in, scale), watchInResponse);
+            watchInResponse = null;
+        }
+        if (watchSrcResponse != null) {
+            Async.bind(write(MIME_PNG, src, scale), watchSrcResponse);
+            watchSrcResponse = null;
+        }
+    }
+
     // PXJ-END:body
-    
 }
