@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2019 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,22 +36,25 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * 
+ *
  */
 @GenerateTemplate(CoreRoutingSend.TEMPLATE_PATH)
 public class CoreRoutingSend extends CoreCodeDelegate {
-    
-    final static String TEMPLATE_PATH = "resources/routing_send.pxj";
 
+    final static String TEMPLATE_PATH = "resources/routing_send.pxj";
     // PXJ-BEGIN:body
-    
-    @P(1) @Config.Port(false) Optional<ControlAddress> address;
-    @P(2) @Transient @Deprecated @Config.Port(false) boolean logErrors;
-    
-    @In(1) void in(Value value) {
+
+    @P @Config.Port(false) Optional<ControlAddress> address;
+
+    @Override
+    @Config.Expose("address")
+    public void init() {
+    }
+
+    @In
+    void in(Value value) {
         address.ifPresent(destination -> tell(destination, value));
     }
-    
+
     // PXJ-END:body
-    
 }
