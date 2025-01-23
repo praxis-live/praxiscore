@@ -287,7 +287,7 @@ import org.praxislive.core.services.SystemManagerService;
                     log(ERROR, "<FAIL> expected " + uppercase + " but got " + result);
                     error.send();
                 } else {
-                    log(INFO, "Test 1 : OK");
+                    log(INFO, "Test 7 : OK");
                     ok.send();
                 }
             }
@@ -305,6 +305,48 @@ import org.praxislive.core.services.SystemManagerService;
 
 }
   }
+  @ ./test8 core:custom {
+    .meta [map graph.x 433 graph.y 555 graph.comment "Call async watch function"]
+    .code {
+    String text = "TEST";
+    int count = 4;
+
+    @Out(1) Output ok;
+    @Out(2) Output error;
+
+    @Persist Async<Call> response;
+
+    @Override
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                log(ERROR, "<FAIL> " + response.error());
+                error.send();
+            } else {
+                String result = response.result().args().get(0).toString();
+                String expected = text.repeat(count);
+                if (!result.equals(expected)) {
+                    log(ERROR, "<FAIL> expected " + expected + " but got " + result);
+                    error.send();
+                } else {
+                    log(INFO, "Test 8 : OK");
+                    ok.send();
+                }
+            }
+            response = null;
+        }
+    }
+
+    @T(1)
+    void test() {
+        log(INFO, "Test 8 : Calling /data2/functions.watch-repeat");
+        response = ask(ControlAddress.of("/data2/functions.watch-repeat"),
+                List.of(PMap.of("text", text, "count", count)));
+    }
+
+
+}
+  }
   ~ ./test1!error ./exit!exit-fail
   ~ ./test2!error ./exit!exit-fail
   ~ ./test1!ok ./test2!test
@@ -317,6 +359,8 @@ import org.praxislive.core.services.SystemManagerService;
   ~ ./test5!ok ./test6!test
   ~ ./test6!error ./exit!exit-fail
   ~ ./test6!ok ./test7!test
-  ~ ./test7!ok ./exit!exit-ok
   ~ ./test7!error ./exit!exit-fail
+  ~ ./test7!ok ./test8!test
+  ~ ./test8!ok ./exit!exit-ok
+  ~ ./test8!error ./exit!exit-fail
 }

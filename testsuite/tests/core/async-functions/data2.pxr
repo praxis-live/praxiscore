@@ -17,6 +17,15 @@
         throw new UnsupportedOperationException();
     }
     
+    @FN.Watch(mime = "text/plain")
+    Async<String> watchRepeat(PMap query) {
+        return async(query, q -> {
+            int count = q.getInt("count", 0);
+            String text = q.getString("text", "???");
+            return text.repeat(count);
+        });
+    }
+
 }
   }
   @ ./start-trigger core:start-trigger {
