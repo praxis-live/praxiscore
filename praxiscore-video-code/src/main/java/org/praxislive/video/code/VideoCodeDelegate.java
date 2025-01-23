@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,11 +27,12 @@
  * Copyright (c) 2001-04 Massachusetts Institute of Technology
  *
  */
-
 package org.praxislive.video.code;
 
 import java.util.function.UnaryOperator;
 import org.praxislive.code.DefaultCodeDelegate;
+import org.praxislive.code.userapi.Async;
+import org.praxislive.core.types.PBytes;
 import org.praxislive.video.code.userapi.PFont;
 import org.praxislive.video.code.userapi.PGraphics;
 import org.praxislive.video.code.userapi.PImage;
@@ -40,13 +41,15 @@ import org.praxislive.video.render.SurfaceOp;
 
 /**
  *
- * 
+ *
  */
 public class VideoCodeDelegate extends DefaultCodeDelegate {
-    
+
+    public static final String MIME_PNG = "image/png";
+
     public int width;
     public int height;
-    
+
     VideoCodeContext context;
     PGraphics pg;
 
@@ -56,26 +59,57 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
         this.height = height;
     }
 
-    public void init(){}
-    
-    public void update(){}
-    
-    public void setup(){}
-    
-    public void draw(){}
-    
+    public void init() {
+    }
+
+    public void update() {
+    }
+
+    public void setup() {
+
+    }
+
+    public void draw() {
+    }
+
     public final void attachAlphaQuery(String source, UnaryOperator<Boolean> query) {
         context.attachAlphaQuery(source, query);
     }
-    
+
     public final void attachRenderQuery(UnaryOperator<Boolean> query) {
         context.attachRenderQuery(query);
     }
-    
+
     public final void attachRenderQuery(String source, UnaryOperator<Boolean> query) {
         context.attachRenderQuery(source, query);
     }
-    
+
+    /**
+     * Write the image as bytes in the specified format. The image will be
+     * encoded asynchronously off the rendering thread.
+     *
+     * @param mimeType mime type of image format
+     * @param image image to write
+     * @return async bytes
+     */
+    public final Async<PBytes> write(String mimeType, PImage image) {
+        return context.writeImpl(mimeType, image, image.width, image.height);
+    }
+
+    /**
+     * Scale and write the image as bytes in the specified format. The image
+     * will be encoded asynchronously off the rendering thread.
+     *
+     * @param mimeType mime type of image format
+     * @param image image to write
+     * @param scale output scale (1.0 == normal size)
+     * @return async bytes
+     */
+    public final Async<PBytes> write(String mimeType, PImage image, double scale) {
+        return context.writeImpl(mimeType, image,
+                (int) (image.width * scale), (int) (image.height * scale));
+    }
+
     // Start generated PGraphics 
     public void background(double grey) {
         pg.background(grey);
@@ -216,7 +250,7 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
     public void release(PImage image) {
         pg.release(image);
     }
-    
+
     public void resetMatrix() {
         pg.resetMatrix();
     }
@@ -281,6 +315,5 @@ public class VideoCodeDelegate extends DefaultCodeDelegate {
         pg.vertex(x, y);
     }
     // End generated PGraphics
-    
-    
+
 }

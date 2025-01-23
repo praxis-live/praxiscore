@@ -18,45 +18,14 @@
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
- */
-package org.praxislive.core.components;
-
-import org.praxislive.code.GenerateTemplate;
-
-import org.praxislive.core.code.CoreCodeDelegate;
-
-// default imports
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
-import org.praxislive.core.*;
-import org.praxislive.core.types.*;
-import org.praxislive.code.userapi.*;
-import static org.praxislive.code.userapi.Constants.*;
-
-/**
- *
  *
  */
-@GenerateTemplate(CoreVariable.TEMPLATE_PATH)
-public class CoreVariable extends CoreCodeDelegate {
+package org.praxislive.video.code;
 
-    final static String TEMPLATE_PATH = "resources/variable.pxj";
-    // PXJ-BEGIN:body
+import org.praxislive.video.render.Surface;
 
-    @P Property value;
+interface SurfaceBackedImage {
 
-    @Out Output out;
+    public Surface getSurface();
 
-    @Override
-    @Config.Expose("value")
-    public void init() {
-    }
-
-    @T
-    void trigger() {
-        out.send(value.get());
-    }
-
-    // PXJ-END:body
 }

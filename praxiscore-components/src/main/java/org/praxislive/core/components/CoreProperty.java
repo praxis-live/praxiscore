@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,29 +36,32 @@ import static org.praxislive.code.userapi.Constants.*;
 
 /**
  *
- * 
+ *
  */
 @GenerateTemplate(CoreProperty.TEMPLATE_PATH)
 public class CoreProperty extends CoreCodeDelegate {
-    
-    final static String TEMPLATE_PATH = "resources/property.pxj";
 
+    final static String TEMPLATE_PATH = "resources/property.pxj";
     // PXJ-BEGIN:body
 
     @P(1) @Config.Port(false) @OnChange("valueChanged")
     Property value;
 
     @Out(1) Output out;
-    
+
+    @Override
+    @Config.Expose("value")
+    public void init() {
+    }
+
     @Override
     public void starting() {
         out.send(value.get());
     }
-    
+
     void valueChanged() {
         out.send(value.get());
     }
-    
+
     // PXJ-END:body
-    
 }

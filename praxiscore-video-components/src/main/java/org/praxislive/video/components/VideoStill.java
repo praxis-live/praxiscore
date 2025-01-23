@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,33 +38,31 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * 
+ *
  */
 @GenerateTemplate(VideoStill.TEMPLATE_PATH)
 public class VideoStill extends VideoCodeDelegate {
-    
+
     final static String TEMPLATE_PATH = "resources/still.pxj";
 
     // PXJ-BEGIN:body
 
-    enum ResizeMode {Stretch, Scale, Crop};
-    
+    enum ResizeMode {
+        Stretch, Scale, Crop
+    };
+
     @In(1) PImage in;
-    
-    @P(1) @OnChange("imageChanged") @OnError("imageError")
-    PImage image;
-    @P(2)
-    ResizeMode resizeMode;
-    @P(3) @Type.Number(min = 0, max = 1, def = 0.5)
-    double alignX;
-    @P(4) @Type.Number(min = 0, max = 1, def = 0.5)
-    double alignY;
-    @P(5) @Type.Number(min = 0, max = 8, def = 1, skew = 4)
-    double zoom;
-    
+
+    @P(1) @OnChange("imageChanged") @OnError("imageError") PImage image;
+    @P(2) ResizeMode resizeMode;
+    @P(3) @Type.Number(min = 0, max = 1, def = 0.5) double alignX, alignY;
+    @P(4) @Type.Number(min = 0, max = 8, def = 1, skew = 4) double zoom;
+
     @AuxOut(1) Output ready;
     @AuxOut(2) Output error;
-    
+
+    @Persist Async<PBytes> imageWatch;
+
     @Override
     public void draw() {
         copy(in);
@@ -73,7 +71,7 @@ public class VideoStill extends VideoCodeDelegate {
             draw(image);
         }
     }
-    
+
     void draw(PImage image) {
         double outWidth = zoom * image.width;
         double outHeight = zoom * image.height;
@@ -90,15 +88,30 @@ public class VideoStill extends VideoCodeDelegate {
                 outWidth,
                 outHeight);
     }
-    
+
     void imageChanged() {
+        imageWatch = null;
         ready.send();
     }
-    
+
     void imageError() {
         error.send();
     }
-    
+
+    @FN.Watch(mime = MIME_PNG, relatedPort = "image")
+    Async<PBytes> imageWatch() {
+        if (imageWatch == null) {
+            if (image == null) {
+                imageWatch = new Async<>();
+                imageWatch.complete(PBytes.EMPTY);
+            } else {
+                double size = max(image.width, image.height);
+                double scale = size > 800 ? 400 / size : 0.5;
+                imageWatch = write(MIME_PNG, image, scale);
+            }
+        }
+        return imageWatch;
+    }
+
     // PXJ-END:body
-    
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,33 +38,36 @@ import static org.praxislive.video.code.userapi.VideoConstants.*;
 
 /**
  *
- * 
+ *
  */
 @GenerateTemplate(VideoXFader.TEMPLATE_PATH)
 public class VideoXFader extends VideoCodeDelegate {
-    
+
     final static String TEMPLATE_PATH = "resources/xfader.pxj";
 
     // PXJ-BEGIN:body
-    
-    enum Mode {Normal, Add, Difference, BitXor}
-    
+
+    enum Mode {
+        Normal, Add, Difference, BitXor
+    }
+
     @In(1) PImage in1;
     @In(2) PImage in2;
-    
-    @P(1)
-    Mode mode;
-    @P(2) @Type.Number(min = 0, max = 1)
-    double mix;
-    
+
+    @P(1) Mode mode;
+    @P(2) @Type.Number(min = 0, max = 1) double mix;
+
+    @Persist Async<PBytes> watchIn1Response, watchIn2Response;
+
     @Override
     public void init() {
         attachRenderQuery("in-1", rendering -> rendering && mix < 0.999);
         attachRenderQuery("in-2", rendering -> rendering && mix > 0.001);
     }
-    
+
     @Override
     public void draw() {
+        checkWatches();
         if (mix < 0.001) {
             copy(in1);
             release(in1);
@@ -80,7 +83,7 @@ public class VideoXFader extends VideoCodeDelegate {
             drawBlended();
         }
     }
-    
+
     void drawBlended() {
         PImage fg, bg;
         double opacity;
@@ -108,7 +111,35 @@ public class VideoXFader extends VideoCodeDelegate {
         }
         image(fg, 0, 0);
     }
-    
+
+    @FN.Watch(mime = MIME_PNG, relatedPort = "in-1")
+    Async<PBytes> watchIn1() {
+        if (watchIn1Response == null || watchIn1Response.failed()) {
+            watchIn1Response = timeout(1, new Async<>());
+        }
+        return watchIn1Response;
+    }
+
+    @FN.Watch(mime = MIME_PNG, relatedPort = "in-2")
+    Async<PBytes> watchIn2() {
+        if (watchIn2Response == null || watchIn2Response.failed()) {
+            watchIn2Response = timeout(1, new Async<>());
+        }
+        return watchIn2Response;
+    }
+
+    private void checkWatches() {
+        double size = max(width, height);
+        double scale = size > 800 ? 400 / size : 0.5;
+        if (watchIn1Response != null) {
+            Async.bind(write(MIME_PNG, in1, scale), watchIn1Response);
+            watchIn1Response = null;
+        }
+        if (watchIn2Response != null) {
+            Async.bind(write(MIME_PNG, in2, scale), watchIn2Response);
+            watchIn2Response = null;
+        }
+    }
+
     // PXJ-END:body
-    
 }

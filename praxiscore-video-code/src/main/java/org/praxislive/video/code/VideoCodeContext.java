@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,6 +22,7 @@
  */
 package org.praxislive.video.code;
 
+import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,14 +30,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
+import javax.imageio.ImageIO;
 import org.praxislive.code.CodeComponent;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.PortDescriptor;
+import org.praxislive.code.userapi.Async;
 import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PBytes;
+import org.praxislive.core.types.PError;
+import static org.praxislive.video.code.VideoCodeDelegate.MIME_PNG;
 import org.praxislive.video.code.userapi.PGraphics;
 import org.praxislive.video.code.userapi.PImage;
 import org.praxislive.video.render.Surface;
+import org.praxislive.video.render.ops.Blit;
+import org.praxislive.video.render.ops.ScaledBlit;
+import org.praxislive.video.render.utils.BufferedImageSurface;
 
 /**
  *
@@ -141,6 +150,32 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
             ((VideoInputPort.Descriptor) pd).attachAlphaQuery(alphaQuery);
         } else {
             getLog().log(LogLevel.ERROR, "No source found to attach alpha query : " + source);
+        }
+    }
+
+    Async<PBytes> writeImpl(String mimeType, PImage image, int width, int height) {
+        if (!MIME_PNG.equals(mimeType)) {
+            return Async.failed(PError.of(IllegalArgumentException.class, "Unsupported mime type"));
+        }
+        if (image instanceof SurfaceBackedImage surfaceImage) {
+            try {
+                Surface original = surfaceImage.getSurface();
+                WriteImageSurface wis = new WriteImageSurface(width, height);
+                Surface scratch = original.createSurface(width, height, true);
+                ScaledBlit blit = new ScaledBlit();
+                scratch.process(blit, original);
+                wis.render(scratch);
+                scratch.release();
+                return getDelegate().async(wis.getImage(), im -> {
+                    PBytes.OutputStream os = new PBytes.OutputStream();
+                    ImageIO.write(im, "PNG", os);
+                    return os.toBytes();
+                });
+            } catch (Exception ex) {
+                return Async.failed(PError.of(ex));
+            }
+        } else {
+            return Async.failed(PError.of(IllegalArgumentException.class, "Unsupported PImage type"));
         }
     }
 
@@ -255,7 +290,7 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
 
     }
 
-    private static class SurfacePGraphics extends PGraphics {
+    private static class SurfacePGraphics extends PGraphics implements SurfaceBackedImage {
 
         private final Surface surface;
 
@@ -265,13 +300,13 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
         }
 
         @Override
-        protected Surface getSurface() {
+        public Surface getSurface() {
             return surface;
         }
 
     }
 
-    private static class SurfacePImage extends PImage {
+    private static class SurfacePImage extends PImage implements SurfaceBackedImage {
 
         private final Surface surface;
 
@@ -281,10 +316,29 @@ public class VideoCodeContext extends CodeContext<VideoCodeDelegate> {
         }
 
         @Override
-        protected Surface getSurface() {
+        public Surface getSurface() {
             return surface;
         }
 
     }
 
+    private static class WriteImageSurface extends BufferedImageSurface {
+
+        private final Blit blit;
+
+        private WriteImageSurface(int width, int height) {
+            super(width, height, true);
+            this.blit = new Blit();
+        }
+
+        private void render(Surface source) {
+            process(blit, source);
+        }
+
+        @Override
+        protected BufferedImage getImage() {
+            return super.getImage();
+        }
+
+    }
 }

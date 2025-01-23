@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,7 +32,7 @@ import org.praxislive.video.render.Surface;
 
 /**
  *
- * 
+ *
  */
 class P3DOffScreenGraphicsInfo {
 
@@ -122,16 +122,35 @@ class P3DOffScreenGraphicsInfo {
     }
 
     private int calculateWidth(Surface output) {
-        int w = width < 1 ? output.getWidth() : width;
+        int w;
+        if (width < 1) {
+            if (height < 1) {
+                w = output.getWidth();
+            } else {
+                double ratio = (double) height / output.getHeight();
+                w = (int) (ratio * output.getWidth() + 0.5);
+            }
+        } else {
+            w = width;
+        }
         w *= scaleWidth;
         return Math.max(w, 1);
     }
 
     private int calculateHeight(Surface output) {
-        int h = height < 1 ? output.getHeight() : height;
+        int h;
+        if (height < 1) {
+            if (width < 1) {
+                h = output.getHeight();
+            } else {
+                double ratio = (double) width / output.getWidth();
+                h = (int) (ratio * output.getHeight() + 0.5);
+            }
+        } else {
+            h = height;
+        }
         h *= scaleHeight;
         return Math.max(h, 1);
-
     }
 
     static P3DOffScreenGraphicsInfo create(Field field) {

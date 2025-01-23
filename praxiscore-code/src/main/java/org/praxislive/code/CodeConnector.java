@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -135,7 +135,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         analyseMethods(extractMethodsToBase(delegate, factory.baseClass()));
         addDefaultControls();
         addDefaultPorts();
-        addControl(new ResponseHandler(getInternalIndex()));
+        addControl(new AsyncHandler(getInternalIndex()));
         buildExternalData();
     }
 
@@ -576,6 +576,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         if (fn != null && analyseFunctionMethod(fn, method)) {
             return;
         }
+        FN.Watch fnWatch = method.getAnnotation(FN.Watch.class);
+        if (fnWatch != null && analyseWatchFunctionMethod(fnWatch, method)) {
+            return;
+        }
     }
 
     private boolean analyseInputField(In ann, Field field) {
@@ -835,6 +839,17 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private boolean analyseFunctionMethod(FN ann, Method method) {
         FunctionDescriptor desc
                 = FunctionDescriptor.create(this, ann, method);
+        if (desc != null) {
+            addControl(desc);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean analyseWatchFunctionMethod(FN.Watch ann, Method method) {
+        FunctionDescriptor desc
+                = FunctionDescriptor.createWatch(this, ann, method);
         if (desc != null) {
             addControl(desc);
             return true;
