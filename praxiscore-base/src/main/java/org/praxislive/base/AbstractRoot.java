@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -285,6 +285,7 @@ public abstract class AbstractRoot implements Root {
      */
     protected final boolean setRunning() {
         if (state.compareAndSet(State.ACTIVE_IDLE, State.ACTIVE_RUNNING)) {
+            interrupt();
             starting();
             return true;
         }
@@ -300,6 +301,7 @@ public abstract class AbstractRoot implements Root {
      */
     protected final boolean setIdle() {
         if (state.compareAndSet(State.ACTIVE_RUNNING, State.ACTIVE_IDLE)) {
+            interrupt();
             stopping();
             return true;
         }
