@@ -63,13 +63,20 @@ class AsyncHandler extends ControlDescriptor<AsyncHandler> implements Control {
         if (call.isReply()) {
             AsyncReference<?> asyncRef = resultMap.remove(call.matchID());
             if (asyncRef != null) {
-                asyncRef.complete(call);
+                context.invoke(call.time(), () -> asyncRef.complete(call));
             }
         } else if (call.isError()) {
             PError error = extractError(call.args());
             AsyncReference<?> asyncRef = resultMap.remove(call.matchID());
-            if (asyncRef == null || !asyncRef.completeWithError(error)) {
+            if (asyncRef != null) {
+                context.invoke(call.time(), () -> {
+                    if (!asyncRef.completeWithError(error)) {
+                        context.getLog().log(LogLevel.ERROR, error);
+                    }
+                });
+            } else {
                 context.getLog().log(LogLevel.ERROR, error);
+                context.flush();
             }
         } else if (call.isRequest()) {
             if (call.to().equals(call.from()) && !call.isReplyRequired()) {
@@ -77,7 +84,7 @@ class AsyncHandler extends ControlDescriptor<AsyncHandler> implements Control {
                         .flatMap(ref -> ref.as(Async.class))
                         .orElseThrow();
                 if (!timeout.done()) {
-                    timeout.fail(PError.of("Timeout"));
+                    context.invoke(call.time(), () -> timeout.fail(PError.of("Timeout")));
                 }
             } else {
                 router.route(call.error(PError.of("Unexpected call")));
