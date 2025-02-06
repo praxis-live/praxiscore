@@ -213,15 +213,16 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (execState == source.getState()) {
             return;
         }
-        if (full && source.getState() == ExecutionContext.State.IDLE
-                && execState != ExecutionContext.State.NEW) {
+        ExecutionContext.State oldExecState = execState;
+        execState = source.getState();
+        if (full && execState == ExecutionContext.State.IDLE
+                && oldExecState != ExecutionContext.State.NEW) {
             onStop();
             descriptors.forEach(Descriptor::onStop);
         }
         onReset();
         descriptors.forEach(Descriptor::onReset);
         update(source.getTime());
-        execState = source.getState();
         if (execState == ExecutionContext.State.ACTIVE) {
             descriptors.forEach(Descriptor::onInit);
             if (full) {
