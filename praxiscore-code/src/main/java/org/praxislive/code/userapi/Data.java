@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,7 +40,7 @@ import org.praxislive.core.services.LogLevel;
  * Data.Out can be created. Only pipes and ports of the identical generic type
  * can be connected together.
  *
- * 
+ *
  */
 public class Data {
 
@@ -261,6 +261,19 @@ public class Data {
             return this;
         }
 
+        /**
+         * Function to accumulate instances of T. The first argument is the
+         * existing destination instance, the second is the source instance. The
+         * function may modify and return the existing destination, or return a
+         * different instance of T. If a different instance of T is returned,
+         * the existing destination will be disposed of.
+         * <p>
+         * The default implementation returns the source instance of T -
+         * {@code (dst, src) -> src}.
+         *
+         * @param accumulator function to accumulate instances of T
+         * @return this sink for chaining
+         */
         public Sink<T> onAccumulate(BinaryOperator<T> accumulator) {
             this.accumulator = Objects.requireNonNull(accumulator);
             return this;
@@ -272,9 +285,9 @@ public class Data {
          * the existing source value. If this function returns false then the
          * onCreate function will be called to create a new value for the source
          * Data.Packet
-         *
+         * <p>
          * Packets from different sinks are always treated as invalid.
-         *
+         * <p>
          * The default function always returns true.
          *
          * @param validator function to validate source T against destination T
@@ -285,10 +298,20 @@ public class Data {
             return this;
         }
 
-//        public Sink<T> onDispose(Consumer<T> disposer) {
-//            this.disposer = Objects.requireNonNull(disposer);
-//            return this;
-//        }
+        /**
+         * Function to dispose of an instance of T.
+         * <p>
+         * The default function will call {@code close()} if T is an instance of
+         * {@link AutoCloseable}. Otherwise it is a no-op.
+         *
+         * @param disposer function to dispose of instance of T
+         * @return this sink for chaining
+         */
+        public Sink<T> onDispose(Consumer<T> disposer) {
+            this.disposer = Objects.requireNonNull(disposer);
+            return this;
+        }
+
         private void log(Exception ex) {
             context.getLog().log(LogLevel.ERROR, ex);
         }
