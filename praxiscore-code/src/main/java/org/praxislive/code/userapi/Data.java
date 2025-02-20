@@ -32,15 +32,12 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import org.praxislive.code.CodeContext;
 import org.praxislive.core.Lookup;
-import org.praxislive.core.services.LogLevel;
 
 /**
  * Support for creating data pipes to work with data of any type. All data
  * chains are driven by a Data.Sink. Input and output ports of type Data.In and
  * Data.Out can be created. Only pipes and ports of the identical generic type
  * can be connected together.
- *
- *
  */
 public class Data {
 
@@ -76,6 +73,7 @@ public class Data {
      * @return pipe
      */
     public final static <T> Pipe<T> with(Consumer<? super T> consumer) {
+        Objects.requireNonNull(consumer);
         return new Pipe<T>() {
             @Override
             protected void process(List<Packet<T>> data) {
@@ -93,6 +91,7 @@ public class Data {
      * @return pipe
      */
     public final static <T> Pipe<T> supply(Supplier<? extends T> supplier) {
+        Objects.requireNonNull(supplier);
         return new Pipe<T>() {
             @Override
             protected void process(List<Packet<T>> data) {
@@ -116,6 +115,7 @@ public class Data {
      * @return pipe
      */
     public final static <T> Pipe<T> apply(Function<? super T, ? extends T> function) {
+        Objects.requireNonNull(function);
         return new Pipe<T>() {
             @Override
             protected void process(List<Packet<T>> data) {
@@ -126,15 +126,15 @@ public class Data {
 
     /**
      * Data sink to drive pipe graph.
-     *
+     * <p>
      * Use {@code @Inject Sink<TYPE> sink;} to create a sink.
-     *
-     * By default the pass the same instance of T through the pipe graph. To
-     * create new type T, accumulate values, validate values, etc. provide the
-     * related functions.
-     *
+     * <p>
+     * By default the sink passes the same instance of T through the pipe graph.
+     * To create new type T, accumulate values, validate values, etc. provide
+     * the related functions.
+     * <p>
      * Use input() to get a Data.Pipe to link to the sink.
-     *
+     * <p>
      * Use process() every time you want to process a graph of T.
      *
      * @param <T> type of data
@@ -150,7 +150,7 @@ public class Data {
         private BiPredicate<T, T> validator;
         private Consumer<T> disposer;
 
-        private CodeContext<?> context;
+        private long pass;
 
         public Sink() {
             packet = new SinkPacket<>(this, null);
@@ -166,7 +166,7 @@ public class Data {
                 }
 
                 @Override
-                protected boolean isOutputRequired(Pipe<T> source, long time) {
+                protected boolean isOutputRequired(Pipe<T> source, long pass) {
                     return true;
                 }
 
@@ -189,8 +189,8 @@ public class Data {
             };
         }
 
+        @Deprecated
         protected void attach(CodeContext<?> context) {
-            this.context = context;
         }
 
         /**
@@ -224,9 +224,9 @@ public class Data {
             packet.data = Objects.requireNonNull(data);
             try {
                 if (input.sources.size() == 1) {
-                    input.processInPlace(packet, true, context.getTime());
+                    input.processInPlace(packet, true, ++pass);
                 } else {
-                    input.processCached(packet, true, context.getTime());
+                    input.processCached(packet, true, ++pass);
                     input.writeOutput(input.dataPackets, packet, 0);
                 }
             } catch (Exception ex) {
@@ -312,8 +312,7 @@ public class Data {
             return this;
         }
 
-        private void log(Exception ex) {
-            context.getLog().log(LogLevel.ERROR, ex);
+        protected void log(Exception ex) {
         }
 
     }
@@ -341,8 +340,8 @@ public class Data {
         @Override
         public void apply(Function<? super T, ? extends T> operator) {
             try {
-                T cur = data;
-                data = operator.apply(data);
+                T cur = Objects.requireNonNull(data);
+                data = Objects.requireNonNull(operator.apply(data));
                 if (data != cur) {
                     sink.disposer.accept(cur);
                 }
@@ -376,7 +375,16 @@ public class Data {
         @Override
         public boolean isCompatible(Packet<T> packet) {
             try {
-                return packet == this || sink.validator.test(data, packet.data());
+                if (packet == this) {
+                    return true;
+                } else {
+                    T otherData = packet.data();
+                    if (otherData == null) {
+                        return false;
+                    } else {
+                        return sink.validator.test(data, otherData);
+                    }
+                }
             } catch (Exception ex) {
                 sink.log(ex);
                 return false;
@@ -391,6 +399,7 @@ public class Data {
         @Override
         public void dispose() {
             try {
+                Objects.requireNonNull(data);
                 sink.disposer.accept(data);
                 data = null;
             } catch (Exception ex) {
@@ -407,8 +416,8 @@ public class Data {
 
     /**
      * Input port pipe.
-     *
-     * Create using eg. {@code @In(1) Data.In<TYPE> in;}
+     * <p>
+     * Create using eg. {@code @In Data.In<TYPE> in;}
      *
      * @param <T> data type
      */
@@ -422,8 +431,8 @@ public class Data {
 
     /**
      * Input port pipe.
-     *
-     * Create using eg. {@code @Out(1) Data.Out<TYPE> in;}
+     * <p>
+     * Create using eg. {@code @Out Data.Out<TYPE> in;}
      *
      * @param <T> data type
      */
@@ -447,17 +456,26 @@ public class Data {
         private final List<Pipe<T>> sources;
         private final List<Pipe<T>> sinks;
         private final List<Packet<T>> dataPackets;
-        private long time;
-        private long renderReqTime;
+        private long pass;
+        private long renderReqPass;
         private boolean renderReqCache;
         private int renderIdx = 0;
 
+        /**
+         * Base constructor for pipes.
+         */
         public Pipe() {
             this.sources = new ArrayList<>();
             this.sinks = new ArrayList<>();
             this.dataPackets = new ArrayList<>();
         }
 
+        /**
+         * Add a source for this pipe. Will register this pipe as a sink on the
+         * source.
+         *
+         * @param source source pipe
+         */
         public final void addSource(Pipe<T> source) {
             source.registerSink(this);
             try {
@@ -468,29 +486,73 @@ public class Data {
             }
         }
 
+        /**
+         * Remove a source from this pipe.
+         *
+         * @param source source pipe
+         */
         public final void removeSource(Pipe<T> source) {
             source.unregisterSink(this);
             unregisterSource(source);
         }
 
-        protected final void disconnectSources() {
+        /**
+         * Remove all sources from this pipe.
+         */
+        public final void disconnectSources() {
             for (int i = sources.size(); i > 0; i--) {
                 removeSource(sources.get(i - 1));
             }
         }
 
-        protected final void disconnectSinks() {
+        /**
+         * Remove all sinks from this pipe.
+         */
+        public final void disconnectSinks() {
             for (int i = sinks.size(); i > 0; i--) {
                 sinks.get(i - 1).removeSource(this);
             }
         }
 
+        /**
+         * Get an immutable snapshot of the currently attached sources.
+         *
+         * @return current sources
+         */
+        public final List<Pipe<T>> sources() {
+            return List.copyOf(sources);
+        }
+
+        /**
+         * Get an immutable snapshot of the currently attached sinks.
+         *
+         * @return current sinks
+         */
+        public final List<Pipe<T>> sinks() {
+            return List.copyOf(sinks);
+        }
+
+        /**
+         * Clear any cached data.
+         */
         protected final void clearCaches() {
             dataPackets.forEach(Packet::dispose);
             dataPackets.clear();
         }
 
-        protected void process(Pipe<T> sink, Packet<T> buffer, long time) {
+        /**
+         * Process data through this pipe. This method is called by sink pipes
+         * to process data. It is generally not necessary to call or override
+         * this method.
+         * <p>
+         * The pass parameter is checked against any previous call to check
+         * whether sources need to be called or cached data is invalid.
+         *
+         * @param sink sink calling process - must be registered
+         * @param buffer data packet to process
+         * @param pass pass count
+         */
+        protected void process(Pipe<T> sink, Packet<T> buffer, long pass) {
             int sinkIndex = sinks.indexOf(sink);
 
             if (sinkIndex < 0) {
@@ -499,13 +561,13 @@ public class Data {
             }
             boolean inPlace = sinks.size() == 1 && sources.size() < 2;
 
-            if (this.time != time) {
-                boolean outputRequired = isOutputRequired(time);
-                this.time = time;
+            if (this.pass != pass) {
+                boolean outputRequired = isOutputRequired(pass);
+                this.pass = pass;
                 if (inPlace) {
-                    processInPlace(buffer, outputRequired, time);
+                    processInPlace(buffer, outputRequired, pass);
                 } else {
-                    processCached(buffer, outputRequired, time);
+                    processCached(buffer, outputRequired, pass);
                 }
             }
 
@@ -514,7 +576,7 @@ public class Data {
             }
         }
 
-        private void processInPlace(Packet<T> buffer, boolean outputRequired, long time) {
+        private void processInPlace(Packet<T> buffer, boolean outputRequired, long pass) {
             if (!dataPackets.isEmpty()) {
                 dataPackets.forEach(Packet::dispose);
                 dataPackets.clear();
@@ -522,7 +584,7 @@ public class Data {
             if (sources.isEmpty()) {
                 buffer.clear();
             } else {
-                sources.get(0).process(this, buffer, time);
+                sources.get(0).process(this, buffer, pass);
             }
             if (outputRequired) {
                 dataPackets.add(buffer);
@@ -531,7 +593,7 @@ public class Data {
             }
         }
 
-        private void processCached(Packet<T> buffer, boolean outputRequired, long time) {
+        private void processCached(Packet<T> buffer, boolean outputRequired, long pass) {
             while (dataPackets.size() > sources.size()) {
                 dataPackets.remove(dataPackets.size() - 1).dispose();
             }
@@ -548,31 +610,80 @@ public class Data {
                     in = buffer.createPacket();
                     dataPackets.add(in);
                 }
-                sources.get(i).process(this, in, time);
+                sources.get(i).process(this, in, pass);
             }
             if (outputRequired) {
                 process(dataPackets);
             }
         }
 
+        /**
+         * Process the data.
+         * <p>
+         * If there is only one sink, and zero or one sources, the packet will
+         * be the one provided by the sink. In other cases the data is cached,
+         * and written to the sink(s) in
+         * {@link #writeOutput(java.util.List, org.praxislive.code.userapi.Data.Packet, int)}.
+         *
+         * @param data data packets to process
+         */
         protected abstract void process(List<Packet<T>> data);
 
+        /**
+         * Write the data to the output. The default implementation calls
+         * {@link Packet#accumulate(java.util.List)} to combine all the data
+         * from sources using the accumulation function provided by the
+         * pipeline.
+         *
+         * @param data list of processed data
+         * @param output output data to write to
+         * @param sinkIndex sink index of the output
+         */
         protected void writeOutput(List<Packet<T>> data, Packet<T> output, int sinkIndex) {
             output.accumulate(data);
         }
 
-        protected boolean isOutputRequired(Pipe<T> source, long time) {
-            return isOutputRequired(time);
+        /**
+         * Check whether this pipe requires output from the registered source.
+         * By default this method checks whether the output of this pipe is
+         * required by any registered sink.
+         * <p>
+         * This method may be overridden to provide additional checks.
+         *
+         * @param source registered source
+         * @param pass process pass
+         * @return true if source must provide output
+         */
+        protected boolean isOutputRequired(Pipe<T> source, long pass) {
+            return isOutputRequired(pass);
         }
 
-        protected boolean isOutputRequired(long time) {
+        /**
+         * Check whether at least one registered sink requires this pipe to
+         * produce output. This method handles cycles in the pipe graph.
+         * <p>
+         * This method may be overridden to provide additional checks.
+         *
+         * @param pass process pass
+         * @return true if at least one sink requires output from this pipe
+         */
+        protected boolean isOutputRequired(long pass) {
             if (sinks.size() == 1) {
-                return simpleOutputCheck(time);
+                return simpleOutputCheck(pass);
             } else {
-                return multipleOutputCheck(time);
+                return multipleOutputCheck(pass);
             }
         }
 
+        /**
+         * Register a source. This method is called by
+         * {@link #addSource(org.praxislive.code.userapi.Data.Pipe)}.
+         * <p>
+         * May be overridden to validate source or throw an exception.
+         *
+         * @param source source to register
+         * @throws IllegalArgumentException if source is already registered
+         */
         protected void registerSource(Pipe<T> source) {
             if (source == null) {
                 throw new NullPointerException();
@@ -583,10 +694,25 @@ public class Data {
             sources.add(source);
         }
 
+        /**
+         * Unregister a source. This method is called by
+         * {@link #removeSource(org.praxislive.code.userapi.Data.Pipe)}.
+         *
+         * @param source source to unregister
+         */
         protected void unregisterSource(Pipe<T> source) {
             sources.remove(source);
         }
 
+        /**
+         * Register a sink. This method is called by
+         * {@link #addSource(org.praxislive.code.userapi.Data.Pipe)} on the
+         * sink.
+         * <p>
+         * May be overridden to validate sink or throw an exception.
+         *
+         * @param sink sink to register
+         */
         protected void registerSink(Pipe<T> sink) {
             if (sink == null) {
                 throw new NullPointerException();
@@ -597,33 +723,43 @@ public class Data {
             sinks.add(sink);
         }
 
+        /**
+         * Unregister a sink. This method is called by
+         * {@link #removeSource(org.praxislive.code.userapi.Data.Pipe)} on the
+         * sink.
+         *
+         * @param sink sink to unregister
+         */
         protected void unregisterSink(Pipe<T> sink) {
             sinks.remove(sink);
+            if (sinks.isEmpty()) {
+                clearCaches();
+            }
         }
 
-        private boolean simpleOutputCheck(long time) {
-            if (time != renderReqTime) {
-                renderReqTime = time;
-                renderReqCache = sinks.get(0).isOutputRequired(this, time);
+        private boolean simpleOutputCheck(long pass) {
+            if (pass != renderReqPass) {
+                renderReqPass = pass;
+                renderReqCache = sinks.get(0).isOutputRequired(this, pass);
             }
             return renderReqCache;
         }
 
-        private boolean multipleOutputCheck(long time) {
+        private boolean multipleOutputCheck(long pass) {
             if (renderIdx > 0) {
                 while (renderIdx < sinks.size()) {
-                    if (sinks.get(renderIdx++).isOutputRequired(this, time)) {
+                    if (sinks.get(renderIdx++).isOutputRequired(this, pass)) {
                         renderIdx = 0;
                         return true;
                     }
                 }
                 return false;
             } else {
-                if (renderReqTime != time) {
-                    renderReqTime = time;
+                if (renderReqPass != pass) {
+                    renderReqPass = pass;
                     renderReqCache = false;
                     while (renderIdx < sinks.size()) {
-                        if (sinks.get(renderIdx++).isOutputRequired(this, time)) {
+                        if (sinks.get(renderIdx++).isOutputRequired(this, pass)) {
                             renderReqCache = true;
                             break;
                         }
@@ -639,25 +775,75 @@ public class Data {
     /**
      * A data holder used to wrap data of type T to be passed around a Pipe
      * graph.
-     *
+     * <p>
      * Implementations of this interface are provided by the Data.Sink.
      *
      * @param <T> type of wrapped data
      */
     public static interface Packet<T> extends Lookup.Provider {
 
+        /**
+         * Access the data in the packet.
+         *
+         * @return data
+         */
         public T data();
 
+        /**
+         * Clear the data in the packet. This will use any clear function
+         * configured for the pipeline.
+         *
+         * @see Data.Sink#onClear(java.util.function.UnaryOperator)
+         */
         public void clear();
 
+        /**
+         * Apply a function to the data in the packet. If the function returns a
+         * different instance of data, the packet data will be replaced and the
+         * old data disposed. Disposal will be handled by any disposal function
+         * set on the pipeline.
+         *
+         * @param operator data function
+         * @see Data.Sink#onDispose(java.util.function.Consumer)
+         */
         public void apply(Function<? super T, ? extends T> operator);
 
+        /**
+         * Accumulate data from the provided packets into this packet. If the
+         * list contains this packet it will be ignored. Accumulation will be
+         * done using any accumulate function set on the pipeline.
+         *
+         * @param packets source packets
+         * @see Data.Sink#onAccumulate(java.util.function.BinaryOperator)
+         */
         public void accumulate(List<Packet<T>> packets);
 
+        /**
+         * Check whether a packet is compatible with this packet. If a packet is
+         * not compatible, it will be disposed and a new packet created.
+         * Compatibility will be checked using any compatibility function set on
+         * the pipeline.
+         *
+         * @param packet other packet
+         * @return true if compatible
+         * @see Data.Sink#onValidate(java.util.function.BiPredicate)
+         */
         public boolean isCompatible(Packet<T> packet);
 
+        /**
+         * Create a packet compatible with the data in this packet.
+         *
+         * @return newly created packet
+         */
         public Packet<T> createPacket();
 
+        /**
+         * Dispose of the data in this packet. The packet will not be usable
+         * after disposal. Disposal will be handled using any disposal function
+         * set on the pipeline.
+         *
+         * @see Data.Sink#onDispose(java.util.function.Consumer)
+         */
         public void dispose();
 
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,10 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Stream;
 import org.praxislive.code.userapi.AuxIn;
 import org.praxislive.code.userapi.AuxOut;
 import org.praxislive.code.userapi.Data;
+import org.praxislive.code.userapi.Data.Pipe;
 import org.praxislive.code.userapi.In;
 import org.praxislive.code.userapi.Out;
 import org.praxislive.core.Port;
@@ -40,11 +40,17 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.services.LogLevel;
 
 /**
+ * Port type for {@link Data} pipes.
  *
- *
+ * @param <T> data type
  */
 public abstract class DataPort<T> implements Port {
 
+    /**
+     * Input port for {@link Data} pipe.
+     *
+     * @param <T> data type
+     */
     public final static class Input<T> extends DataPort<T> {
 
         private final InPipe<T> in;
@@ -126,9 +132,10 @@ public abstract class DataPort<T> implements Port {
         }
     }
 
-    private static class InPipe<T> extends Data.In<T> {
+    /* package visibility for testing */
+    static class InPipe<T> extends Data.In<T> {
 
-        private void reset(boolean full) {
+        void reset(boolean full) {
             disconnectSinks();
             if (full) {
                 clearCaches();
@@ -225,6 +232,11 @@ public abstract class DataPort<T> implements Port {
 
     }
 
+    /**
+     * Output port for {@link Data} pipe.
+     *
+     * @param <T> data type
+     */
     public final static class Output<T> extends DataPort<T> {
 
         private final OutPipe<T> out;
@@ -302,13 +314,24 @@ public abstract class DataPort<T> implements Port {
         }
     }
 
-    private static class OutPipe<T> extends Data.Out<T> {
+    /* package visibility for testing */
+    static class OutPipe<T> extends Data.Out<T> {
 
-        private void reset(boolean full) {
+        void reset(boolean full) {
+            disconnectUp(sources());
             disconnectSources();
             if (full) {
                 clearCaches();
             }
+        }
+
+        private void disconnectUp(List<Pipe<T>> sources) {
+            sources.forEach(src -> {
+                if (!(src instanceof InPipe) && !(src instanceof OutPipe)) {
+                    disconnectUp(src.sources());
+                    src.disconnectSources();
+                }
+            });
         }
 
     }
@@ -374,6 +397,12 @@ public abstract class DataPort<T> implements Port {
             if (port != null) {
                 port.out.reset(true);
             }
+        }
+
+        @Override
+        public void dispose() {
+            onStop();
+            super.dispose();
         }
 
         static OutputDescriptor create(CodeConnector<?> connector, Out ann, Field field) {

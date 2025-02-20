@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,6 +32,19 @@ import org.praxislive.core.services.LogLevel;
  *
  */
 class DataSink<T> extends Data.Sink<T> {
+
+    private CodeContext<?> context;
+
+    @Override
+    @SuppressWarnings("Deprecation")
+    protected void attach(CodeContext<?> context) {
+        this.context = context;
+    }
+
+    @Override
+    protected void log(Exception ex) {
+        context.getLog().log(LogLevel.ERROR, ex);
+    }
 
     @Override
     public Lookup getLookup() {
