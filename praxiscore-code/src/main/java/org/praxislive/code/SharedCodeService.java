@@ -21,12 +21,14 @@
  */
 package org.praxislive.code;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.OrderedMap;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.Service;
@@ -129,7 +131,7 @@ public final class SharedCodeService implements Service {
     public static class Result {
 
         private final ClassLoader sharedClasses;
-        private final Map<ControlAddress, DependentResult<CodeDelegate>> dependents;
+        private final OrderedMap<ControlAddress, DependentResult<CodeDelegate>> dependents;
         private final LogBuilder log;
 
         /**
@@ -137,12 +139,14 @@ public final class SharedCodeService implements Service {
          */
         public Result() {
             this.sharedClasses = null;
-            this.dependents = Map.of();
+            this.dependents = OrderedMap.of();
             this.log = new LogBuilder(LogLevel.ERROR);
         }
 
         /**
          * Create a Result.
+         * <p>
+         * The dependents map will be copied and sorted by depth.
          *
          * @param sharedClasses new shared classes classloader
          * @param dependents map of dependent results
@@ -152,7 +156,7 @@ public final class SharedCodeService implements Service {
                 Map<ControlAddress, DependentResult<CodeDelegate>> dependents,
                 LogBuilder log) {
             this.sharedClasses = Objects.requireNonNull(sharedClasses);
-            this.dependents = Map.copyOf(dependents);
+            this.dependents = orderDependents(dependents);
             this.log = Objects.requireNonNull(log);
         }
 
@@ -166,7 +170,11 @@ public final class SharedCodeService implements Service {
         }
 
         /**
-         * Get the map if dependent results.
+         * Get the map of dependent results.
+         * <p>
+         * The map is an immutable ordered map, sorted by depth from root, then
+         * by natural order. Dependents should be processed in the iteration
+         * order of the map.
          *
          * @return dependents
          */
@@ -181,6 +189,21 @@ public final class SharedCodeService implements Service {
          */
         public LogBuilder getLog() {
             return log;
+        }
+
+        @SuppressWarnings("unchecked")
+        private OrderedMap<ControlAddress, DependentResult<CodeDelegate>>
+                orderDependents(Map<ControlAddress, DependentResult<CodeDelegate>> dependents) {
+            if (dependents.isEmpty()) {
+                return OrderedMap.of();
+            } else {
+                return OrderedMap.ofEntries(
+                        dependents.entrySet().stream().sorted(
+                                Comparator.<Map.Entry<ControlAddress, ?>>comparingInt(
+                                        e -> e.getKey().component().depth())
+                                        .thenComparing(e -> e.getKey().component().toString()
+                                        )).toArray(Map.Entry[]::new));
+            }
         }
 
     }
