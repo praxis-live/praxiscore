@@ -13,16 +13,20 @@ https://www.praxislive.org/core/
 PraxisCORE is an open-source project originally developed by
 [Neil C Smith][neilcsmith], and supported by [Codelerity Ltd][codelerity].
 
-## Status and requirement
+## Requirements and build
 
-PraxisCORE v6 is under development and not yet ready for use. For PraxisCORE v5
-sources check out the [legacy-v5][legacy-v5] branch.
+PraxisCORE v6 requires Java 21 or above.
 
-PraxisCORE v6 will require Java 21. The build currently requires Java 17+.
+The build uses Maven via the Maven Wrapper. To build, execute `mvnw package`. The
+fully built runtime will be found at `praxiscore-bin/target/praxiscore` and
+`praxiscore-bin/target/praxiscore-bin-VERSION-bin.zip`.
+
+To run the test suite, execute
+`./praxiscore-bin/target/praxiscore/bin/praxis -f ./testsuite/`.
 
 ## License
 
-PraxisCORE v5 is licensed under the terms of the GNU Lesser General Public License v3.
+PraxisCORE is licensed under the terms of the GNU Lesser General Public License v3.
 This means that the core runtime, or a selection of its modules, may be used as a
 library and included in your own projects without requiring you to share your own
 code under the same license.
@@ -32,4 +36,3 @@ Some modules have different but compatible licenses.
 [neilcsmith]: https://www.neilcsmith.net
 [codelerity]: https://www.codelerity.com
 [praxislive]: https://www.praxislive.org
-[legacy-v5]: https://github.com/praxis-live/praxiscore/tree/legacy-v5
