@@ -96,23 +96,20 @@ class DataSink<T> extends Data.Sink<T> {
         }
 
         @Override
-        public void onInit() {
-//                if (sink != null) {
-//                    // dispose?
-//                }
+        public void onReset() {
+            if (sink != null) {
+                sink.reset();
+            }
+        }
+
+        @Override
+        public void onStart() {
             sink = new DataSink<>();
             sink.attach(context);
             try {
                 sinkField.set(context.getDelegate(), sink);
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
-            }
-        }
-
-        @Override
-        public void onReset() {
-            if (sink != null) {
-                sink.reset();
             }
         }
 

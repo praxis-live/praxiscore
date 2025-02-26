@@ -24,6 +24,8 @@ package org.praxislive.code.userapi;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -45,6 +47,98 @@ public class Data {
     }
 
     /**
+     * Create a pipe that applies the function to every type T passing through.
+     * The function may return the supplied input or another instance of type T.
+     *
+     * @param <T> type of data
+     * @param function function to apply to data
+     * @return pipe
+     */
+    public static final <T> Pipe<T> apply(Function<? super T, ? extends T> function) {
+        Objects.requireNonNull(function);
+        return new Pipe<T>() {
+            @Override
+            protected void process(List<Packet<T>> data) {
+                data.forEach(p -> p.apply(function));
+            }
+        };
+    }
+
+    /**
+     * Create a pipe that applies the combiner function to every type T passing
+     * through. The function may return the supplied input or another instance
+     * of type T. The first argument of the function corresponds to the first
+     * source of the pipe, if there is one, else a cleared T. The second
+     * argument is a list of T corresponding to any additional sources.
+     *
+     * @param <T> type of data
+     * @param combiner combination function to apply to data
+     * @return pipe
+     */
+    public static final <T> Pipe<T> combine(BiFunction<T, List<T>, ? extends T> combiner) {
+        Objects.requireNonNull(combiner);
+        return new Pipe<T>() {
+
+            private final List<T> srcs = new ArrayList<>();
+
+            @Override
+            protected void process(List<Packet<T>> data) {
+                srcs.clear();
+                for (int i = 1; i < data.size(); i++) {
+                    srcs.add(data.get(i).data());
+                }
+                data.get(0).apply(dst -> combiner.apply(dst, srcs));
+                srcs.clear();
+            }
+
+            @Override
+            protected void writeOutput(List<Packet<T>> data, Packet<T> output, int sinkIndex) {
+                if (data.isEmpty()) {
+                    output.clear();
+                } else {
+                    output.accumulate(List.of(data.get(0)));
+                }
+            }
+        };
+    }
+
+    /**
+     * Create a pipe that applies the combiner function to every type T passing
+     * through. The first argument of the function corresponds to the first
+     * source of the pipe, if there is one, else a cleared T. The second
+     * argument is a list of T corresponding to any additional sources. The
+     * function should combine data into the first argument T, which assumes
+     * that T is mutable. To combine into a different instance of T, use
+     * {@link #combine(java.util.function.BiFunction)}.
+     *
+     * @param <T> type of data
+     * @param combiner combination function to apply to data
+     * @return pipe
+     */
+    public static final <T> Pipe<T> combineWith(BiConsumer<T, List<T>> combiner) {
+        Objects.requireNonNull(combiner);
+        return combine((dst, srcs) -> {
+            combiner.accept(dst, srcs);
+            return dst;
+        });
+    }
+
+    /**
+     * Create a pipe that applies no additional processing to every type T
+     * passing through. The pipe will use the clear and accumulate functions
+     * defined on the sink.
+     * <p>
+     * This pipe is useful where you need a placeholder element, a clear source,
+     * or to combine sources using the default accumulation.
+     *
+     * @param <T> type of data
+     * @return pipe
+     */
+    public static final <T> Pipe<T> identity() {
+        return new IdentityPipe<>();
+    }
+
+    /**
      * Link provided Data.Pipes together.
      *
      * @param <T> common type of data supported by pipes
@@ -52,7 +146,7 @@ public class Data {
      * @return last pipe, for convenience
      */
     @SafeVarargs
-    public final static <T> Pipe<T> link(Pipe<T>... pipes) {
+    public static final <T> Pipe<T> link(Pipe<T>... pipes) {
         if (pipes.length < 2) {
             throw new IllegalArgumentException();
         }
@@ -63,26 +157,6 @@ public class Data {
     }
 
     /**
-     * Create a pipe that applies the consumer to every type T passing through.
-     * This assumes that either the data type is mutable or that its contents
-     * will be used but not changed. To map the type to a different instance of
-     * T, use apply().
-     *
-     * @param <T> type of data
-     * @param consumer consumer function to apply to data of type T
-     * @return pipe
-     */
-    public final static <T> Pipe<T> with(Consumer<? super T> consumer) {
-        Objects.requireNonNull(consumer);
-        return new Pipe<T>() {
-            @Override
-            protected void process(List<Packet<T>> data) {
-                data.forEach(p -> consumer.accept(p.data()));
-            }
-        };
-    }
-
-    /**
      * Create a pipe that supplies new instances of type T. This pipe does not
      * support sources.
      *
@@ -90,7 +164,7 @@ public class Data {
      * @param supplier function to supply instance of T
      * @return pipe
      */
-    public final static <T> Pipe<T> supply(Supplier<? extends T> supplier) {
+    public static final <T> Pipe<T> supply(Supplier<? extends T> supplier) {
         Objects.requireNonNull(supplier);
         return new Pipe<T>() {
             @Override
@@ -107,21 +181,21 @@ public class Data {
     }
 
     /**
-     * Create a pipe that applies the function to every type T passing through.
-     * The function may return the supplied input or another instance of type T.
+     * Create a pipe that applies the consumer to every type T passing through.
+     * This assumes that either the data type is mutable or that its contents
+     * will be used but not changed. To map the type to a different instance of
+     * T, use {@link #apply(java.util.function.Function)}.
      *
      * @param <T> type of data
-     * @param function function to apply to data
+     * @param consumer consumer function to apply to data of type T
      * @return pipe
      */
-    public final static <T> Pipe<T> apply(Function<? super T, ? extends T> function) {
-        Objects.requireNonNull(function);
-        return new Pipe<T>() {
-            @Override
-            protected void process(List<Packet<T>> data) {
-                data.forEach(p -> p.apply(function));
-            }
-        };
+    public static final <T> Pipe<T> with(Consumer<? super T> consumer) {
+        Objects.requireNonNull(consumer);
+        return apply(d -> {
+            consumer.accept(d);
+            return d;
+        });
     }
 
     /**
@@ -377,13 +451,18 @@ public class Data {
             try {
                 if (packet == this) {
                     return true;
-                } else {
-                    T otherData = packet.data();
+                } else if (packet instanceof SinkPacket<T> other) {
+                    if (sink != other.sink) {
+                        return false;
+                    }
+                    T otherData = other.data();
                     if (otherData == null) {
                         return false;
                     } else {
                         return sink.validator.test(data, otherData);
                     }
+                } else {
+                    return false;
                 }
             } catch (Exception ex) {
                 sink.log(ex);
@@ -421,27 +500,17 @@ public class Data {
      *
      * @param <T> data type
      */
-    public static abstract class In<T> extends Pipe<T> {
-
-        @Override
-        protected void process(List<Packet<T>> data) {
-        }
-
+    public static abstract class In<T> extends IdentityPipe<T> {
     }
 
     /**
-     * Input port pipe.
+     * Output port pipe.
      * <p>
      * Create using eg. {@code @Out Data.Out<TYPE> in;}
      *
      * @param <T> data type
      */
-    public static abstract class Out<T> extends Pipe<T> {
-
-        @Override
-        protected void process(List<Packet<T>> data) {
-        }
-
+    public static abstract class Out<T> extends IdentityPipe<T> {
     }
 
     /**
@@ -524,6 +593,39 @@ public class Data {
         }
 
         /**
+         * Convenience method to add multiple sources in one call. See
+         * {@link #addSource(org.praxislive.code.userapi.Data.Pipe)}.
+         *
+         * @param sources sources to add
+         * @return this for chaining
+         */
+        @SafeVarargs
+        public final Pipe<T> withSources(Pipe<T>... sources) {
+            for (Pipe<T> source : sources) {
+                addSource(source);
+            }
+            return this;
+        }
+
+        /**
+         * Convenience method to link provided pipes. This pipe will be added as
+         * a source of the first provided pipe, with any additional pipes linked
+         * in order.
+         *
+         * @param pipes pipes to link to
+         * @return this for chaining
+         */
+        @SafeVarargs
+        public final Pipe<T> linkTo(Pipe<T>... pipes) {
+            Pipe<T> source = this;
+            for (Pipe<T> pipe : pipes) {
+                pipe.addSource(source);
+                source = pipe;
+            }
+            return this;
+        }
+
+        /**
          * Get an immutable snapshot of the currently attached sinks.
          *
          * @return current sinks
@@ -549,10 +651,10 @@ public class Data {
          * whether sources need to be called or cached data is invalid.
          *
          * @param sink sink calling process - must be registered
-         * @param buffer data packet to process
+         * @param packet data packet to process
          * @param pass pass count
          */
-        protected void process(Pipe<T> sink, Packet<T> buffer, long pass) {
+        protected void process(Pipe<T> sink, Packet<T> packet, long pass) {
             int sinkIndex = sinks.indexOf(sink);
 
             if (sinkIndex < 0) {
@@ -565,52 +667,68 @@ public class Data {
                 boolean outputRequired = isOutputRequired(pass);
                 this.pass = pass;
                 if (inPlace) {
-                    processInPlace(buffer, outputRequired, pass);
+                    processInPlace(packet, outputRequired, pass);
                 } else {
-                    processCached(buffer, outputRequired, pass);
+                    processCached(packet, outputRequired, pass);
                 }
             }
 
             if (!inPlace) {
-                writeOutput(dataPackets, buffer, sinkIndex);
+                writeOutput(dataPackets, packet, sinkIndex);
             }
         }
 
-        private void processInPlace(Packet<T> buffer, boolean outputRequired, long pass) {
+        private void processInPlace(Packet<T> packet, boolean outputRequired, long pass) {
             if (!dataPackets.isEmpty()) {
                 dataPackets.forEach(Packet::dispose);
                 dataPackets.clear();
             }
             if (sources.isEmpty()) {
-                buffer.clear();
+                packet.clear();
             } else {
-                sources.get(0).process(this, buffer, pass);
+                sources.get(0).process(this, packet, pass);
             }
             if (outputRequired) {
-                dataPackets.add(buffer);
+                dataPackets.add(packet);
                 process(dataPackets);
                 dataPackets.clear();
             }
         }
 
-        private void processCached(Packet<T> buffer, boolean outputRequired, long pass) {
-            while (dataPackets.size() > sources.size()) {
-                dataPackets.remove(dataPackets.size() - 1).dispose();
+        private void processCached(Packet<T> packet, boolean outputRequired, long pass) {
+            boolean hasSources = !sources.isEmpty();
+            int requiredPackets = hasSources ? sources.size() : 1;
+            while (dataPackets.size() > requiredPackets) {
+                dataPackets.removeLast().dispose();
             }
-            for (int i = 0; i < sources.size(); i++) {
-                Packet<T> in;
-                if (i < dataPackets.size()) {
-                    in = dataPackets.get(i);
-                    if (!buffer.isCompatible(in)) {
-                        in.dispose();
-                        in = buffer.createPacket();
-                        dataPackets.set(i, in);
+            if (hasSources) {
+                for (int i = 0; i < sources.size(); i++) {
+                    Packet<T> in;
+                    if (i < dataPackets.size()) {
+                        in = dataPackets.get(i);
+                        if (!packet.isCompatible(in)) {
+                            in.dispose();
+                            in = packet.createPacket();
+                            dataPackets.set(i, in);
+                        }
+                    } else {
+                        in = packet.createPacket();
+                        dataPackets.add(in);
                     }
-                } else {
-                    in = buffer.createPacket();
-                    dataPackets.add(in);
+                    sources.get(i).process(this, in, pass);
                 }
-                sources.get(i).process(this, in, pass);
+            } else {
+                if (dataPackets.isEmpty()) {
+                    dataPackets.add(packet.createPacket());
+                } else {
+                    Packet<T> cached = dataPackets.get(0);
+                    if (!packet.isCompatible(cached)) {
+                        cached.dispose();
+                        dataPackets.set(0, packet.createPacket());
+                    } else if (outputRequired) {
+                        cached.clear();
+                    }
+                }
             }
             if (outputRequired) {
                 process(dataPackets);
@@ -845,6 +963,15 @@ public class Data {
          * @see Data.Sink#onDispose(java.util.function.Consumer)
          */
         public void dispose();
+
+    }
+
+    static class IdentityPipe<T> extends Pipe<T> {
+
+        @Override
+        protected void process(List<Packet<T>> data) {
+            // no op
+        }
 
     }
 
