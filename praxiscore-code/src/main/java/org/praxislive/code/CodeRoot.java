@@ -56,8 +56,6 @@ import org.praxislive.core.types.PMap;
  */
 public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> implements Root {
 
-    private static final String SHARED_CODE = "shared-code";
-
     private final RootImpl root;
     private final Control startControl;
     private final Control stopControl;
@@ -252,6 +250,8 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             addControl(createMetaControl(getInternalIndex()));
             addControl(createMetaMergeControl(getInternalIndex()));
             addControl(sharedCodeControl());
+            addControl(sharedCodeAddControl());
+            addControl(sharedCodeMergeControl());
             addControl(createCodeControl(getInternalIndex()));
             addControl(new AsyncHandler(getInternalIndex()));
             addControl(new WrapperControlDescriptor(StartableProtocol.START,
@@ -281,6 +281,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             super.buildBaseComponentInfo(cmp);
             cmp.merge(StartableProtocol.API_INFO);
             cmp.merge(SerializableProtocol.API_INFO);
+            cmp.merge(SharedCodeProtocol.API_INFO);
         }
 
         @Override
@@ -316,18 +317,36 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         }
 
         private ControlDescriptor<?> sharedCodeControl() {
-            return new WrapperControlDescriptor(SHARED_CODE,
-                    SharedCodeProperty.INFO,
+            return new WrapperControlDescriptor(SharedCodeProtocol.SHARED_CODE,
+                    SharedCodeProtocol.SHARED_CODE_INFO,
                     getInternalIndex(),
                     ctxt -> ctxt instanceof Context c ? c.getComponent().sharedCode : null,
                     (ctxt, writer) -> {
                         if (ctxt instanceof Context c) {
                             PMap value = c.getComponent().sharedCode.getValue();
                             if (!value.isEmpty()) {
-                                writer.writeProperty(SHARED_CODE, value);
+                                writer.writeProperty(SharedCodeProtocol.SHARED_CODE, value);
                             }
                         }
                     }
+            );
+        }
+
+        private ControlDescriptor<?> sharedCodeAddControl() {
+            return new WrapperControlDescriptor(SharedCodeProtocol.SHARED_CODE_ADD,
+                    SharedCodeProtocol.SHARED_CODE_ADD_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c
+                            ? c.getComponent().sharedCode.getAddControl() : null
+            );
+        }
+
+        private ControlDescriptor<?> sharedCodeMergeControl() {
+            return new WrapperControlDescriptor(SharedCodeProtocol.SHARED_CODE_MERGE,
+                    SharedCodeProtocol.SHARED_CODE_MERGE_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c
+                            ? c.getComponent().sharedCode.getMergeControl() : null
             );
         }
 

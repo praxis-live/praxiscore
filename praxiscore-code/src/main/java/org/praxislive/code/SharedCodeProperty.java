@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,6 +23,7 @@ package org.praxislive.code;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import org.praxislive.core.Call;
 import org.praxislive.core.Control;
@@ -48,20 +49,17 @@ import org.praxislive.core.types.PReference;
  */
 public class SharedCodeProperty implements Control {
 
-    public final static ControlInfo INFO
-            = Info.control(c -> c.property()
-            .input(PMap.class)
-            .defaultValue(PMap.EMPTY)
-            .property("shared-code", true));
-
     private final SharedCodeContext context;
     private final Lookup.Provider lookupContext;
     private final Consumer<LogBuilder> logHandler;
+    private final Control mergeControl;
+    private final Control addControl;
 
     private PMap value;
     private long latest;
     private Call activeCall;
-    private Call taskCall;
+    private SharedCodeService.Task activeTask;
+    private Call activeTaskCall;
 
     /**
      * Create a shared code property.
@@ -73,18 +71,38 @@ public class SharedCodeProperty implements Control {
         this.lookupContext = Objects.requireNonNull(lookupContext);
         this.logHandler = Objects.requireNonNull(logHandler);
         context = new SharedCodeContext(this);
+        mergeControl = new MergeControl(PMap.REPLACE);
+        addControl = new MergeControl(PMap.IF_ABSENT);
         value = PMap.EMPTY;
     }
 
     @Override
     public void call(Call call, PacketRouter router) throws Exception {
         if (call.isRequest()) {
-            processInvoke(call, router);
+            processInvoke(call, call.args(), router);
         } else if (call.isReply()) {
             processReturn(call, router);
         } else {
             processError(call, router);
         }
+    }
+
+    /**
+     * Get the add control linked to this property. See {@link #ADD_INFO}.
+     *
+     * @return add control
+     */
+    public Control getAddControl() {
+        return addControl;
+    }
+
+    /**
+     * Get the merge control linked to this property. See {@link #MERGE_INFO}.
+     *
+     * @return merge control
+     */
+    public Control getMergeControl() {
+        return mergeControl;
     }
 
     /**
@@ -98,25 +116,24 @@ public class SharedCodeProperty implements Control {
 
     /**
      * Access the current value as a map.
-     * 
+     *
      * @return current value
      */
     public PMap getValue() {
         return value;
     }
 
-    private void processInvoke(Call call, PacketRouter router) throws Exception {
-        List<Value> args = call.args();
+    private void processInvoke(Call call, List<Value> args, PacketRouter router) throws Exception {
         long time = call.time();
         if (!args.isEmpty() && isLatest(time)) {
             ControlAddress service = getServiceAddress(lookupContext.getLookup());
-            SharedCodeService.Task task = createTask(
+            activeTask = createTask(
                     PMap.from(args.get(0)).orElseThrow(IllegalArgumentException::new));
-            taskCall = Call.create(service, call.to(), time, PReference.of(task));
-            router.route(taskCall);
+            activeTaskCall = Call.create(service, call.to(), time, PReference.of(activeTask));
+            router.route(activeTaskCall);
             setLatest(time);
             if (activeCall != null) {
-                router.route(activeCall.reply(activeCall.args()));
+                router.route(activeCall.reply(value));
             }
             activeCall = call;
         } else {
@@ -126,15 +143,17 @@ public class SharedCodeProperty implements Control {
     }
 
     private void processReturn(Call call, PacketRouter router) {
+        PMap oldValue = value;
         try {
-            if (taskCall == null || taskCall.matchID() != call.matchID()) {
+            if (activeTaskCall == null || activeTaskCall.matchID() != call.matchID()) {
                 return;
             }
-            taskCall = null;
+            activeTaskCall = null;
+            value = activeTask.getSources();
+            activeTask = null;
             SharedCodeService.Result result = PReference.from(call.args().get(0))
                     .flatMap(r -> r.as(SharedCodeService.Result.class))
                     .orElseThrow(IllegalArgumentException::new);
-            value = PMap.from(activeCall.args().get(0)).orElseThrow(IllegalArgumentException::new);
             context.update(result);
             logHandler.accept(result.getLog());
             router.route(activeCall.reply(value));
@@ -142,16 +161,19 @@ public class SharedCodeProperty implements Control {
         } catch (Exception ex) {
             router.route(activeCall.error(PError.of(ex)));
             activeCall = null;
+            value = oldValue;
         }
     }
 
     private void processError(Call call, PacketRouter router) throws Exception {
-        if (taskCall == null || taskCall.matchID() != call.matchID()) {
+        if (activeTaskCall == null || activeTaskCall.matchID() != call.matchID()) {
             return;
         }
+        activeTaskCall = null;
+        activeTask = null;
         router.route(activeCall.error(call.args()));
         activeCall = null;
-        var args = call.args();
+        List<Value> args = call.args();
         if (!args.isEmpty()) {
             var err = PError.from(args.get(0))
                     .orElseGet(() -> PError.of(args.get(0).toString()));
@@ -182,6 +204,34 @@ public class SharedCodeProperty implements Control {
 
     private boolean isLatest(long time) {
         return latest == 0 || (time - latest) >= 0;
+    }
+
+    private class MergeControl implements Control {
+
+        private final BinaryOperator<Value> mergeOp;
+
+        private MergeControl(BinaryOperator<Value> mergeOp) {
+            this.mergeOp = mergeOp;
+        }
+
+        @Override
+        public void call(Call call, PacketRouter router) throws Exception {
+            if (call.isRequest()) {
+                PMap additional = PMap.from(call.args().getFirst())
+                        .orElseThrow(IllegalArgumentException::new);
+                PMap newValue = PMap.merge(value, additional, mergeOp);
+                if (newValue.equals(value)) {
+                    router.route(call.reply(value));
+                } else {
+                    processInvoke(call, List.of(newValue), router);
+                }
+            } else if (call.isReply()) {
+                processReturn(call, router);
+            } else {
+                processError(call, router);
+            }
+        }
+
     }
 
 }

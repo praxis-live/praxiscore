@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,6 +27,7 @@ import org.praxislive.code.CodeCompilerService;
 import org.praxislive.code.CodeComponentFactoryService;
 import org.praxislive.code.CodeContextFactoryService;
 import org.praxislive.code.CodeRootFactoryService;
+import org.praxislive.code.SharedCodeProtocol;
 import org.praxislive.code.SharedCodeService;
 import org.praxislive.core.Protocol;
 
@@ -39,6 +40,7 @@ public class CodeProtocolsProvider implements Protocol.TypeProvider {
     @Override
     public Stream<Protocol.Type> types() {
         return Stream.of(
+                new Protocol.Type<>(SharedCodeProtocol.class),
                 new Protocol.Type<>(CodeChildFactoryService.class),
                 new Protocol.Type<>(CodeCompilerService.class),
                 new Protocol.Type<>(CodeComponentFactoryService.class),
