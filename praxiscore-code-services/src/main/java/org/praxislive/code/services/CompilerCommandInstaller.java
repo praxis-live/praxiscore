@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,8 +23,10 @@ package org.praxislive.code.services;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.praxislive.code.CodeCompilerService;
+import org.praxislive.code.SharedCodeProtocol;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ControlAddress;
@@ -40,10 +42,12 @@ import org.praxislive.script.Env;
 import org.praxislive.script.InlineCommand;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.AbstractSingleCallFrame;
+import org.praxislive.script.Variable;
 
 /**
  *
  */
+// @TODO move these commands into the core code support?
 public class CompilerCommandInstaller implements CommandInstaller {
 
     @Override
@@ -56,6 +60,12 @@ public class CompilerCommandInstaller implements CommandInstaller {
         commands.put("libraries-path", LibrariesPath::new);
         commands.put("java-compiler-release", JavaRelease::new);
         commands.put("compiler", Compiler::new);
+        commands.put(SharedCodeProtocol.SHARED_CODE,
+                (namespace, args) -> new SharedCode(namespace, args, SharedCodeProtocol.SHARED_CODE));
+        commands.put(SharedCodeProtocol.SHARED_CODE_ADD,
+                (namespace, args) -> new SharedCode(namespace, args, SharedCodeProtocol.SHARED_CODE_ADD));
+        commands.put(SharedCodeProtocol.SHARED_CODE_MERGE,
+                (namespace, args) -> new SharedCode(namespace, args, SharedCodeProtocol.SHARED_CODE_MERGE));
     }
 
     private static class AddLibs extends AbstractSingleCallFrame {
@@ -207,6 +217,30 @@ public class CompilerCommandInstaller implements CommandInstaller {
                     .orElseThrow(ServiceUnavailableException::new);
             ControlAddress releaseControl = ControlAddress.of(service, "release");
             return Call.create(releaseControl, env.getAddress(), env.getTime(), args);
+        }
+
+    }
+
+    private static class SharedCode extends AbstractSingleCallFrame {
+
+        private final String control;
+
+        SharedCode(Namespace namespace, List<Value> args, String control) {
+            super(namespace, args);
+            this.control = control;
+        }
+
+        @Override
+        protected Call createCall(Env env, List<Value> args) throws Exception {
+            ComponentAddress context = Optional.ofNullable(
+                    getNamespace().getVariable(Env.CONTEXT))
+                    .map(Variable::getValue)
+                    .flatMap(ComponentAddress::from)
+                    .filter(ad -> !ad.rootID().startsWith("_"))
+                    .orElseThrow(() -> new IllegalStateException("No context available"));
+            ComponentAddress root = ComponentAddress.of("/" + context.rootID());
+            return Call.create(ControlAddress.of(root, control), env.getAddress(),
+                    env.getTime(), args);
         }
 
     }

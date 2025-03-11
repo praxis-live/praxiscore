@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -124,6 +124,84 @@ final class CompoundStackFrame implements StackFrame {
             result = active.result();
             active = null;
         }
+    }
+
+    static class OnFailStackFrame implements StackFrame {
+
+        private final StackFrame primaryFrame;
+        private final Function<List<Value>, StackFrame> catchFrameSupplier;
+
+        private StackFrame catchFrame;
+
+        OnFailStackFrame(StackFrame primaryFrame,
+                Function<List<Value>, StackFrame> catchFrameSupplier) {
+            this.primaryFrame = primaryFrame;
+            this.catchFrameSupplier = catchFrameSupplier;
+        }
+
+        @Override
+        public State getState() {
+            return catchFrame == null ? primaryFrame.getState() : catchFrame.getState();
+        }
+
+        @Override
+        public StackFrame process(Env env) {
+            if (catchFrame == null) {
+                List<Value> result;
+                try {
+                    StackFrame sf = primaryFrame.process(env);
+                    if (primaryFrame.getState() == State.Error) {
+                        result = primaryFrame.result();
+                    } else {
+                        return sf;
+                    }
+                } catch (Exception ex) {
+                    result = List.of(PError.of(ex));
+                }
+                catchFrame = catchFrameSupplier.apply(result);
+                return catchFrame.process(env);
+            } else {
+                return catchFrame.process(env);
+            }
+        }
+
+        @Override
+        public void postResponse(Call call) {
+            if (catchFrame == null) {
+                try {
+                    primaryFrame.postResponse(call);
+                    if (primaryFrame.getState() == State.Error) {
+                        catchFrame = catchFrameSupplier.apply(primaryFrame.result());
+                    }
+                } catch (Exception ex) {
+                    catchFrame = catchFrameSupplier.apply(List.of(PError.of(ex)));
+                }
+            } else {
+                catchFrame.postResponse(call);
+            }
+        }
+
+        @Override
+        public void postResponse(State state, List<Value> args) {
+            if (catchFrame == null) {
+                try {
+                    primaryFrame.postResponse(state, args);
+                    if (primaryFrame.getState() == State.Error) {
+                        catchFrame = catchFrameSupplier.apply(primaryFrame.result());
+                    }
+                } catch (Exception ex) {
+                    catchFrame = catchFrameSupplier.apply(List.of(PError.of(ex)));
+                }
+            } else {
+                catchFrame.postResponse(state, args);
+            }
+        }
+
+        @Override
+        public List<Value> result() {
+            return catchFrame == null ? primaryFrame.result() : catchFrame.result();
+        }
+
     }
 
     static class SupplierStackFrame implements StackFrame {

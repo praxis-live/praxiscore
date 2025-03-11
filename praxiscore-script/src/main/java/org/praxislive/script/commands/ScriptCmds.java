@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -32,7 +32,6 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.ScriptStackFrame;
 import org.praxislive.script.StackFrame;
@@ -44,6 +43,7 @@ class ScriptCmds {
 
     public final static Command EVAL = new Eval();
     public final static Command INCLUDE = new Include();
+    private final static Command TRY = new Try();
 
     private ScriptCmds() {
     }
@@ -51,6 +51,7 @@ class ScriptCmds {
     static void install(Map<String, Command> commands) {
         commands.put("eval", EVAL);
         commands.put("include", INCLUDE);
+        commands.put("try", TRY);
     }
 
     private static class Eval implements Command {
@@ -113,6 +114,30 @@ class ScriptCmds {
             return StackFrame.async(() -> PString.of(Files.readString(path)))
                     .andThen(v -> ScriptStackFrame.forScript(namespace, v.get(0).toString()).build());
 
+        }
+
+    }
+
+    private static class Try implements Command {
+
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
+            switch (args.size()) {
+                case 1 -> {
+                    return ScriptStackFrame.forScript(namespace, args.get(0).toString()).build()
+                            .onError(err -> StackFrame.empty());
+                }
+                case 3 -> {
+                    if ("catch".equals(args.get(1).toString())) {
+                        return ScriptStackFrame.forScript(namespace, args.get(0).toString()).build()
+                                .onError(err -> ScriptStackFrame.forScript(namespace, args.get(2).toString()).build());
+                    } else {
+                        throw new IllegalArgumentException("Unknown second argument : " + args.get(1));
+                    }
+                }
+                default ->
+                    throw new IllegalArgumentException("Invalid number of arguments for try");
+            }
         }
 
     }

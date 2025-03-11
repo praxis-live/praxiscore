@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,6 +41,7 @@ import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
 import org.praxislive.base.DefaultExecutionContext;
 import org.praxislive.code.SharedCodeProperty;
+import org.praxislive.code.SharedCodeProtocol;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Call;
 import org.praxislive.core.Clock;
@@ -103,7 +104,9 @@ public class DefaultAudioRoot extends AbstractRootContainer {
 
     public DefaultAudioRoot() {
         sharedCode = new SharedCodeProperty(this, this::handleLog);
-        registerControl("shared-code", sharedCode);
+        registerControl(SharedCodeProtocol.SHARED_CODE, sharedCode);
+        registerControl(SharedCodeProtocol.SHARED_CODE_ADD, sharedCode.getAddControl());
+        registerControl(SharedCodeProtocol.SHARED_CODE_MERGE, sharedCode.getMergeControl());
 
         extractLibraryInfo();
 
@@ -128,7 +131,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                 .merge(ContainerProtocol.API_INFO)
                 .control(ContainerProtocol.SUPPORTED_TYPES, ContainerProtocol.SUPPORTED_TYPES_INFO)
                 .merge(StartableProtocol.API_INFO)
-                .control("shared-code", SharedCodeProperty.INFO)
+                .merge(SharedCodeProtocol.API_INFO)
                 .control("sample-rate", c -> c.property()
                     .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
                     .input(a -> a.number()

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,6 +40,8 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.praxislive.core.types.PMap;
+import org.praxislive.core.types.PString;
 
 /**
  *
@@ -239,6 +241,50 @@ public class DefaultScriptServiceTest {
             assertTrue(errors.contains("BAZ ERROR"));
         }
 
+    }
+
+    @Test
+    public void testTryCatch() throws Exception {
+        logTest("testTryCatch");
+        String script = """
+                        set v1 "hello"
+                        try {
+                            set v1 "FAIL"
+                            echo [array "" [fail]]
+                        } catch {
+                            set v1 "hello world"
+                        }
+                        set v2 [try {map key data} catch {map FAIL FAIL}]
+                        set v3 [try {/bar.value} catch {echo FAIL}]
+                        set v4 [try {/bar.fail} catch {map}]
+                        array $v1 $v2 $v3 $v4
+                        """;
+        var root = new DefaultScriptService();
+        try (var hub = new RootHubImpl("script", root)) {
+            hub.start();
+            hub.send("/script.eval", "/hub.result", script);
+
+            Call call = hub.poll();
+            logCall("Call to /bar.value received", call);
+            assertEquals("/bar.value", call.to().toString());
+            hub.dispatch(call.reply(PString.of("FOO")));
+
+            call = hub.poll();
+            logCall("Call to /bar.fail received", call);
+            assertEquals("/bar.fail", call.to().toString());
+            hub.dispatch(call.error(PError.of("FAIL")));
+
+            call = hub.poll();
+            logCall("Result received", call);
+            assertTrue(call.isReply());
+            assertEquals(1, call.args().size());
+            PArray result = PArray.from(call.args().getFirst()).orElse(PArray.EMPTY);
+            assertEquals(4, result.size());
+            assertEquals("hello world", result.get(0).toString());
+            assertEquals(PMap.of("key", "data"), result.get(1));
+            assertEquals("FOO", result.get(2).toString());
+            assertEquals(PMap.EMPTY, result.get(3));
+        }
     }
 
     private static void logTest(String testName) {

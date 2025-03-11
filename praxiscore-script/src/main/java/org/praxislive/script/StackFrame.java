@@ -22,6 +22,7 @@
 package org.praxislive.script;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import org.praxislive.core.Call;
@@ -159,6 +160,7 @@ public interface StackFrame {
      * @return compound stackframe
      */
     public default StackFrame andThen(Function<List<Value>, StackFrame> stage) {
+        Objects.requireNonNull(stage);
         if (this instanceof CompoundStackFrame csf) {
             csf.addStage(stage);
             return this;
@@ -180,9 +182,34 @@ public interface StackFrame {
      * @return mapping stackframe
      */
     public default StackFrame andThenMap(UnaryOperator<List<Value>> mapper) {
+        Objects.requireNonNull(mapper);
         return andThen(args -> new CompoundStackFrame.SupplierStackFrame(
                 () -> mapper.apply(args))
         );
+    }
+
+    /**
+     * Create a StackFrame that catches any error produced by this StackFrame
+     * and defers to the StackFrame created by the provided function. The input
+     * to the function will be the error result of this StackFrame.
+     *
+     * @param errorStage function to create stack frame on error
+     * @return created stackframe
+     */
+    public default StackFrame onError(Function<List<Value>, StackFrame> errorStage) {
+        Objects.requireNonNull(errorStage);
+        return new CompoundStackFrame.OnFailStackFrame(this, errorStage);
+    }
+
+    /**
+     * Create a StackFrame that executes the provided task asynchronously in the
+     * default {@link TaskService} and returns the result.
+     *
+     * @param task task to execute
+     * @return stackframe
+     */
+    public static StackFrame async(TaskService.Task task) {
+        return serviceCall(TaskService.class, TaskService.SUBMIT, PReference.of(task));
     }
 
     /**
@@ -212,6 +239,15 @@ public interface StackFrame {
                 return Call.create(to, env.getAddress(), env.getTime(), args);
             }
         };
+    }
+
+    /**
+     * Create a StackFrame that returns an empty result.
+     *
+     * @return stackframe
+     */
+    public static StackFrame empty() {
+        return new CompoundStackFrame.SupplierStackFrame(() -> List.of());
     }
 
     /**
@@ -258,17 +294,6 @@ public interface StackFrame {
                 return Call.create(to, env.getAddress(), env.getTime(), args);
             }
         };
-    }
-
-    /**
-     * Create a StackFrame that executes the provided task asynchronously in the
-     * default {@link TaskService} and returns the result.
-     *
-     * @param task task to execute
-     * @return stackframe
-     */
-    public static StackFrame async(TaskService.Task task) {
-        return serviceCall(TaskService.class, TaskService.SUBMIT, PReference.of(task));
     }
 
 }
