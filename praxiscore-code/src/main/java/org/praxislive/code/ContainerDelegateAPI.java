@@ -89,6 +89,33 @@ public interface ContainerDelegateAPI {
          * @return base delegate
          */
         Class<? extends CodeDelegate> base();
+
+        /**
+         * Optional code template if the custom type is intended to be extended
+         * by additional component code. The code template should be valid Java
+         * code for inclusion in a class body. It may also include import
+         * statements. Ideally the code should have no behavioural effects, but
+         * just provide a scaffold, such as empty methods. For example -
+         *
+         * <pre>
+         * {@code
+         * import SHARED.Data;
+         * import static SHARED.DataUtils.*;
+         *
+         *     @Override
+         *     public void process(Data data) {
+         *
+         *     }
+         * }
+         * </pre>
+         *
+         * Implementation note : due to limitations in the current API, the
+         * template is only read on component creation. Later updates to the
+         * template will not be reflected in existing components.
+         *
+         * @return optional code template
+         */
+        String template() default "";
     }
 
 }
