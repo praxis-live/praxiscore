@@ -337,6 +337,9 @@ public class DefaultCodeFactoryService extends AbstractRoot
             ClassLoader shared = baseType.getClassLoader() instanceof PMapClassLoader pmcl
                     ? pmcl : null;
             String source = "extends " + baseType.getCanonicalName() + ";";
+            if (!task.codeTemplate().isBlank()) {
+                source += "\n" + task.codeTemplate();
+            }
             String fullClassName = genCodePrefix() + ".NEW_INSTANCE." + WRAPPED_CLASS_NAME;
             activeCodeFactory = factoryBase.create(task.componentType(), source);
             return Call.create(

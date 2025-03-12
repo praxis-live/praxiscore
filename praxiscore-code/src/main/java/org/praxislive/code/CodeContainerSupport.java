@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -96,14 +96,15 @@ final class CodeContainerSupport {
                 filter = "core:*";
             }
             boolean system = typesInfoAnn.system();
-            OrderedMap<ComponentType, Class<? extends CodeDelegate>> custom;
+            OrderedMap<ComponentType, CustomTypeInfo> custom;
             if (typesInfoAnn.custom().length == 0) {
                 custom = OrderedMap.of();
             } else {
-                Map<ComponentType, Class<? extends CodeDelegate>> customMap
+                Map<ComponentType, CustomTypeInfo> customMap
                         = new LinkedHashMap<>();
                 for (var customAnn : typesInfoAnn.custom()) {
-                    customMap.put(ComponentType.of(customAnn.type()), customAnn.base());
+                    customMap.put(ComponentType.of(customAnn.type()),
+                            new CustomTypeInfo(customAnn.base(), customAnn.template()));
                 }
                 custom = OrderedMap.copyOf(customMap);
             }
@@ -120,11 +121,11 @@ final class CodeContainerSupport {
         private final String filterDefinition;
         private final Predicate<ComponentType> filter;
         private final boolean includeSystem;
-        private final OrderedMap<ComponentType, Class<? extends CodeDelegate>> customTypes;
+        private final OrderedMap<ComponentType, CustomTypeInfo> customTypes;
 
         private TypesInfo(String filterDefinition,
                 boolean includeSystem,
-                OrderedMap<ComponentType, Class<? extends CodeDelegate>> customTypes) {
+                OrderedMap<ComponentType, CustomTypeInfo> customTypes) {
             this.filterDefinition = filterDefinition.strip();
             this.filter = filterDefinition.isBlank() || "*".equals(this.filterDefinition)
                     ? t -> true : globTypeFilter(filterDefinition);
@@ -140,13 +141,17 @@ final class CodeContainerSupport {
             return filter;
         }
 
-        OrderedMap<ComponentType, Class<? extends CodeDelegate>> customTypes() {
+        OrderedMap<ComponentType, CustomTypeInfo> customTypes() {
             return customTypes;
         }
 
         boolean includeSystem() {
             return includeSystem;
         }
+
+    }
+
+    static record CustomTypeInfo(Class<? extends CodeDelegate> base, String template) {
 
     }
 
@@ -181,14 +186,16 @@ final class CodeContainerSupport {
             }
             ComponentType type = ComponentType.from(args.get(1))
                     .orElseThrow(() -> new IllegalArgumentException("Invalid component type"));
-            if (typesInfo.customTypes().containsKey(type)) {
-                Class<? extends CodeDelegate> baseDelegate = typesInfo.customTypes().get(type);
+            CustomTypeInfo custom = typesInfo.customTypes().get(type);
+            if (custom != null) {
                 ControlAddress to = ControlAddress.of(
                         component.findService(CodeChildFactoryService.class),
                         CodeChildFactoryService.NEW_CHILD_INSTANCE
                 );
                 CodeChildFactoryService.Task task
-                        = new CodeChildFactoryService.Task(type, baseDelegate,
+                        = new CodeChildFactoryService.Task(type,
+                                custom.base(),
+                                custom.template(),
                                 component.getCodeContext().getLogLevel());
                 customChildren.put(id, type);
                 return Call.create(to, call.to(), call.time(), PReference.of(task));
@@ -259,9 +266,10 @@ final class CodeContainerSupport {
             var proposedCustomTypes = typesInfo.customTypes();
 
             Set<ComponentType> removedOrChanged = new HashSet<>();
-            currentCustomTypes.forEach((type, cls) -> {
-                var proposedCls = proposedCustomTypes.get(type);
-                if (proposedCls == null || !cls.getName().equals(proposedCls.getName())) {
+            currentCustomTypes.forEach((type, current) -> {
+                var proposed = proposedCustomTypes.get(type);
+                if (proposed == null
+                        || !Objects.equals(proposed.base().getName(), current.base().getName())) {
                     removedOrChanged.add(type);
                 }
             });
