@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2018 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -18,39 +18,96 @@
  *
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
- *
- *
- * Parts of the API of this package, as well as some of the code, is derived from
- * the Processing project (http://processing.org)
- *
- * Copyright (c) 2004-09 Ben Fry and Casey Reas
- * Copyright (c) 2001-04 Massachusetts Institute of Technology
- *
  */
-
 package org.praxislive.code.userapi;
 
 import org.praxislive.core.services.LogLevel;
 
 /**
  *
- * 
+ *
  */
 public class Constants {
 
-    private Constants() {}
-    
-    public final static LogLevel ERROR = LogLevel.ERROR;
-    public final static LogLevel WARNING = LogLevel.WARNING;
-    public final static LogLevel INFO = LogLevel.INFO;
-    public final static LogLevel DEBUG = LogLevel.DEBUG;
+    private Constants() {
+    }
 
-    public final static double PI = Math.PI;
-    public final static double HALF_PI = PI / 2;
-    public final static double THIRD_PI = PI / 3;
-    public final static double QUARTER_PI = PI / 4;
-    public final static double TWO_PI = PI * 2;
-    public final static double DEG_TO_RAD = PI/180;
-    public final static double RAD_TO_DEG = 180/PI;
+    /**
+     * Error log level.
+     */
+    public static final LogLevel ERROR = LogLevel.ERROR;
+
+    /**
+     * Warning log level.
+     */
+    public static final LogLevel WARNING = LogLevel.WARNING;
+
+    /**
+     * Info log level.
+     */
+    public static final LogLevel INFO = LogLevel.INFO;
+
+    /**
+     * Debug log level.
+     */
+    public static final LogLevel DEBUG = LogLevel.DEBUG;
+
+    /**
+     * Value of PI.
+     */
+    public static final double PI = Math.PI;
+
+    /**
+     * Value of PI / 2.
+     */
+    @Deprecated
+    public static final double HALF_PI = PI / 2;
+
+    /**
+     * Value of PI / 3.
+     */
+    @Deprecated
+    public static final double THIRD_PI = PI / 3;
+
+    /**
+     * Value of PI / 4.
+     */
+    @Deprecated
+    public static final double QUARTER_PI = PI / 4;
+
+    /**
+     * Value of PI * 2.
+     */
+    @Deprecated
+    public static final double TWO_PI = PI * 2;
+
+    /**
+     * Value of PI / 180.
+     */
+    @Deprecated
+    public static final double DEG_TO_RAD = PI / 180;
+
+    /**
+     * Value of 180 / PI.
+     */
+    @Deprecated
+    public static final double RAD_TO_DEG = 180 / PI;
+
+    /**
+     * Plain text media type - {@code text/plain}.
+     */
+    public static final String MIME_TEXT = "text/plain";
+
+    /**
+     * PNG image media type - {@code image/png}.
+     */
+    public static final String MIME_PNG = "image/png";
+
+    /**
+     * Inline SVG media type - {@code image/x.svg-html}. This is an internal
+     * unregistered media type for SVG content in a format that is compatible
+     * with inlining in HTML.
+     */
+    public static final String MIME_SVG = "image/x.svg-html";
 
 }
