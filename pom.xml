@@ -4,7 +4,7 @@
     
   <groupId>org.praxislive</groupId>
   <artifactId>praxiscore</artifactId>
-  <version>6.2.0-SNAPSHOT</version>
+  <version>6.2.0</version>
   <packaging>pom</packaging>
     
   <name>PraxisCORE</name>
