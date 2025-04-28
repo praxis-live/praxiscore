@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,7 +60,9 @@ class MimaWrapper {
             );
         }
         
-        DependencyRequest dependencyRequest = new DependencyRequest(collectRequest, null);
+        DependencyRequest dependencyRequest = new DependencyRequest(collectRequest,
+                (node, parents) -> !node.getDependency().getOptional()
+        );
         DependencyResult dependencyResult = context.repositorySystem()
                 .resolveDependencies(context.repositorySystemSession(), dependencyRequest);
         List<ArtifactResult> artifacts = dependencyResult.getArtifactResults();
