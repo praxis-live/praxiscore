@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.core.ThreadContext;
@@ -35,13 +34,11 @@ class ProxyContext {
 
     private final CodeComponent<?> component;
     private final ThreadContext threadCtxt;
-    private final ProxyLoader loader;
     private final Map<ProxyKey, ProxyInfo> proxies;
 
     ProxyContext(CodeComponent<?> component, ThreadContext threadCtxt) {
         this.component = component;
         this.threadCtxt = threadCtxt;
-        this.loader = new ProxyLoader(component.getClass().getClassLoader());
         this.proxies = new HashMap<>();
     }
 
@@ -56,10 +53,11 @@ class ProxyContext {
         var info = proxies.get(key);
         if (info != null) {
             info.handler.configure(delegate, direct);
-            return type.cast(info.proxy);
+            return type.cast(info.proxy());
         } else {
             var handler = new BaseHandler(delegate, direct);
-            var proxy = Proxy.newProxyInstance(loader, new Class<?>[]{type}, handler);
+            var proxy = Proxy.newProxyInstance(new ProxyLoader(type.getClassLoader()),
+                    new Class<?>[]{type}, handler);
             proxies.put(key, new ProxyInfo(type, proxy, handler));
             return type.cast(proxy);
         }
@@ -69,7 +67,7 @@ class ProxyContext {
         var key = new ProxyKey(type, name);
         var info = proxies.get(key);
         if (info != null) {
-            info.handler.configure(null, false);
+            info.handler().configure(null, false);
         }
     }
 
@@ -149,63 +147,11 @@ class ProxyContext {
 
     }
 
-    private static class ProxyKey {
-
-        private final Class<?> type;
-        private final String name;
-
-        private ProxyKey(Class<?> type, String name) {
-            this.type = type;
-            this.name = name;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            hash = 37 * hash + Objects.hashCode(this.type);
-            hash = 37 * hash + Objects.hashCode(this.name);
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final ProxyKey other = (ProxyKey) obj;
-            if (!Objects.equals(this.name, other.name)) {
-                return false;
-            }
-            if (!Objects.equals(this.type, other.type)) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            return "ProxyKey{" + "type=" + type + ", name=" + name + '}';
-        }
+    private static record ProxyKey(Class<?> type, String name) {
 
     }
 
-    private static class ProxyInfo {
-
-        private final Class<?> type;
-        private final Object proxy;
-        private final BaseHandler handler;
-
-        public ProxyInfo(Class<?> type, Object proxy, BaseHandler handler) {
-            this.type = type;
-            this.proxy = proxy;
-            this.handler = handler;
-        }
+    private static record ProxyInfo(Class<?> type, Object proxy, BaseHandler handler) {
 
     }
 
