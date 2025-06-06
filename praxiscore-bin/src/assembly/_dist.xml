@@ -19,5 +19,10 @@
       <outputDirectory>bin</outputDirectory>
       <lineEnding>dos</lineEnding>
     </file>
+    <file>
+      <source>src/assembly/etc/java.cfg</source>
+      <outputDirectory>etc</outputDirectory>
+      <lineEnding>unix</lineEnding>
+    </file>
   </files>
 </component>
