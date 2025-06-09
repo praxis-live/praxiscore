@@ -68,18 +68,18 @@ for %%i in ("%~dp0..") do set "BASEDIR=%%~fi"
 set REPO=
 
 
-if exist %BASEDIR%\jdk set JAVA_HOME=%BASEDIR%\jdk
+if exist "%BASEDIR%\jdk" set JAVA_HOME="%BASEDIR%\jdk"
 
-if not "%JAVA_HOME%"=="" set JAVACMD=%JAVA_HOME%\bin\java
+if not "%JAVA_HOME%"=="" set JAVACMD="%JAVA_HOME%\bin\java"
 
 if "%JAVACMD%"=="" set JAVACMD=java
 
-if "%REPO%"=="" set REPO=%BASEDIR%\mods
+if "%REPO%"=="" set REPO="%BASEDIR%\mods"
 
 @REM Reaching here means variables are defined and arguments have been captured
 :endInit
 
-"%JAVACMD%" %JAVA_OPTS% --add-modules=ALL-DEFAULT -p "%REPO%" -Dapp.name="praxis" -Dapp.repo="%REPO%" -Dapp.home="%BASEDIR%" -Dbasedir="%BASEDIR%" -m "org.praxislive.bin/org.praxislive.bin.Main" %CMD_LINE_ARGS%
+"%JAVACMD%" "@%BASEDIR%\etc\java.cfg" %JAVA_OPTS% -p "%REPO%" -Dapp.name="praxis" -Dapp.repo="%REPO%" -Dapp.home="%BASEDIR%" -Dbasedir="%BASEDIR%" -m "org.praxislive.bin/org.praxislive.bin.Main" %CMD_LINE_ARGS%
 if %ERRORLEVEL% NEQ 0 goto error
 goto end
 
