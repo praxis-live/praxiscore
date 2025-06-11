@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2020 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,6 +40,7 @@ import processing.core.PGraphics;
 import processing.core.PImage;
 import processing.core.PSurface;
 import processing.lwjgl.PLWJGL;
+import processing.lwjgl.PSurfaceLWJGL;
 
 /**
  *
@@ -259,15 +260,12 @@ public class PGLPlayer implements Player {
         protected PGraphics makeGraphics(int w, int h, String renderer, String path, boolean primary) {
             if (PGLGraphics.ID.equals(renderer) || P2D.equals(renderer)) {
                 PGLGraphics pgl = new PGLGraphics(context, primary, w, h);
-//                pgl.setParent(this);
                 return pgl;
             } else if (PGLGraphics3D.ID.equals(renderer) || P3D.equals(renderer)) {
                 PGLGraphics3D pgl3d = new PGLGraphics3D(context, primary, w, h);
-//                pgl3d.setParent(this);
                 return pgl3d;
             } else {
                 throw new Error();
-//            return super.makeGraphics(w, h, renderer, path, primary);
             }
         }
 
@@ -307,9 +305,11 @@ public class PGLPlayer implements Player {
 
         @Override
         protected PSurface initSurface() {
-//            PSurfaceJOGL.profile = null;
             PSurface s = super.initSurface();
             s.setTitle(wHints.getTitle());
+            if (wHints.isUndecorated() && s instanceof PSurfaceLWJGL gls) {
+                gls.setUndecorated(true);
+            }
             return s;
         }
         @Override
@@ -348,7 +348,7 @@ public class PGLPlayer implements Player {
             }
             PImage img = context.asImage(pglSurface);
             context.primary().endOffscreen();
-            clear();
+            background(0, 0, 0);
             translate(width / 2, height / 2);
             rotate(radians(outputRotation));
             image(img, -outputWidth / 2, -outputHeight / 2,
