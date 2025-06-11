@@ -157,8 +157,8 @@ public class PGLPlayer implements Player {
                     }
 
                 });
-            } 
-            
+            }
+
             if (outputDevice > -1) {
                 PApplet.runSketch(new String[]{
                     "--display=" + (outputDevice + 1),
@@ -245,15 +245,11 @@ public class PGLPlayer implements Player {
         Throwable error;
 
         private final PGLContext context;
-        private final boolean transformEvents;
         private boolean rendering;
         private PGLSurface pglSurface;
 
         private Applet() {
             context = new PGLContext(this, profile, surfaceWidth, surfaceHeight);
-            transformEvents = surfaceWidth != outputWidth
-                    || surfaceHeight != outputHeight
-                    || outputRotation != 0;
         }
 
         @Override
@@ -307,11 +303,13 @@ public class PGLPlayer implements Player {
         protected PSurface initSurface() {
             PSurface s = super.initSurface();
             s.setTitle(wHints.getTitle());
+            s.setResizable(true);
             if (wHints.isUndecorated() && s instanceof PSurfaceLWJGL gls) {
                 gls.setUndecorated(true);
             }
             return s;
         }
+
         @Override
         public void setup() {
             assert pglSurface == null;
@@ -330,12 +328,31 @@ public class PGLPlayer implements Player {
         @Override
         public synchronized void draw() {
             time = clock.getTime() + frameNanos;
-            if (transformEvents) {
+            // @TODO clamp to window size if allowing window resizing
+            int renderWidth = outputWidth;
+            int renderHeight = outputHeight;
+            boolean vertical = outputRotation == 90 || outputRotation == 270;
+            if (vertical) {
+                if (height < renderWidth || width < renderHeight) {
+                    double ratio = Math.min((double) height / renderWidth, (double) width / renderHeight);
+                    renderWidth *= ratio;
+                    renderHeight *= ratio;
+                }
+            } else {
+                if (width < renderWidth || height < renderHeight) {
+                    double ratio = Math.min((double) width / renderWidth, (double) height / renderHeight);
+                    renderWidth *= ratio;
+                    renderHeight *= ratio;
+                }
+            }
+            if (outputRotation != 0
+                    || surfaceWidth != width
+                    || surfaceHeight != height) {
                 int mX = mouseX;
                 int mY = mouseY;
                 int pmX = pmouseX;
                 int pmY = pmouseY;
-                transformMouse();
+                transformMouse(vertical, renderWidth, renderHeight);
                 fireListeners();
                 sink.process(pglSurface, time);
                 mouseX = mX;
@@ -351,48 +368,68 @@ public class PGLPlayer implements Player {
             background(0, 0, 0);
             translate(width / 2, height / 2);
             rotate(radians(outputRotation));
-            image(img, -outputWidth / 2, -outputHeight / 2,
-                    outputWidth, outputHeight);
+            image(img, -renderWidth / 2, -renderHeight / 2,
+                    renderWidth, renderHeight);
         }
 
-        private void transformMouse() {
+        private void transformMouse(boolean vertical, int renderWidth, int renderHeight) {
+            double renderWidthRatio = (double) surfaceWidth / renderWidth;
+            double renderHeightRatio = (double) surfaceHeight / renderHeight;
+            int xformRenderWidth = vertical ? renderHeight : renderWidth;
+            int xformRenderHeight = vertical ? renderWidth : renderHeight;
+            if (width > xformRenderWidth) {
+                int diff = width - xformRenderWidth;
+                mouseX -= diff / 2;
+                pmouseX -= diff / 2;
+                mouseX = mouseX < 0 ? 0 : mouseX > xformRenderWidth ? xformRenderWidth : mouseX;
+                pmouseX = pmouseX < 0 ? 0 : pmouseX > xformRenderWidth ? xformRenderWidth : pmouseX;
+            }
+            if (height > xformRenderHeight) {
+                int diff = height - xformRenderHeight;
+                mouseY -= diff / 2;
+                pmouseY -= diff / 2;
+                mouseY = mouseY < 0 ? 0 : mouseY > xformRenderHeight ? xformRenderHeight : mouseY;
+                pmouseY = pmouseY < 0 ? 0 : pmouseY > xformRenderHeight ? xformRenderHeight : pmouseY;
+            }
+
             double x, y;
             switch (outputRotation) {
-                case 90:
-                    x = mouseY * ((double) surfaceWidth / outputWidth);
-                    y = mouseX * ((double) surfaceHeight / outputHeight);
+                case 90 -> {
+                    x = mouseY * renderWidthRatio;
+                    y = mouseX * renderHeightRatio;
                     mouseX = (int) (x);
                     mouseY = (int) (surfaceHeight - y);
-                    x = pmouseY * ((double) surfaceWidth / outputWidth);
-                    y = pmouseX * ((double) surfaceHeight / outputHeight);
+                    x = pmouseY * renderWidthRatio;
+                    y = pmouseX * renderHeightRatio;
                     pmouseX = (int) (x);
                     pmouseY = (int) (surfaceHeight - y);
-                    break;
-                case 180:
-                    x = mouseX * ((double) surfaceWidth / outputWidth);
-                    y = mouseY * ((double) surfaceHeight / outputHeight);
+                }
+                case 180 -> {
+                    x = mouseX * renderWidthRatio;
+                    y = mouseY * renderHeightRatio;
                     mouseX = (int) (surfaceWidth - x);
                     mouseY = (int) (surfaceHeight - y);
-                    x = pmouseX * ((double) surfaceWidth / outputWidth);
-                    y = pmouseY * ((double) surfaceHeight / outputHeight);
+                    x = pmouseX * renderWidthRatio;
+                    y = pmouseY * renderHeightRatio;
                     pmouseX = (int) (surfaceWidth - x);
                     pmouseY = (int) (surfaceHeight - y);
-                    break;
-                case 270:
-                    x = mouseY * ((double) surfaceWidth / outputWidth);
-                    y = mouseX * ((double) surfaceHeight / outputHeight);
+                }
+                case 270 -> {
+                    x = mouseY * renderWidthRatio;
+                    y = mouseX * renderHeightRatio;
                     mouseX = (int) (surfaceWidth - x);
                     mouseY = (int) (y);
-                    x = pmouseY * ((double) surfaceWidth / outputWidth);
-                    y = pmouseX * ((double) surfaceHeight / outputHeight);
+                    x = pmouseY * renderWidthRatio;
+                    y = pmouseX * renderHeightRatio;
                     pmouseX = (int) (surfaceWidth - x);
                     pmouseY = (int) (y);
-                    break;
-                default:
-                    mouseX *= ((double) surfaceWidth / outputWidth);
-                    mouseY *= ((double) surfaceHeight / outputHeight);
-                    pmouseX *= ((double) surfaceWidth / outputWidth);
-                    pmouseY *= ((double) surfaceHeight / outputHeight);
+                }
+                default -> {
+                    mouseX *= renderWidthRatio;
+                    mouseY *= renderHeightRatio;
+                    pmouseX *= renderWidthRatio;
+                    pmouseY *= renderHeightRatio;
+                }
             }
 
         }
