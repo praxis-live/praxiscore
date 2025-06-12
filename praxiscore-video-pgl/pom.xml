@@ -36,12 +36,12 @@
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-core</artifactId>
-      <version>4.430.1</version>
+      <version>4.430.2</version>
     </dependency>
     <dependency>
       <groupId>org.praxislive.libp5x</groupId>
       <artifactId>processing-lwjgl</artifactId>
-      <version>4.430.1</version>
+      <version>4.430.2</version>
     </dependency>
 
     <dependency>
