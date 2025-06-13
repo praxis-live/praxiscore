@@ -1,5 +1,5 @@
 @REM ----------------------------------------------------------------------------
-@REM  Copyright (c) 2023 Neil C Smith.
+@REM  Copyright (c) 2025 Neil C Smith.
 @REM
 @REM  Licensed under the Apache License, Version 2.0 (the "License");
 @REM  you may not use this file except in compliance with the License.
@@ -68,13 +68,13 @@ for %%i in ("%~dp0..") do set "BASEDIR=%%~fi"
 set REPO=
 
 
-if exist "%BASEDIR%\jdk" set JAVA_HOME="%BASEDIR%\jdk"
+if exist "%BASEDIR%\jdk" set "JAVA_HOME=%BASEDIR%\jdk"
 
-if not "%JAVA_HOME%"=="" set JAVACMD="%JAVA_HOME%\bin\java"
+if not "%JAVA_HOME%"=="" set "JAVACMD=%JAVA_HOME%\bin\java"
 
 if "%JAVACMD%"=="" set JAVACMD=java
 
-if "%REPO%"=="" set REPO="%BASEDIR%\mods"
+if "%REPO%"=="" set "REPO=%BASEDIR%\mods"
 
 @REM Reaching here means variables are defined and arguments have been captured
 :endInit
