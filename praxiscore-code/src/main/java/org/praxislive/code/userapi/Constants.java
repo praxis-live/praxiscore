@@ -24,10 +24,10 @@ package org.praxislive.code.userapi;
 import org.praxislive.core.services.LogLevel;
 
 /**
- *
- *
+ * Various constants for use in delegate code. All values are static imported in
+ * the default delegate import rules.
  */
-public class Constants {
+public final class Constants {
 
     private Constants() {
     }
@@ -78,7 +78,6 @@ public class Constants {
     /**
      * Value of PI * 2.
      */
-    @Deprecated
     public static final double TWO_PI = PI * 2;
 
     /**
