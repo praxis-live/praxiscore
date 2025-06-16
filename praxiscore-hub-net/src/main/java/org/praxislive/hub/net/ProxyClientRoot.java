@@ -48,6 +48,7 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 
 import static java.lang.System.Logger.Level;
+import java.util.stream.Stream;
 
 /**
  *
@@ -192,7 +193,7 @@ class ProxyClientRoot extends AbstractRoot {
                     Message.System.HELLO,
                     buildHLOParams()
             ))).sync();
-            if (helloLatch.await(10, TimeUnit.SECONDS)) {
+            if (helloLatch.await(NetworkCoreRoot.TIMEOUT, TimeUnit.SECONDS)) {
                 LOG.log(Level.DEBUG, "/HLO received OK");
             } else {
                 LOG.log(Level.ERROR, "Unable to connect");
@@ -301,6 +302,12 @@ class ProxyClientRoot extends AbstractRoot {
     private void destroyChild() {
         if (execProcess != null) {
             boolean exited = false;
+            try (Stream<ProcessHandle> desc = execProcess.descendants()) {
+                desc.forEach(ProcessHandle::destroy);
+            } catch (Exception ex) {
+                // for IDE where handle is not accessible from Process implementation
+                LOG.log(Level.DEBUG, ex);
+            }
             try {
                 execProcess.destroy();
                 exited = execProcess.waitFor(10, TimeUnit.SECONDS);
