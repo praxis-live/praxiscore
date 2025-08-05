@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -53,7 +53,7 @@ final class WrapperControlDescriptor extends ControlDescriptor<WrapperControlDes
             Function<CodeContext<?>, Control> attacher,
             BiConsumer<CodeContext<?>, TreeWriter> writer) {
         super(WrapperControlDescriptor.class, id, Category.Internal, index);
-        this.info = Objects.requireNonNull(info);
+        this.info = info;
         this.attacher = Objects.requireNonNull(attacher);
         this.writer = writer;
     }

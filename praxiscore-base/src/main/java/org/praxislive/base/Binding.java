@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2019 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -33,10 +33,28 @@ import org.praxislive.core.Value;
 public abstract class Binding {
 
     /**
-     * Possible rates for syncing.
+     * Rates for perdiodic syncing. Except for {@code None}, how these values
+     * translate to a sync period in milliseconds is governed by the
+     * {@link BindingContext} implementation.
      */
     public static enum SyncRate {
-        None, Low, Medium, High;
+
+        /**
+         * No periodic sync.
+         */
+        None,
+        /**
+         * Sync at a low periodic rate.
+         */
+        Low,
+        /**
+         * Sync at a medium periodic rate.
+         */
+        Medium,
+        /**
+         * Sync at a high periodic rate.
+         */
+        High;
     }
 
     /**
@@ -53,14 +71,36 @@ public abstract class Binding {
      */
     public abstract List<Value> getValues();
 
+    /**
+     * Method called by adaptors to send a call to the bound control.
+     *
+     * @param adaptor sending adaptor
+     * @param args argument list
+     */
     protected abstract void send(Adaptor adaptor, List<Value> args);
 
+    /**
+     * Method called by adaptors on configuration changes such as activity or
+     * sync rate to allow bindings to recalculate their configuration.
+     *
+     * @param adaptor changed adaptor
+     */
     protected abstract void updateAdaptorConfiguration(Adaptor adaptor);
 
+    /**
+     * Method for Binding implementations to connect to an adaptor.
+     *
+     * @param adaptor adaptor to connect
+     */
     protected void bind(Adaptor adaptor) {
         adaptor.setBinding(this);
     }
 
+    /**
+     * Method for Binding implementations to disconnect from an adaptor.
+     *
+     * @param adaptor adaptor to disconnect
+     */
     protected void unbind(Adaptor adaptor) {
         adaptor.setBinding(null);
     }
@@ -75,6 +115,9 @@ public abstract class Binding {
         private boolean active;
 
         private void setBinding(Binding binding) {
+            if (this.binding != null && binding != null) {
+                throw new IllegalStateException("Binding adaptor already connected");
+            }
             this.binding = binding;
             updateBindingConfiguration();
         }
@@ -158,7 +201,7 @@ public abstract class Binding {
          * will normally send quiet calls in such cases as the values are
          * expected to be superseded before a reply is received.
          *
-         * @return value currently being adjuested
+         * @return value currently being adjusted
          */
         protected boolean getValueIsAdjusting() {
             return false;

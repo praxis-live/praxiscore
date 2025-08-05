@@ -196,11 +196,14 @@ public class BindingContextControl implements Control, BindingContext {
             activeCall = call;
             activeAdaptor = adaptor;
             if (isWritableProperty) {
+                List<Value> oldValues = values;
                 values = call.args();
-                for (Adaptor ad : adaptors) {
-                    if (ad != adaptor) {
-                        ad.update();
-                    }
+                if (!Objects.equals(oldValues, values)) {
+                    adaptors.forEach(ad -> {
+                        if (ad != adaptor) {
+                            ad.update();
+                        }
+                    });
                 }
             }
         }
@@ -314,9 +317,10 @@ public class BindingContextControl implements Control, BindingContext {
                     activeAdaptor = null;
                 }
                 if (isSyncable) {
+                    List<Value> oldValues = values;
                     values = call.args();
-                    for (Adaptor a : adaptors) {
-                        a.update();
+                    if (!Objects.equals(oldValues, values)) {
+                        adaptors.forEach(Adaptor::update);
                     }
                 }
                 activeCall = null;

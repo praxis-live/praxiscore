@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,13 +22,19 @@
  */
 package org.praxislive.code.userapi;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
+import org.praxislive.base.Binding;
+import org.praxislive.base.BindingContext;
 import org.praxislive.code.CodeContext;
 import org.praxislive.code.DefaultCodeDelegate;
+import org.praxislive.core.ControlAddress;
+import org.praxislive.core.ControlInfo;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.Value;
@@ -44,14 +50,15 @@ public abstract class Property {
     private final static long TO_NANO = 1000000000;
 
     private final Listener listener;
+    private final CopyOnWriteArrayList<BaseLink> links;
 
     private CodeContext<?> context;
     private Animator animator;
-    private BaseLink[] links;
+    private Sync sync;
 
     protected Property() {
         this.listener = new Listener();
-        this.links = new BaseLink[0];
+        this.links = new CopyOnWriteArrayList<>();
     }
 
     protected void attach(CodeContext<?> context, Property previous) {
@@ -98,6 +105,7 @@ public abstract class Property {
      * Return the current value as a double, or the provided default if the
      * value isn't numeric.
      *
+     * @param def default value to return if value is not numeric
      * @return current value as double
      */
     public double getDouble(double def) {
@@ -119,6 +127,7 @@ public abstract class Property {
      * Return the current value as an int, or the provided default if the value
      * isn't numeric. Floating point values are rounded to the nearest int.
      *
+     * @param def default value to return if value is not numeric
      * @return current value as int
      */
     public int getInt(int def) {
@@ -139,6 +148,8 @@ public abstract class Property {
      * Return the current value as a boolean, or the provided default if the
      * value isn't a valid boolean.
      *
+     * @param def default value to return if value is not convertible to a
+     * boolean
      * @return current value as boolean
      */
     public boolean getBoolean(boolean def) {
@@ -163,7 +174,6 @@ public abstract class Property {
         }
         return this;
     }
-    
 
     /**
      * Set the current value. Also stops any active animation.
@@ -268,7 +278,11 @@ public abstract class Property {
      * @return this
      */
     public Property clearLinks() {
-        links = new BaseLink[0];
+        links.clear();
+        if (sync != null) {
+            sync.unbind();
+            sync = null;
+        }
         return this;
     }
 
@@ -298,6 +312,24 @@ public abstract class Property {
     }
 
     /**
+     * Return the {@link Sync} for this Property, creating it if necessary. The
+     * Sync instance allows to synchronize the value of this property with
+     * another control.
+     * <p>
+     * The Sync works using Linkables. Clearing links will also disable
+     * synchronization.
+     *
+     * @return property's Sync
+     */
+    public Sync sync() {
+        if (sync == null) {
+            sync = new Sync(this);
+            links.add(sync.link());
+        }
+        return sync;
+    }
+
+    /**
      * Return whether the property is currently animating.
      *
      * @return property animator active
@@ -313,27 +345,27 @@ public abstract class Property {
     }
 
     protected void updateLinks(double value) {
-        for (BaseLink link : links) {
+        links.forEach(link -> {
             try {
                 link.update(value);
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
-        }
+        });
     }
 
     protected void updateLinks(Value value) {
-        for (BaseLink link : links) {
+        links.forEach(link -> {
             try {
                 link.update(value);
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
-        }
+        });
     }
 
     protected boolean hasLinks() {
-        return links.length > 0;
+        return !links.isEmpty();
     }
 
     protected void reset() {
@@ -382,7 +414,7 @@ public abstract class Property {
             }
             this.consumer = Objects.requireNonNull(consumer);
             update(getDouble());
-            links = ArrayUtils.add(links, this);
+            links.add(this);
         }
 
         @Override
@@ -412,7 +444,7 @@ public abstract class Property {
             }
             this.consumer = Objects.requireNonNull(consumer);
             update(get());
-            links = ArrayUtils.add(links, this);
+            links.add(this);
         }
 
         @Override
@@ -435,7 +467,7 @@ public abstract class Property {
      * Provides keyframe animation support for Property. Methods return this so
      * that they can be chained - eg. {@code to(1, 0).in(1, 0.25).easeInOut()}
      */
-    public static class Animator {
+    public static final class Animator {
 
         private final static long[] DEFAULT_IN = new long[]{0};
         private final static Easing[] DEFAULT_EASING = new Easing[]{Easing.linear};
@@ -600,13 +632,15 @@ public abstract class Property {
         }
 
         /**
-         * Set a consumer to be called each time the Animator finishes animation.
-         * Also calls the consumer immediately if no animation is currently active.
+         * Set a consumer to be called each time the Animator finishes
+         * animation. Also calls the consumer immediately if no animation is
+         * currently active.
          * <p>
          * Unlike restarting an animation by polling isAnimating(), an animation
          * started inside this consumer will take into account any time overrun
-         * between the target and actual finish time of the completing animation.
-         * 
+         * between the target and actual finish time of the completing
+         * animation.
+         *
          * @param whenDoneConsumer function to call
          * @return this
          */
@@ -671,6 +705,122 @@ public abstract class Property {
             if (!animating) {
                 property.stopClock();
             }
+        }
+
+    }
+
+    /**
+     * The Sync instance of a Property allows for synchronizing the value of a
+     * property to a control on another component. Synchronization is
+     * bi-directional. The Sync instance can be obtained using {@link #sync()}.
+     */
+    public static final class Sync {
+
+        private final Property property;
+        private final Adaptor adaptor;
+
+        private BindingContext bindingContext;
+        private ControlAddress boundAddress;
+
+        private Sync(Property property) {
+            this.property = property;
+            this.adaptor = new Adaptor();
+        }
+
+        /**
+         * Bind to the specified control. A Sync can only be bound to one
+         * control at a time.
+         *
+         * @param address binding address to synchonize to
+         * @return this
+         */
+        public Sync bindTo(ControlAddress address) {
+            Objects.requireNonNull(address);
+            if (boundAddress != null) {
+                bindingContext.unbind(address, adaptor);
+            }
+            boundAddress = null;
+            bindingContext = findBindingContext();
+            boundAddress = address;
+            bindingContext.bind(address, adaptor);
+            adaptor.update();
+            return this;
+        }
+
+        /**
+         * Unbind and stop synchronization.
+         *
+         * @return this
+         */
+        public Sync unbind() {
+            if (boundAddress != null && bindingContext != null) {
+                bindingContext.unbind(boundAddress, adaptor);
+                boundAddress = null;
+                bindingContext = null;
+            }
+            return this;
+        }
+
+        /**
+         * Obtain the {@link ControlInfo} for the bound control, if and when
+         * synchronized.
+         *
+         * @return bound control info
+         */
+        public Optional<ControlInfo> info() {
+            return Optional.ofNullable(adaptor.getBinding())
+                    .flatMap(Binding::getControlInfo);
+        }
+
+        private BindingContext findBindingContext() {
+            return property.context.getLookup()
+                    .find(BindingContext.class).orElseThrow();
+        }
+
+        private BaseLink link() {
+            return adaptor;
+        }
+
+        private class Adaptor extends Binding.Adaptor implements BaseLink {
+
+            private boolean inSync;
+
+            private Adaptor() {
+                setActive(true);
+                setSyncRate(Binding.SyncRate.Medium);
+            }
+
+            @Override
+            protected void update() {
+                if (!property.isAnimating()) {
+                    List<Value> values = getBinding().getValues();
+                    if (!values.isEmpty()) {
+                        inSync = true;
+                        property.set(values.get(0));
+                        inSync = false;
+                    }
+                }
+            }
+
+            @Override
+            protected boolean getValueIsAdjusting() {
+                return property.isAnimating();
+            }
+
+            @Override
+            public void update(double value) {
+                if (!inSync) {
+                    send(List.of(PNumber.of(value)));
+                }
+            }
+
+            @Override
+            public void update(Value value) {
+                if (!inSync) {
+                    send(List.of(value));
+                }
+            }
+
         }
 
     }
