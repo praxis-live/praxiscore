@@ -22,7 +22,10 @@
 package org.praxislive.base;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Value;
 
@@ -235,10 +238,169 @@ public abstract class Binding {
         }
 
         /**
-         * Optional hook called whenever values have been updated, by a sync
-         * call or another Adaptor.
+         * Optional hook called whenever values may have been updated, by a sync
+         * call or another Adaptor. Checking whether the values have actually
+         * changed is left up to the adaptor implementation, as adaptors may
+         * have different requirements.
          */
         protected void update() {
+        }
+
+    }
+
+    /**
+     * An adaptor implementation for syncing to properties, as defined by
+     * {@link ControlInfo.Type#Property} or
+     * {@link ControlInfo.Type#ReadOnlyProperty}.
+     * <p>
+     * This class takes advantage of the fact that property controls only
+     * support a single value argument. It also replaces hooks with optional
+     * handlers.
+     */
+    public static final class PropertyAdaptor extends Adaptor {
+
+        private Value value;
+        private ControlInfo info;
+        private Consumer<Value> onChangeHandler;
+        private Consumer<PropertyAdaptor> onConfigChangeHandler;
+        private Consumer<PropertyAdaptor> onSyncHandler;
+        private Predicate<PropertyAdaptor> adjustingHandler;
+
+        /**
+         * Access the property value if available.
+         *
+         * @return property value
+         */
+        public Optional<Value> value() {
+            return Optional.ofNullable(value);
+        }
+
+        /**
+         * Access the property info if available. If the adaptor is bound to a
+         * non-property control the Optional will be empty.
+         *
+         * @return property info
+         */
+        public Optional<ControlInfo> info() {
+            return Optional.ofNullable(info);
+        }
+
+        /**
+         * Send a new value to the bound property. Other attached Adaptors will
+         * be immediately updated.
+         *
+         * @param value new value
+         */
+        public void send(Value value) {
+            send(List.of(value));
+        }
+
+        /**
+         * Set a handler to be called when the value of the property changes.
+         * Only one change handler may be set at a time. A value of {code null}
+         * will remove the handler.
+         *
+         * @param onChangeHandler handler to be called on value change
+         * @return this for chaining
+         */
+        public PropertyAdaptor onChange(Consumer<Value> onChangeHandler) {
+            this.onChangeHandler = onChangeHandler;
+            return this;
+        }
+
+        /**
+         * Set a handler to be called when the configuration changes, such as
+         * when the {@link #info()} has updated. Only one configuration change
+         * handler may be set at a time. A value of {code null} will remove the
+         * handler.
+         *
+         * @param onConfigChangeHandler handler to be called on configuration
+         * change
+         * @return this for chaining
+         */
+        public PropertyAdaptor onConfigChange(Consumer<PropertyAdaptor> onConfigChangeHandler) {
+            this.onConfigChangeHandler = onConfigChangeHandler;
+            return this;
+        }
+
+        /**
+         * Set a handler to be called whenever the binding has received a
+         * successful sync response. The value may not have changed. Only one
+         * sync handler may be set at a time. A value of {code null} will remove
+         * the handler.
+         *
+         * @param onSyncHandler handler to be called on sync
+         * @return this for chaining
+         */
+        public PropertyAdaptor onSync(Consumer<PropertyAdaptor> onSyncHandler) {
+            this.onSyncHandler = onSyncHandler;
+            return this;
+        }
+
+        /**
+         * Set a handler to be used whenever the adaptor's
+         * {@link #getValueIsAdjusting()} hook is called. The handler should
+         * return {@code true} if the value is in the process of being
+         * continually updated. The Binding implementation will normally send
+         * quiet calls and reduce syncing in such cases as the value is expected
+         * to be superseded before a reply is received.
+         * <p>
+         * Only one adjusting handler may be set at a time. A value of {code
+         * null} will remove the handler. An adaptor without an adjusting
+         * handler will always return {@code false} for the adjustment query.
+         *
+         * @param adjustingHandler handler for value is adjusting
+         * @return this for chaining
+         */
+        public PropertyAdaptor onCheckAdjusting(Predicate<PropertyAdaptor> adjustingHandler) {
+            this.adjustingHandler = adjustingHandler;
+            return this;
+        }
+
+        @Override
+        protected void update() {
+            Binding binding = getBinding();
+            Value oldValue = value;
+            if (info != null && binding != null) {
+                List<Value> values = binding.getValues();
+                if (values.size() == 1) {
+                    value = values.get(0);
+                } else {
+                    value = null;
+                }
+            } else {
+                value = null;
+            }
+            if (!Objects.equals(oldValue, value) && onChangeHandler != null && value != null) {
+                onChangeHandler.accept(value);
+            }
+            if (onSyncHandler != null) {
+                onSyncHandler.accept(this);
+            }
+        }
+
+        @Override
+        protected boolean getValueIsAdjusting() {
+            if (adjustingHandler == null) {
+                return false;
+            } else {
+                return adjustingHandler.test(this);
+            }
+        }
+
+        @Override
+        protected void updateBindingConfiguration() {
+            info = Optional.ofNullable(getBinding())
+                    .flatMap(Binding::getControlInfo)
+                    .filter(i -> i.controlType() == ControlInfo.Type.Property
+                    || i.controlType() == ControlInfo.Type.ReadOnlyProperty)
+                    .orElse(null);
+            if (info == null) {
+                value = null;
+            }
+            if (onConfigChangeHandler != null) {
+                onConfigChangeHandler.accept(this);
+            }
         }
 
     }

@@ -153,7 +153,7 @@ public class BindingContextControl implements Control, BindingContext {
         private BindingImpl(ControlAddress boundAddress) {
             adaptors = new ArrayList<>();
             this.boundAddress = boundAddress;
-            values = Collections.emptyList();
+            values = List.of();
             if (ComponentProtocol.INFO.equals(boundAddress.controlID())) {
                 infoAdaptor = null;
                 bindingInfo = ComponentProtocol.INFO_INFO;
@@ -196,15 +196,12 @@ public class BindingContextControl implements Control, BindingContext {
             activeCall = call;
             activeAdaptor = adaptor;
             if (isWritableProperty) {
-                List<Value> oldValues = values;
                 values = call.args();
-                if (!Objects.equals(oldValues, values)) {
-                    adaptors.forEach(ad -> {
-                        if (ad != adaptor) {
-                            ad.update();
-                        }
-                    });
-                }
+                adaptors.forEach(ad -> {
+                    if (ad != adaptor) {
+                        ad.update();
+                    }
+                });
             }
         }
 
@@ -295,6 +292,9 @@ public class BindingContextControl implements Control, BindingContext {
                 isSyncable = false;
                 isWritableProperty = false;
             }
+            if (!isSyncable) {
+                values = List.of();
+            }
             bindingInfo = info;
             for (Adaptor a : adaptors) {
                 a.updateBindingConfiguration();
@@ -317,11 +317,8 @@ public class BindingContextControl implements Control, BindingContext {
                     activeAdaptor = null;
                 }
                 if (isSyncable) {
-                    List<Value> oldValues = values;
                     values = call.args();
-                    if (!Objects.equals(oldValues, values)) {
-                        adaptors.forEach(Adaptor::update);
-                    }
+                    adaptors.forEach(Adaptor::update);
                 }
                 activeCall = null;
             }

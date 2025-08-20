@@ -22,7 +22,6 @@
  */
 package org.praxislive.code.userapi;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -717,21 +716,42 @@ public abstract class Property {
     public static final class Sync {
 
         private final Property property;
-        private final Adaptor adaptor;
+        private final Binding.PropertyAdaptor adaptor;
+        private final BaseLink link;
 
         private BindingContext bindingContext;
         private ControlAddress boundAddress;
+        private boolean inSync;
 
         private Sync(Property property) {
             this.property = property;
-            this.adaptor = new Adaptor();
+            this.adaptor = new Binding.PropertyAdaptor();
+            this.adaptor.onChange(this::onChangeImpl)
+                    .onCheckAdjusting(a -> isAdjusting());
+            this.adaptor.setActive(true);
+            this.adaptor.setSyncRate(Binding.SyncRate.Medium);
+            this.link = new BaseLink() {
+                @Override
+                public void update(double value) {
+                    if (!inSync) {
+                        adaptor.send(PNumber.of(value));
+                    }
+                }
+
+                @Override
+                public void update(Value value) {
+                    if (!inSync) {
+                        adaptor.send(value);
+                    }
+                }
+            };
         }
 
         /**
          * Bind to the specified control. A Sync can only be bound to one
          * control at a time.
          *
-         * @param address binding address to synchonize to
+         * @param address binding address to synchronize to
          * @return this
          */
         public Sync bindTo(ControlAddress address) {
@@ -743,7 +763,7 @@ public abstract class Property {
             bindingContext = findBindingContext();
             boundAddress = address;
             bindingContext.bind(address, adaptor);
-            adaptor.update();
+            adaptor.value().ifPresent(this::onChangeImpl);
             return this;
         }
 
@@ -768,8 +788,7 @@ public abstract class Property {
          * @return bound control info
          */
         public Optional<ControlInfo> info() {
-            return Optional.ofNullable(adaptor.getBinding())
-                    .flatMap(Binding::getControlInfo);
+            return adaptor.info();
         }
 
         private BindingContext findBindingContext() {
@@ -777,50 +796,20 @@ public abstract class Property {
                     .find(BindingContext.class).orElseThrow();
         }
 
-        private BaseLink link() {
-            return adaptor;
+        private void onChangeImpl(Value value) {
+            if (!isAdjusting()) {
+                inSync = true;
+                property.set(value);
+                inSync = false;
+            }
         }
 
-        private class Adaptor extends Binding.Adaptor implements BaseLink {
+        private boolean isAdjusting() {
+            return property.isAnimating();
+        }
 
-            private boolean inSync;
-
-            private Adaptor() {
-                setActive(true);
-                setSyncRate(Binding.SyncRate.Medium);
-            }
-
-            @Override
-            protected void update() {
-                if (!property.isAnimating()) {
-                    List<Value> values = getBinding().getValues();
-                    if (!values.isEmpty()) {
-                        inSync = true;
-                        property.set(values.get(0));
-                        inSync = false;
-                    }
-                }
-            }
-
-            @Override
-            protected boolean getValueIsAdjusting() {
-                return property.isAnimating();
-            }
-
-            @Override
-            public void update(double value) {
-                if (!inSync) {
-                    send(List.of(PNumber.of(value)));
-                }
-            }
-
-            @Override
-            public void update(Value value) {
-                if (!inSync) {
-                    send(List.of(value));
-                }
-            }
-
+        private BaseLink link() {
+            return link;
         }
 
     }
