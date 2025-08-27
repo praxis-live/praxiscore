@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.base.AbstractRoot;
+import org.praxislive.base.BindingContextControl;
 import org.praxislive.base.MapTreeWriter;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -61,8 +62,10 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     private final Control stopControl;
     private final Control isRunningControl;
     private final Control serializeControl;
+    private final Control bindingsControl;
     private final SharedCodeProperty sharedCode;
 
+    private BindingContextControl bindings;
     private Lookup lookup;
 
     CodeRoot() {
@@ -99,19 +102,33 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                 ctxt.flush();
             }
         });
+        bindingsControl = (call, router) -> {
+            if (bindings != null) {
+                bindings.call(call, router);
+            } else {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Override
     public Controller initialize(String ID, RootHub hub) {
-        var controller = root.initialize(ID, hub);
+        Controller ctrl = root.initialize(ID, hub);
+        bindings = root.createBindingContext();
         hierarchyChanged();
-        return controller;
+        return ctrl;
     }
 
     @Override
     public Lookup getLookup() {
         if (lookup == null) {
-            lookup = Lookup.of(root.getLookup(), sharedCode.getSharedCodeContext());
+            if (bindings != null) {
+                lookup = Lookup.of(root.getLookup(),
+                        sharedCode.getSharedCodeContext(), bindings);
+            } else {
+                lookup = Lookup.of(root.getLookup(),
+                        sharedCode.getSharedCodeContext());
+            }
         }
         return lookup;
     }
@@ -274,6 +291,11 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     getInternalIndex(),
                     ctxt -> ctxt instanceof Context c ? c.getComponent().serializeControl : null
             ));
+            addControl(new WrapperControlDescriptor("_bindings",
+                    null,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().bindingsControl : null
+            ));
         }
 
         @Override
@@ -399,6 +421,13 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
         private void stop() {
             setIdle();
+        }
+
+        private BindingContextControl createBindingContext() {
+            return new BindingContextControl(
+                    ControlAddress.of(address(), "_bindings"),
+                    getExecutionContext(),
+                    getRouter());
         }
 
         private class DelegateImpl extends Delegate {

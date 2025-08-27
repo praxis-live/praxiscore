@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -60,7 +61,7 @@ public class BindingContextControl implements Control, BindingContext {
     private final PacketRouter router;
     private final ControlAddress controlAddress;
     private final Map<ControlAddress, BindingImpl> bindings;
-    private final BindingSyncQueue syncQueue;
+    private final Set<BindingImpl> syncing;
 
     /**
      * Create a BindingContextControl.
@@ -79,7 +80,7 @@ public class BindingContextControl implements Control, BindingContext {
         this.context = Objects.requireNonNull(context);
         this.router = Objects.requireNonNull(router);
         bindings = new LinkedHashMap<>();
-        syncQueue = new BindingSyncQueue(context.getTime());
+        syncing = new CopyOnWriteArraySet<>();
         context.addClockListener(this::tick);
     }
 
@@ -87,7 +88,11 @@ public class BindingContextControl implements Control, BindingContext {
     public void bind(ControlAddress address, Binding.Adaptor adaptor) {
         Objects.requireNonNull(address);
         Objects.requireNonNull(adaptor);
-        BindingImpl binding = bindings.computeIfAbsent(address, BindingImpl::new);
+        BindingImpl binding = bindings.get(address);
+        if (binding == null) {
+            binding = new BindingImpl(address);
+            bindings.put(address, binding);
+        }
         binding.addAdaptor(adaptor);
     }
 
@@ -98,6 +103,7 @@ public class BindingContextControl implements Control, BindingContext {
             binding.removeAdaptor(adaptor);
             if (binding.isEmpty()) {
                 bindings.remove(address);
+                binding.dispose();
             }
         }
     }
@@ -121,75 +127,23 @@ public class BindingContextControl implements Control, BindingContext {
         } else {
             throw new UnsupportedOperationException();
         }
-
     }
 
     private void tick(ExecutionContext source) {
-        syncQueue.setTime(source.getTime());
-        BindingImpl b;
-        while ((b = syncQueue.poll()) != null) {
-            b.processSync();
-        }
-    }
-
-    private static class BindingSyncQueue {
-
-        private final PriorityQueue<BindingSyncElement> q;
-        private long time;
-
-        private BindingSyncQueue(long time) {
-            q = new PriorityQueue<>();
-            this.time = time;
-        }
-
-        private void setTime(long time) {
-            this.time = time;
-        }
-
-        private void add(BindingImpl binding, long time) {
-            q.add(new BindingSyncElement(binding, time));
-        }
-
-        private BindingImpl poll() {
-            if (!q.isEmpty() && q.peek().time - time <= 0) {
-                var element = q.poll();
-                return element != null ? element.binding : null;
-            }
-            return null;
-        }
-
-    }
-
-    private static class BindingSyncElement
-            implements Comparable<BindingSyncElement> {
-
-        private final BindingImpl binding;
-        private final long time;
-
-        private BindingSyncElement(BindingImpl binding, long time) {
-            this.binding = binding;
-            this.time = time;
-        }
-
-        @Override
-        public int compareTo(BindingSyncElement o) {
-            long timeDiff = time - o.time;
-            if (timeDiff == 0) {
-                return hashCode() - o.hashCode();
-            }
-            return timeDiff < 0 ? -1 : 1;
-        }
-
+        long time = source.getTime();
+        syncing.forEach(b -> b.processSync(time));
     }
 
     private class BindingImpl extends Binding {
 
         private final List<Binding.Adaptor> adaptors;
         private final ControlAddress boundAddress;
+        private final InfoAdaptor infoAdaptor;
+
         private ControlInfo bindingInfo;
+        private long nextSyncTime;
         private long syncPeriod;
 
-        private int infoMatchID;
         private boolean isSyncable;
         private boolean isWritableProperty;
         private Call activeCall;
@@ -199,33 +153,33 @@ public class BindingContextControl implements Control, BindingContext {
         private BindingImpl(ControlAddress boundAddress) {
             adaptors = new ArrayList<>();
             this.boundAddress = boundAddress;
-            values = Collections.emptyList();
-        }
-
-        private void addAdaptor(Adaptor adaptor) {
-            if (adaptor == null) {
-                throw new NullPointerException();
-            }
-            if (adaptors.contains(adaptor)) {
-                return;
-            }
-            adaptors.add(adaptor);
-            bind(adaptor);
-            updateAdaptorConfiguration(adaptor); // duplicate functionality
-            if (bindingInfo == null) {
-                sendInfoRequest();
+            values = List.of();
+            if (ComponentProtocol.INFO.equals(boundAddress.controlID())) {
+                infoAdaptor = null;
+                bindingInfo = ComponentProtocol.INFO_INFO;
+                isSyncable = true;
+            } else {
+                ControlAddress infoAddress = boundAddress.component()
+                        .control(ComponentProtocol.INFO);
+                infoAdaptor = new InfoAdaptor();
+                infoAdaptor.setSyncRate(SyncRate.Low);
+                BindingContextControl.this.bind(infoAddress, infoAdaptor);
             }
         }
 
-        private void removeAdaptor(Adaptor adaptor) {
-            if (adaptors.remove(adaptor)) {
-                unbind(adaptor);
-            }
-            updateSyncConfiguration();
+        @Override
+        public Optional<ControlInfo> getControlInfo() {
+            return Optional.ofNullable(bindingInfo);
         }
 
-        private boolean isEmpty() {
-            return adaptors.isEmpty();
+        @Override
+        public List<Value> getValues() {
+            return values;
+        }
+
+        @Override
+        public String toString() {
+            return "BindingImpl : " + boundAddress;
         }
 
         @Override
@@ -243,11 +197,11 @@ public class BindingContextControl implements Control, BindingContext {
             activeAdaptor = adaptor;
             if (isWritableProperty) {
                 values = call.args();
-                for (Adaptor ad : adaptors) {
+                adaptors.forEach(ad -> {
                     if (ad != adaptor) {
                         ad.update();
                     }
-                }
+                });
             }
         }
 
@@ -256,30 +210,61 @@ public class BindingContextControl implements Control, BindingContext {
             updateSyncConfiguration();
         }
 
+        private void addAdaptor(Adaptor adaptor) {
+            if (adaptor == null) {
+                throw new NullPointerException();
+            }
+            if (adaptors.contains(adaptor)) {
+                return;
+            }
+            adaptors.add(adaptor);
+            bind(adaptor);
+            updateAdaptorConfiguration(adaptor); // duplicate functionality
+        }
+
+        private void removeAdaptor(Adaptor adaptor) {
+            if (adaptors.remove(adaptor)) {
+                unbind(adaptor);
+            }
+            updateSyncConfiguration();
+        }
+
+        private void dispose() {
+            if (infoAdaptor != null) {
+                ControlAddress infoAddress = boundAddress.component()
+                        .control(ComponentProtocol.INFO);
+                BindingContextControl.this.unbind(infoAddress, infoAdaptor);
+            }
+        }
+
+        private boolean isEmpty() {
+            return adaptors.isEmpty();
+        }
+
         private void updateSyncConfiguration() {
-            if (isSyncable) {
-                LOG.log(System.Logger.Level.DEBUG, "Updating sync configuration on {0}", boundAddress);
-                boolean active = false;
-                SyncRate highRate = SyncRate.None;
-                for (Adaptor a : adaptors) {
-                    if (a.isActive()) {
-                        active = true;
-                        SyncRate aRate = a.getSyncRate();
-                        if (aRate.compareTo(highRate) > 0) {
-                            highRate = aRate;
-                        }
+            LOG.log(System.Logger.Level.DEBUG, "Updating sync configuration on {0}", boundAddress);
+            boolean active = false;
+            SyncRate highRate = SyncRate.None;
+            for (Adaptor a : adaptors) {
+                if (a.isActive()) {
+                    active = true;
+                    SyncRate aRate = a.getSyncRate();
+                    if (aRate.compareTo(highRate) > 0) {
+                        highRate = aRate;
                     }
                 }
-                if (!active || highRate == SyncRate.None) {
-                    syncPeriod = 0;
-                } else {
-                    syncPeriod = delayForRate(highRate);
-                    processSync();
-                }
-            } else {
-                syncPeriod = 0;
             }
-
+            if (infoAdaptor != null) {
+                infoAdaptor.setActive(active);
+            }
+            if (!isSyncable || !active || highRate == SyncRate.None) {
+                syncPeriod = 0;
+                syncing.remove(this);
+            } else {
+                syncPeriod = delayForRate(highRate);
+                nextSyncTime = 0;
+                syncing.add(this);
+            }
         }
 
         private long delayForRate(SyncRate rate) {
@@ -295,44 +280,22 @@ public class BindingContextControl implements Control, BindingContext {
             };
         }
 
-        private void sendInfoRequest() {
-            ControlAddress toAddress = ControlAddress.of(boundAddress.component(),
-                    ComponentProtocol.INFO);
-            Call call = Call.create(toAddress, controlAddress, context.getTime());
-            infoMatchID = call.matchID();
-            router.route(call);
-        }
-
-        private void processInfo(Call call) {
-            if (call.matchID() == infoMatchID) {
-                List<Value> args = call.args();
-                if (!args.isEmpty()) {
-                    ComponentInfo compInfo = null;
-                    try {
-                        compInfo = ComponentInfo.from(args.get(0)).get();
-                        // @TODO on null?
-                        bindingInfo = compInfo.controlInfo(boundAddress.controlID());
-                        ControlInfo.Type type = bindingInfo.controlType();
-                        isSyncable = (type == ControlInfo.Type.Property)
-                                || (type == ControlInfo.Type.ReadOnlyProperty);
-                        isWritableProperty = (type == ControlInfo.Type.Property);
-                    } catch (Exception ex) {
-                        isSyncable = false;
-                        bindingInfo = null;
-                        LOG.log(System.Logger.Level.WARNING, "" + call + "\n" + compInfo, ex);
-                    }
-                    for (Adaptor a : adaptors) {
-                        a.updateBindingConfiguration();
-                    }
-                    updateSyncConfiguration();
-                }
+        private void updateInfo(ControlInfo info) {
+            if (Objects.equals(bindingInfo, info)) {
+                return;
             }
-        }
-
-        private void processInfoError(Call call) {
-            isSyncable = false;
-            bindingInfo = null;
-            LOG.log(System.Logger.Level.WARNING, "Couldn't get info for {0}", boundAddress);
+            if (info != null) {
+                ControlInfo.Type type = info.controlType();
+                isSyncable = (type == ControlInfo.Type.Property || type == ControlInfo.Type.ReadOnlyProperty);
+                isWritableProperty = (type == ControlInfo.Type.Property);
+            } else {
+                isSyncable = false;
+                isWritableProperty = false;
+            }
+            if (!isSyncable) {
+                values = List.of();
+            }
+            bindingInfo = info;
             for (Adaptor a : adaptors) {
                 a.updateBindingConfiguration();
             }
@@ -355,13 +318,9 @@ public class BindingContextControl implements Control, BindingContext {
                 }
                 if (isSyncable) {
                     values = call.args();
-                    for (Adaptor a : adaptors) {
-                        a.update();
-                    }
+                    adaptors.forEach(Adaptor::update);
                 }
                 activeCall = null;
-            } else if (call.matchID() == infoMatchID) {
-                processInfo(call);
             }
         }
 
@@ -374,30 +333,27 @@ public class BindingContextControl implements Control, BindingContext {
                     LOG.log(System.Logger.Level.DEBUG, "Error on sync call - {0}", call.from());
                 }
                 activeCall = null;
-            } else if (call.matchID() == infoMatchID) {
-                processInfoError(call);
             }
         }
 
-        private void processSync() {
-            long now = context.getTime();
-            if (syncPeriod > 0) {
-                syncQueue.add(this, now + syncPeriod);
+        private void processSync(long time) {
+            if (nextSyncTime == 0 || nextSyncTime - time < 0) {
+                nextSyncTime = time + syncPeriod;
             }
 
             if (activeCall != null) {
                 if (activeCall.isReplyRequired()) {
-                    if ((now - activeCall.time()) < INVOKE_TIMEOUT) {
+                    if ((time - activeCall.time()) < INVOKE_TIMEOUT) {
                         return;
                     }
                 } else {
-                    if ((now - activeCall.time()) < QUIET_TIMEOUT) {
+                    if ((time - activeCall.time()) < QUIET_TIMEOUT) {
                         return;
                     }
                 }
             }
             if (isSyncable) {
-                Call call = Call.create(boundAddress, controlAddress, now);
+                Call call = Call.create(boundAddress, controlAddress, time);
                 router.route(call);
                 activeCall = call;
                 activeAdaptor = null;
@@ -405,14 +361,18 @@ public class BindingContextControl implements Control, BindingContext {
 
         }
 
-        @Override
-        public Optional<ControlInfo> getControlInfo() {
-            return Optional.ofNullable(bindingInfo);
-        }
+        private class InfoAdaptor extends Binding.Adaptor {
 
-        @Override
-        public List<Value> getValues() {
-            return values;
+            @Override
+            protected void update() {
+                List<Value> args = getBinding().getValues();
+                if (!args.isEmpty()) {
+                    updateInfo(ComponentInfo.from(args.get(0))
+                            .map(cmp -> cmp.controlInfo(boundAddress.controlID()))
+                            .orElse(null));
+                }
+            }
+
         }
 
     }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -329,6 +329,11 @@ public class PropertyControl extends Property implements Control {
 
         public PortDescriptor createPortDescriptor() {
             return new PortDescImpl(id(), index(), control);
+        }
+
+        @Override
+        public void dispose() {
+            control.reset();
         }
 
         @Override
