@@ -39,6 +39,7 @@ import org.jaudiolibs.audioservers.ext.Device;
 import org.jaudiolibs.pipes.client.PipesAudioClient;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.AbstractRootContainer;
+import org.praxislive.base.BindingContextControl;
 import org.praxislive.base.DefaultExecutionContext;
 import org.praxislive.code.SharedCodeProperty;
 import org.praxislive.code.SharedCodeProtocol;
@@ -49,6 +50,7 @@ import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
+import org.praxislive.core.RootHub;
 import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
@@ -99,6 +101,7 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     private PipesAudioClient bus;
     private AudioDelegate delegate;
     private AudioServer server;
+    private BindingContextControl bindings;
     private Lookup lookup;
     private long period = -1;
 
@@ -165,7 +168,18 @@ public class DefaultAudioRoot extends AbstractRootContainer {
         audioCtxt = new AudioCtxt();
 
     }
-    
+
+    @Override
+    public Controller initialize(String id, RootHub hub) {
+        Controller ctrl = super.initialize(id, hub);
+        bindings = new BindingContextControl(ControlAddress.of(getAddress(), "_bindings"),
+                getExecutionContext(),
+                getRouter());
+        registerControl("_bindings", bindings);
+        lookup = null;
+        return ctrl;
+    }
+
     private void extractLibraryInfo() {
         libraries = new LinkedHashMap<>();
         List<Device> devices = new ArrayList<>();
@@ -259,7 +273,11 @@ public class DefaultAudioRoot extends AbstractRootContainer {
     @Override
     public Lookup getLookup() {
         if (lookup == null) {
-            lookup = Lookup.of(super.getLookup(), audioCtxt, sharedCode.getSharedCodeContext());
+            if (bindings != null) {
+                lookup = Lookup.of(super.getLookup(), audioCtxt, sharedCode.getSharedCodeContext(), bindings);
+            } else {
+                lookup = Lookup.of(super.getLookup(), audioCtxt, sharedCode.getSharedCodeContext());
+            }
         }
         return lookup;
     }

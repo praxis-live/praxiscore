@@ -25,7 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.praxislive.base.AbstractProperty;
+import org.praxislive.base.AbstractRoot;
 import org.praxislive.base.AbstractRootContainer;
+import org.praxislive.base.BindingContextControl;
 import org.praxislive.code.SharedCodeProperty;
 import org.praxislive.code.SharedCodeProtocol;
 import org.praxislive.core.Call;
@@ -34,6 +36,7 @@ import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.RootHub;
 import org.praxislive.core.TreeWriter;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
@@ -88,6 +91,7 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     private boolean smooth = true;
     private Player player;
     private VideoContext.OutputClient outputClient;
+    private BindingContextControl bindings;
     private Lookup lookup;
 
     public DefaultVideoRoot() {
@@ -140,9 +144,24 @@ public class DefaultVideoRoot extends AbstractRootContainer {
     @Override
     public Lookup getLookup() {
         if (lookup == null) {
-            lookup = Lookup.of(super.getLookup(), ctxt, sharedCode.getSharedCodeContext());
+            if (bindings != null) {
+                lookup = Lookup.of(super.getLookup(), ctxt, sharedCode.getSharedCodeContext(), bindings);
+            } else {
+                lookup = Lookup.of(super.getLookup(), ctxt, sharedCode.getSharedCodeContext());
+            }
         }
         return lookup;
+    }
+
+    @Override
+    public Controller initialize(String id, RootHub hub) {
+        AbstractRoot.Controller ctrl = super.initialize(id, hub);
+        bindings = new BindingContextControl(ControlAddress.of(getAddress(), "_bindings"),
+                getExecutionContext(),
+                getRouter());
+        registerControl("_bindings", bindings);
+        lookup = null;
+        return ctrl;
     }
 
     @Override
