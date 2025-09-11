@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,6 +24,7 @@ package org.praxislive.code;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import org.praxislive.code.userapi.Inject;
 import org.praxislive.code.userapi.T;
 import org.praxislive.code.userapi.Trigger;
 import org.praxislive.core.Value;
@@ -61,6 +62,7 @@ public class TriggerControl extends Trigger implements Control {
         }
     }
 
+    @Override
     protected void trigger(long time) {
         context.invoke(time, () -> {
             try {
@@ -75,16 +77,18 @@ public class TriggerControl extends Trigger implements Control {
     private void attachImpl(CodeContext<?> context, Control previous) {
         this.context = context;
         binding.attach(context);
-        if (previous instanceof TriggerControl) {
+        if (previous instanceof TriggerControl triggerControl) {
             try {
-                boolean val = ((TriggerControl) previous).poll();
+                boolean val = triggerControl.poll();
                 if (val) {
                     binding.trigger(context.getTime());
                 }
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
-            super.attach(context, (TriggerControl) previous);
+            super.attach(context, triggerControl);
+        } else {
+            super.attach(context, null);
         }
     }
 
@@ -214,19 +218,27 @@ public class TriggerControl extends Trigger implements Control {
         private final TriggerControl control;
         private Field triggerField;
 
+        @Deprecated(forRemoval = true)
         public Descriptor(String id, int index, Binding binding) {
             this(id, index, binding, null);
         }
 
+        @Deprecated(forRemoval = true)
         public Descriptor(String id, int index, Binding binding, Field triggerField) {
             super(Descriptor.class, id, Category.Action, index);
             control = new TriggerControl(binding);
             this.triggerField = triggerField;
         }
 
+        private Descriptor(String id, Category category, int index, Binding binding, Field triggerField) {
+            super(Descriptor.class, id, category, index);
+            control = new TriggerControl(binding);
+            this.triggerField = triggerField;
+        }
+
         @Override
         public ControlInfo controlInfo() {
-            return INFO;
+            return category() == Category.Action ? INFO : null;
         }
 
         @Override
@@ -255,7 +267,7 @@ public class TriggerControl extends Trigger implements Control {
         public void onStart() {
             control.index(0);
         }
-        
+
         @Override
         public Control control() {
             return control;
@@ -272,9 +284,9 @@ public class TriggerControl extends Trigger implements Control {
             int index = ann.value();
             Class<?> type = field.getType();
             if (type == boolean.class) {
-                return new Descriptor(id, index, new BooleanBinding(field));
+                return new Descriptor(id, Category.Action, index, new BooleanBinding(field), null);
             } else if (Trigger.class.isAssignableFrom(type)) {
-                return new Descriptor(id, index, new DefaultBinding(), field);
+                return new Descriptor(id, Category.Action, index, new DefaultBinding(), field);
             } else {
                 return null;
             }
@@ -288,7 +300,20 @@ public class TriggerControl extends Trigger implements Control {
             }
             String id = connector.findID(method);
             int index = ann.value();
-            return new Descriptor(id, index, new MethodBinding(method));
+            return new Descriptor(id, Category.Action, index, new MethodBinding(method), null);
+        }
+
+        public static Descriptor create(CodeConnector<?> connector,
+                Inject ann, Field field) {
+            field.setAccessible(true);
+            Class<?> type = field.getType();
+            if (Trigger.class.isAssignableFrom(type)) {
+                String id = connector.findID(field);
+                int index = connector.getSyntheticIndex();
+                return new Descriptor(id, Category.Synthetic, index, new DefaultBinding(), field);
+            } else {
+                return null;
+            }
         }
 
     }

@@ -55,6 +55,7 @@ import org.praxislive.code.userapi.Proxy;
 import org.praxislive.code.userapi.ReadOnly;
 import org.praxislive.code.userapi.Ref;
 import org.praxislive.code.userapi.T;
+import org.praxislive.code.userapi.Trigger;
 import org.praxislive.code.userapi.Type;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlAddress;
@@ -749,6 +750,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 return true;
             } else {
                 return false;
+            }
+        }
+
+        if (Trigger.class.isAssignableFrom(field.getType())) {
+            TriggerControl.Descriptor tdsc = TriggerControl.Descriptor.create(this, ann, field);
+            if (tdsc != null) {
+                addControl(tdsc);
+                return true;
             }
         }
 

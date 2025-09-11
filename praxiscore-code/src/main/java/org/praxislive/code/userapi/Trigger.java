@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -136,7 +136,7 @@ public abstract class Trigger {
      * Manually trigger this Trigger. Useful for chaining this trigger to other
      * sources of input. Otherwise behaves as if externally called, incrementing
      * index and calling linkables.
-     * 
+     *
      * @return this
      */
     public Trigger trigger() {
