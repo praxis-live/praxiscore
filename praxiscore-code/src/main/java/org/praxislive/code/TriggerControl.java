@@ -259,13 +259,19 @@ public class TriggerControl extends Trigger implements Control {
 
         @Override
         public void onReset() {
-            control.clearLinks();
-            control.maxIndex(Integer.MAX_VALUE);
+            control.reset();
         }
 
         @Override
         public void onStart() {
             control.index(0);
+        }
+
+        @Override
+        public void onStop() {
+            if (control.isScheduled()) {
+                control.timer().stop();
+            }
         }
 
         @Override
