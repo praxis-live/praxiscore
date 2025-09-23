@@ -55,6 +55,7 @@ import org.praxislive.code.userapi.Proxy;
 import org.praxislive.code.userapi.ReadOnly;
 import org.praxislive.code.userapi.Ref;
 import org.praxislive.code.userapi.T;
+import org.praxislive.code.userapi.Trigger;
 import org.praxislive.code.userapi.Type;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlAddress;
@@ -107,7 +108,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private ComponentInfo info;
     private int syntheticIdx = Integer.MIN_VALUE;
     private int internalIdx = Integer.MIN_VALUE;
-    private boolean hasPropertyField;
+    private boolean hasTimeSensitiveField;
 
     /**
      * Create a CodeConnector for the provided delegate.
@@ -213,12 +214,13 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     /**
      * Called by the CodeContext to control whether the context should be
      * attached to the execution clock. This method returns true if the delegate
-     * has any fields of type {@link Property}. May be overridden.
+     * has any fields of type {@link Property} or {@link Trigger}. May be
+     * overridden.
      *
      * @return whether context should connect to clock
      */
     protected boolean requiresClock() {
-        return hasPropertyField;
+        return hasTimeSensitiveField;
     }
 
     private void buildExternalData() {
@@ -453,8 +455,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             if (Modifier.isStatic(f.getModifiers())) {
                 continue;
             }
-            if (f.getType() == Property.class) {
-                hasPropertyField = true;
+            if (f.getType() == Property.class || f.getType() == Trigger.class) {
+                hasTimeSensitiveField = true;
             }
             analyseField(f);
         }
@@ -749,6 +751,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
                 return true;
             } else {
                 return false;
+            }
+        }
+
+        if (Trigger.class.isAssignableFrom(field.getType())) {
+            TriggerControl.Descriptor tdsc = TriggerControl.Descriptor.create(this, ann, field);
+            if (tdsc != null) {
+                addControl(tdsc);
+                return true;
             }
         }
 

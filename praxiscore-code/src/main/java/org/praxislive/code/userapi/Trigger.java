@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,18 +28,28 @@ import org.praxislive.core.services.LogLevel;
 
 /**
  * A field type for triggers (actions) - see {@link T @T}. The Trigger type
- * provides a Linkable.Int for listening for triggers, and maintains a count of
- * each time the trigger has been called (useful for sequencing). It is also
- * possible to connect Runnable functions to be called on each trigger.
+ * provides a {@link Linkable.Int} for listening for triggers, and maintains a
+ * count of each time the trigger has been called (useful for sequencing). It is
+ * also possible to connect Runnable functions to be called on each trigger.
+ * <p>
+ * A field of this type can also be used with the {@link Inject} annotation.
+ * This is primarily for use with {@link Timer} for scheduling trigger events
+ * when direct external triggering is not required.
  */
 public abstract class Trigger {
 
+    private final static long TO_NANO = 1_000_000_000;
+
+    private final CodeContext.ClockListener clock;
+
+    private Timer timer;
     private Link[] links;
     private int index;
     private int maxIndex;
     private CodeContext<?> context;
 
     protected Trigger() {
+        this.clock = this::tick;
         this.links = new Link[0];
         maxIndex = Integer.MAX_VALUE;
     }
@@ -48,6 +58,11 @@ public abstract class Trigger {
         this.context = context;
         if (previous != null) {
             index = previous.index;
+            if (previous.timer != null) {
+                timer = previous.timer;
+                previous.timer = null;
+                timer.attach(this);
+            }
         }
     }
 
@@ -133,10 +148,32 @@ public abstract class Trigger {
     }
 
     /**
+     * Access the {@link Timer} for this trigger to schedule one-off or repeat
+     * triggering.
+     *
+     * @return timer for this trigger
+     */
+    public Timer timer() {
+        if (timer == null) {
+            timer = new Timer(this);
+        }
+        return timer;
+    }
+
+    /**
+     * Check whether this trigger has a scheduled timer.
+     *
+     * @return scheduled timer
+     */
+    public boolean isScheduled() {
+        return timer != null && timer.isActive();
+    }
+
+    /**
      * Manually trigger this Trigger. Useful for chaining this trigger to other
      * sources of input. Otherwise behaves as if externally called, incrementing
      * index and calling linkables.
-     * 
+     *
      * @return this
      */
     public Trigger trigger() {
@@ -169,6 +206,30 @@ public abstract class Trigger {
         index = (index + 1) % maxIndex;
     }
 
+    protected void reset() {
+        clearLinks();
+        maxIndex(Integer.MAX_VALUE);
+        if (timer != null) {
+            timer.reset();
+        }
+    }
+
+    private void startClock() {
+        context.addClockListener(clock);
+    }
+
+    private void stopClock() {
+        context.removeClockListener(clock);
+    }
+
+    private void tick() {
+        if (timer == null) {
+            assert false;
+            return;
+        }
+        timer.tick();
+    }
+
     private class Link implements Linkable.Int {
 
         private IntConsumer consumer;
@@ -187,6 +248,141 @@ public abstract class Trigger {
                 consumer.accept(value);
             } catch (Exception ex) {
 
+            }
+        }
+
+    }
+
+    /**
+     * A timer used for scheduling one-off or repeat invocations of a
+     * {@link Trigger}. Use {@link #timer()} to access the timer for a trigger.
+     */
+    public static final class Timer {
+
+        private Trigger trigger;
+
+        private long startTime;
+        private long period;
+        private boolean active;
+        private boolean repeat;
+
+        private Timer(Trigger trigger) {
+            this.trigger = trigger;
+        }
+
+        /**
+         * Check whether this timer is active, with either a one-shot or repeat
+         * event scheduled.
+         *
+         * @return scheduled
+         */
+        public boolean isActive() {
+            return active;
+        }
+
+        /**
+         * Check whether this timer is active and set to repeat.
+         *
+         * @return active on repeat
+         */
+        public boolean isRepeat() {
+            return active && repeat;
+        }
+
+        /**
+         * Set the timer to trigger on repeat at the provided rate. If the timer
+         * is not currently active on repeat, the start time will be set to the
+         * current time. If the timer is already active on repeat, the previous
+         * trigger time will continue to be the start time. Any scheduled
+         * one-off event will be cancelled.
+         *
+         * @param seconds period of timer in seconds
+         * @return this for chaining
+         */
+        public Timer repeat(double seconds) {
+            period = calculatePeriod(seconds);
+            if (!repeat) {
+                startTime = trigger.context.getTime();
+            }
+            if (!active && !repeat) {
+                trigger.startClock();
+            }
+            repeat = true;
+            active = true;
+            return this;
+        }
+
+        /**
+         * Schedule a one-off trigger after the provided delay. Any repeat
+         * schedule will be cancelled.
+         *
+         * @param seconds timer delay in seconds
+         * @return this for chaining
+         */
+        public Timer schedule(double seconds) {
+            period = calculatePeriod(seconds);
+            startTime = trigger.context.getTime();
+            if (!active) {
+                trigger.startClock();
+            }
+            repeat = false;
+            active = true;
+            return this;
+        }
+
+        /**
+         * Stop the timer.
+         *
+         * @return this for chaining
+         */
+        public Timer stop() {
+            active = repeat = false;
+            trigger.stopClock();
+            return this;
+        }
+
+        private void attach(Trigger trigger) {
+            this.trigger = trigger;
+            if (active) {
+                trigger.startClock();
+                reset();
+            }
+        }
+
+        private long calculatePeriod(double seconds) {
+            long nanos = (long) (seconds * TO_NANO);
+            if (nanos > 1) {
+                return nanos;
+            } else {
+                return 1;
+            }
+        }
+
+        private void reset() {
+            if (repeat) {
+                active = false;
+            }
+        }
+
+        private void tick() {
+            if (!active) {
+                stop();
+                return;
+            }
+            long now = trigger.context.getTime();
+            long target = startTime + period;
+            long diff = now - target;
+            if (diff >= 0) {
+                if (repeat) {
+                    startTime = now - (diff % period);
+                } else {
+                    stop();
+                }
+                try {
+                    trigger.trigger();
+                } catch (Throwable t) {
+                    stop();
+                }
             }
         }
 
