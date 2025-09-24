@@ -262,6 +262,8 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
     /**
      * Hook called when the context is being reset.
+     * <p>
+     * Code inside this hook should not invoke code on the delegate.
      */
     protected void onReset() {
 

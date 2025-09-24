@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,6 +60,15 @@ class CoreContainerCodeContext extends CodeContainer.Context<CoreContainerDelega
             getDelegate().stopping();
         } catch (Exception e) {
             getLog().log(LogLevel.ERROR, e, "Exception thrown during stopping()");
+        }
+    }
+
+    @Override
+    protected void onChildrenChanged() {
+        try {
+            getDelegate().childrenChanged();
+        } catch (Exception e) {
+            getLog().log(LogLevel.ERROR, e, "Exception thrown during childrenChanged()");
         }
     }
 

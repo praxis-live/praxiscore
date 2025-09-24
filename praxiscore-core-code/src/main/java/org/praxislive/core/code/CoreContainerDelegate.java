@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -60,6 +60,12 @@ public class CoreContainerDelegate extends CodeContainerDelegate implements Defa
      * Hook called when the root is stopping.
      */
     public void stopping() {
+    }
+
+    /**
+     * Hook called when the list of children has changed.
+     */
+    public void childrenChanged() {
     }
 
 }
