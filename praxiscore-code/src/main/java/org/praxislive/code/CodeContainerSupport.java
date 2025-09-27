@@ -43,9 +43,6 @@ import org.praxislive.core.VetoException;
 import org.praxislive.core.services.ComponentFactoryService;
 import org.praxislive.core.types.PReference;
 
-/**
- *
- */
 final class CodeContainerSupport {
 
     private CodeContainerSupport() {
@@ -155,21 +152,17 @@ final class CodeContainerSupport {
 
     }
 
-    static final class ChildControl extends AbstractAsyncControl {
+    static final class AddChildControl extends AbstractAsyncControl {
 
         private final CodeComponent<?> component;
-        private final AddChildLink childLink;
-        private final RecordChildTypeLink recordLink;
+        private final AddChildCallbacks callbacks;
         private final LinkedHashMap<String, ComponentType> customChildren;
 
         private TypesInfo typesInfo;
 
-        ChildControl(CodeComponent<?> component,
-                AddChildLink childLink,
-                RecordChildTypeLink recordLink) {
+        AddChildControl(CodeComponent<?> component, AddChildCallbacks callbacks) {
             this.component = Objects.requireNonNull(component);
-            this.childLink = Objects.requireNonNull(childLink);
-            this.recordLink = Objects.requireNonNull(recordLink);
+            this.callbacks = Objects.requireNonNull(callbacks);
             this.customChildren = new LinkedHashMap<>();
             typesInfo = defaultContainerTypesInfo();
         }
@@ -233,11 +226,12 @@ final class CodeContainerSupport {
             Call active = getActiveCall();
             String id = active.args().get(0).toString();
             ComponentType type = ComponentType.from(active.args().get(1)).orElse(null);
-            childLink.addChild(id, child);
-            recordLink.recordChildType(child, type);
+            callbacks.addChild(id, child);
+            callbacks.recordChildType(child, type);
             if (checkShared && child instanceof CodeComponent<?> cc) {
                 checkAndRegisterShared(cc);
             }
+            callbacks.notifyChildAdded(id, active.time());
             return active.reply();
         }
 
@@ -300,17 +294,13 @@ final class CodeContainerSupport {
 
     }
 
-    @FunctionalInterface
-    static interface AddChildLink {
+    static interface AddChildCallbacks {
 
         void addChild(String id, Component child) throws VetoException;
 
-    }
-
-    @FunctionalInterface
-    static interface RecordChildTypeLink {
-
         void recordChildType(Component child, ComponentType type);
+
+        void notifyChildAdded(String id, long time);
 
     }
 

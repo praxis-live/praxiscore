@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
 import org.praxislive.base.FilteredTypes;
 import org.praxislive.base.MapTreeWriter;
-import org.praxislive.code.CodeContainerSupport.ChildControl;
+import org.praxislive.code.CodeContainerSupport.AddChildControl;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -59,7 +59,8 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         implements Container {
 
     private final ContainerImpl container;
-    private final ChildControl childControl;
+    private final AddChildControl addChildControl;
+    private final Control removeChildControl;
     private final FilteredTypes filteredTypes;
 
     private Lookup lookup;
@@ -67,10 +68,17 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
 
     CodeRootContainer() {
         container = new ContainerImpl(this);
-        childControl = new ChildControl(this, container::addChild, container::recordChildType);
+        addChildControl = new AddChildControl(this, container);
+        removeChildControl = (call, router) -> {
+            if (call.isRequest()) {
+                container.removeChild(call.args().get(0).toString());
+                notifyChildrenChanged(call.time());
+                router.route(call.reply());
+            }
+        };
         filteredTypes = FilteredTypes.create(this,
-                t -> childControl.supportedSystemType(t),
-                () -> childControl.additionalTypes());
+                t -> addChildControl.supportedSystemType(t),
+                () -> addChildControl.additionalTypes());
     }
 
     @Override
@@ -118,11 +126,11 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     @Override
     void install(CodeContext<D> cc) {
         if (cc instanceof Context<D> pending) {
-            if (!childControl.isCompatible(pending.typesInfo)) {
+            if (!addChildControl.isCompatible(pending.typesInfo)) {
                 throw new IllegalStateException("Supported types is not compatible");
             }
             super.install(cc);
-            childControl.install(pending.typesInfo);
+            addChildControl.install(pending.typesInfo);
             filteredTypes.reset();
         } else {
             throw new IllegalArgumentException();
@@ -184,6 +192,11 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         return comp;
     }
 
+    private void notifyChildrenChanged(long time) {
+        Context<?> ctx = getCodeContext();
+        ctx.invoke(time, ctx::onChildrenChanged);
+    }
+
     /**
      * CodeContext subclass for CodeRootContainers.
      *
@@ -214,6 +227,13 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
             return (CodeRootContainer<D>) super.getComponent();
         }
 
+        /**
+         * Hook called when the container children have changed.
+         */
+        protected void onChildrenChanged() {
+
+        }
+
     }
 
     /**
@@ -237,9 +257,12 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
                     ContainerProtocol.ADD_CHILD,
                     ContainerProtocol.ADD_CHILD_INFO,
                     getInternalIndex(),
-                    ctxt -> ctxt instanceof Context c ? c.getComponent().childControl : null));
-            addControl(containerControl(ContainerProtocol.REMOVE_CHILD,
-                    ContainerProtocol.REMOVE_CHILD_INFO));
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().addChildControl : null));
+            addControl(new WrapperControlDescriptor(
+                    ContainerProtocol.REMOVE_CHILD,
+                    ContainerProtocol.REMOVE_CHILD_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().removeChildControl : null));
             addControl(containerControl(ContainerProtocol.CHILDREN,
                     ContainerProtocol.CHILDREN_INFO));
             addControl(containerControl(ContainerProtocol.CONNECT,
@@ -286,7 +309,8 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
 
     }
 
-    private static class ContainerImpl extends AbstractContainer.Delegate {
+    private static class ContainerImpl extends AbstractContainer.Delegate
+            implements CodeContainerSupport.AddChildCallbacks {
 
         private final CodeRootContainer<?> wrapper;
 
@@ -310,20 +334,25 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         }
 
         @Override
-        protected void addChild(String id, Component child) throws VetoException {
+        public void addChild(String id, Component child) throws VetoException {
             super.addChild(id, child);
         }
 
         @Override
-        protected void recordChildType(Component child, ComponentType type) {
+        public void recordChildType(Component child, ComponentType type) {
             super.recordChildType(child, type);
+        }
+
+        @Override
+        public void notifyChildAdded(String id, long time) {
+            wrapper.notifyChildrenChanged(time);
         }
 
         @Override
         protected Component removeChild(String id) {
             Component child = super.removeChild(id);
             if (child != null) {
-                wrapper.childControl.notifyChildRemoved(id);
+                wrapper.addChildControl.notifyChildRemoved(id);
             }
             return child;
         }

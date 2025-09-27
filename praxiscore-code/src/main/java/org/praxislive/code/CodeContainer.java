@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,8 +27,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.praxislive.base.*;
-import org.praxislive.code.CodeContainerSupport.ChildControl;
+import org.praxislive.base.AbstractContainer;
+import org.praxislive.base.AbstractProperty;
+import org.praxislive.base.FilteredTypes;
+import org.praxislive.code.CodeContainerSupport.AddChildControl;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -72,7 +74,8 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             = PortInfo.create(ControlPort.class, PortInfo.Direction.BIDI, PMap.EMPTY);
 
     private final ContainerImpl container;
-    private final ChildControl childControl;
+    private final AddChildControl addChildControl;
+    private final Control removeChildControl;
     private final Map<String, PortProxy> proxies;
     private final Control proxyProperty;
     private final FilteredTypes filteredTypes;
@@ -85,7 +88,14 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     CodeContainer() {
         container = new ContainerImpl(this);
-        childControl = new ChildControl(this, container::addChild, container::recordChildType);
+        addChildControl = new AddChildControl(this, container);
+        removeChildControl = (call, router) -> {
+            if (call.isRequest()) {
+                container.removeChild(call.args().get(0).toString());
+                notifyChildrenChanged(call.time());
+                router.route(call.reply());
+            }
+        };
         proxies = new LinkedHashMap<>();
         portMap = PMap.EMPTY;
         proxyProperty = new AbstractProperty() {
@@ -100,8 +110,8 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             }
         };
         filteredTypes = FilteredTypes.create(this,
-                t -> childControl.supportedSystemType(t),
-                () -> childControl.additionalTypes(),
+                t -> addChildControl.supportedSystemType(t),
+                () -> addChildControl.additionalTypes(),
                 false);
     }
 
@@ -195,11 +205,11 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     @Override
     void install(CodeContext<D> cc) {
         if (cc instanceof Context<D> pending) {
-            if (!childControl.isCompatible(pending.typesInfo)) {
+            if (!addChildControl.isCompatible(pending.typesInfo)) {
                 throw new IllegalStateException("Supported types is not compatible");
             }
             super.install(cc);
-            childControl.install(pending.typesInfo);
+            addChildControl.install(pending.typesInfo);
             filteredTypes.reset();
         } else {
             throw new IllegalArgumentException();
@@ -258,6 +268,11 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             refBus = new RefBus();
         }
         return refBus;
+    }
+
+    private void notifyChildrenChanged(long time) {
+        Context<?> ctx = getCodeContext();
+        ctx.invoke(time, ctx::onChildrenChanged);
     }
 
     private class PortProxy implements Port {
@@ -360,6 +375,13 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             return (CodeContainer<D>) super.getComponent();
         }
 
+        /**
+         * Hook called when the container children have changed.
+         */
+        protected void onChildrenChanged() {
+
+        }
+
     }
 
     /**
@@ -383,9 +405,12 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
                     ContainerProtocol.ADD_CHILD,
                     ContainerProtocol.ADD_CHILD_INFO,
                     getInternalIndex(),
-                    ctxt -> ctxt instanceof Context c ? c.getComponent().childControl : null));
-            addControl(containerControl(ContainerProtocol.REMOVE_CHILD,
-                    ContainerProtocol.REMOVE_CHILD_INFO));
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().addChildControl : null));
+            addControl(new WrapperControlDescriptor(
+                    ContainerProtocol.REMOVE_CHILD,
+                    ContainerProtocol.REMOVE_CHILD_INFO,
+                    getInternalIndex(),
+                    ctxt -> ctxt instanceof Context c ? c.getComponent().removeChildControl : null));
             addControl(containerControl(ContainerProtocol.CHILDREN,
                     ContainerProtocol.CHILDREN_INFO));
             addControl(containerControl(ContainerProtocol.CONNECT,
@@ -425,7 +450,8 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
 
     }
 
-    private static class ContainerImpl extends AbstractContainer.Delegate {
+    private static class ContainerImpl extends AbstractContainer.Delegate
+            implements CodeContainerSupport.AddChildCallbacks {
 
         private final CodeContainer<?> wrapper;
 
@@ -449,13 +475,13 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         }
 
         @Override
-        protected void addChild(String id, Component child) throws VetoException {
+        public void addChild(String id, Component child) throws VetoException {
             super.addChild(id, child);
             wrapper.info = null;
         }
 
         @Override
-        protected void recordChildType(Component child, ComponentType type) {
+        public void recordChildType(Component child, ComponentType type) {
             super.recordChildType(child, type);
         }
 
@@ -464,9 +490,14 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             wrapper.info = null;
             Component child = super.removeChild(id);
             if (child != null) {
-                wrapper.childControl.notifyChildRemoved(id);
+                wrapper.addChildControl.notifyChildRemoved(id);
             }
             return child;
+        }
+
+        @Override
+        public void notifyChildAdded(String id, long time) {
+            wrapper.notifyChildrenChanged(time);
         }
 
         @Override
