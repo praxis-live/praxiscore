@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,7 +37,6 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
 import org.praxislive.core.Control;
-import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.RootFactoryService;
@@ -201,7 +200,9 @@ public class BasicCoreRoot extends AbstractRoot {
                             .toIntValue();
                 }
                 forceTermination();
-                router.route(call.reply());
+                if (call.isReplyRequired()) {
+                    router.route(call.reply());
+                }
             }
         });
     }
