@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,22 +22,4 @@
 
 package org.praxislive.launcher.jline;
 
-class Response {
-
-    final String message;
-    final boolean error;
-
-    Response(String message, boolean error) {
-        this.message = message;
-        this.error = error;
-    }
-    
-    String message() {
-        return message;
-    }
-    
-    boolean error() {
-        return error;
-    }
-
-}
+record Response(String message, boolean error) {}

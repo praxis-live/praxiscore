@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -99,7 +99,7 @@ class JLineTerminalIO extends AbstractRoot {
                 .flatMap(s -> s.locate(SystemManagerService.class))
                 .map(cmp -> ControlAddress.of(cmp, SystemManagerService.SYSTEM_EXIT))
                 .ifPresentOrElse(exit -> {
-                    getRouter().route(Call.create(exit, fromAddress,
+                    getRouter().route(Call.createQuiet(exit, fromAddress,
                             getExecutionContext().getTime()));
                 }, () -> System.exit(0));
     }

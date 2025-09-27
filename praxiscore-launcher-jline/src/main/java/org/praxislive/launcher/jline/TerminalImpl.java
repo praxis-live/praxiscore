@@ -22,9 +22,6 @@
 package org.praxislive.launcher.jline;
 
 import java.util.Locale;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EOFError;
 import org.jline.reader.LineReader;
@@ -52,7 +49,6 @@ class TerminalImpl {
 
     private static final TerminalImpl INSTANCE = new TerminalImpl();
 
-    private final BlockingQueue<Response> responses;
     private final AtomicReference<JLineTerminalIO> service;
 
     private Thread inputThread;
@@ -60,7 +56,6 @@ class TerminalImpl {
     private LineReader reader;
 
     private TerminalImpl() {
-        responses = new LinkedBlockingQueue<>(200);
         service = new AtomicReference<>();
     }
 
@@ -94,14 +89,12 @@ class TerminalImpl {
     }
 
     synchronized void detach(JLineTerminalIO service) {
-        if (this.service.compareAndSet(service, null)) {
-            postResponse(new Response("", false));
-        }
+        this.service.compareAndSet(service, null);
     }
 
     synchronized void postResponse(Response response) {
-        if (terminal != null) {
-            responses.add(response);
+        if (reader != null) {
+            writeResponse(response);
         }
     }
 
@@ -109,34 +102,23 @@ class TerminalImpl {
 
         while (true) {
             try {
-                var script = reader.readLine(PROMPT);
+                String script = reader.readLine(PROMPT);
                 if (script != null && !script.isBlank()) {
-                    var root = service.get();
+                    JLineTerminalIO root = service.get();
                     if (root != null) {
                         root.postScript(script);
-                        var response = responses.poll(10, TimeUnit.SECONDS);
-                        if (response == null) {
-                            writeResponse(new Response("Timed out", true));
-                        } else {
-                            writeResponse(response);
-                        }
                     } else {
                         writeResponse(new Response("Not running", true));
                     }
                 }
-                // make sure response queue empty
-                Response response;
-                while ((response = responses.poll()) != null) {
-                    writeResponse(response);
-                }
             } catch (UserInterruptException ex) {
                 if (ex.getPartialLine().isBlank()) {
                     try {
-                        var confirm = reader.readLine(EXIT_PROMPT);
+                        String confirm = reader.readLine(EXIT_PROMPT);
                         if ("y".equals(confirm.trim().toLowerCase(Locale.ROOT))) {
                             terminal.writer().println(EXIT_NOTICE);
                             terminal.flush();
-                            var root = service.get();
+                            JLineTerminalIO root = service.get();
                             if (root != null) {
                                 root.postExit();
                                 Thread.sleep(5000);
@@ -157,29 +139,22 @@ class TerminalImpl {
     }
 
     private synchronized void writeResponse(Response response) {
-        if (response.error) {
-            terminal.writer()
-                    .println(new AttributedString("ERR : " + response.message,
+        if (response.error()) {
+            reader.printAbove(new AttributedString("ERR : " + response.message(),
                             AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
                             .toAnsi(terminal)
                     );
-            terminal.flush();
         } else {
-            terminal.writer()
-                    .println(new AttributedString("--- : " + response.message,
+            reader.printAbove(new AttributedString("--- : " + response.message(),
                             AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
                             .toAnsi(terminal)
                     );
-            terminal.flush();
         }
     }
 
     private boolean isCompleteScript(String script) {
         try {
-            var tok = new Tokenizer(script);
-            for (var t : tok) {
-                // consume to end
-            }
+            Tokenizer.parse(script);
             return true;
         } catch (Exception e) {
             return false;
