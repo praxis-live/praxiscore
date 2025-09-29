@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,9 +30,11 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueMapper;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
 
@@ -246,6 +248,26 @@ public final class Async<T> {
     }
 
     /**
+     * Create an Async that will complete when the provided async call
+     * completes, by extracting the call arguments. The arguments are wrapped
+     * into a {@link PArray} for convenience. The returned Async will complete
+     * with an error if the call completes with an error.
+     *
+     * @param asyncCall async call
+     * @return created async
+     */
+    public static Async<PArray> extractArgs(Async<Call> asyncCall) {
+        Async<PArray> asyncArgs = new Async<>();
+        if (asyncCall.done()) {
+            mapComplete(asyncCall, asyncArgs, call -> PArray.of(call.args()));
+        } else {
+            asyncCall.link(handler(a -> mapComplete(asyncCall, asyncArgs,
+                    call -> PArray.of(call.args()))));
+        }
+        return asyncArgs;
+    }
+
+    /**
      * A utility method for linking an Async with a {@link CompletableFuture}
      * for passing to external APIs.
      * <p>
@@ -288,6 +310,18 @@ public final class Async<T> {
             target.fail(source.error());
         } else {
             target.complete(source.result());
+        }
+    }
+
+    private static <T, R> void mapComplete(Async<T> source, Async<R> result, Function<T, R> mapper) {
+        try {
+            if (source.failed()) {
+                result.fail(source.error());
+            } else {
+                result.complete(mapper.apply(source.result()));
+            }
+        } catch (Exception ex) {
+            result.fail(PError.of(ex));
         }
     }
 

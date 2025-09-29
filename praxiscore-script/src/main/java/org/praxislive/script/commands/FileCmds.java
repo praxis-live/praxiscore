@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -51,12 +51,12 @@ import org.praxislive.script.StackFrame;
  */
 class FileCmds {
 
-    private final static Command FILE = new FileCmd();
-    private final static Command FILE_LIST = new FileListCmd();
-    private final static Command FILE_NAMES = new FileNamesCmd();
-    private final static Command CD = new CdCmd();
-    private final static Command PWD = new PwdCmd();
-    private final static Command LOAD = new LoadCmd();
+    private static final Command FILE = new FileCmd();
+    private static final Command FILE_LIST = new FileListCmd();
+    private static final Command FILE_NAMES = new FileNamesCmd();
+    private static final Command CD = new CdCmd();
+    private static final Command PWD = new PwdCmd();
+    private static final Command LOAD = new LoadCmd();
 
     private FileCmds() {
     }
@@ -71,7 +71,7 @@ class FileCmds {
         commands.put("load", LOAD);
     }
 
-    private static URI getPWD(Namespace namespace) {
+    static URI getPWD(Namespace namespace) {
         return Optional.ofNullable(namespace.getVariable(Env.PWD))
                 .flatMap(v -> PResource.from(v.getValue()))
                 .map(PResource::value)
