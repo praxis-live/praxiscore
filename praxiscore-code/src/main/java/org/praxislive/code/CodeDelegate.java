@@ -35,6 +35,12 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.Port;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.ScriptService;
+import org.praxislive.core.services.Service;
+import org.praxislive.core.services.ServiceUnavailableException;
+import org.praxislive.core.services.Services;
+import org.praxislive.core.types.PArray;
+import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
@@ -261,13 +267,48 @@ public abstract class CodeDelegate {
         Value[] converted = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
-            if (arg instanceof Property) {
-                converted[i] = ((Property) arg).get();
+            if (arg instanceof Property property) {
+                converted[i] = property.get();
             } else {
                 converted[i] = Value.ofObject(arg);
             }
         }
         return ask(destination, List.of(converted));
+    }
+
+    /**
+     * Call a Control on a Service. The returned {@link Async} result will be
+     * completed by the response {@link Call} if successful, or the resulting
+     * error. Use {@link Call#args} to extract the result.
+     *
+     * @param service service type
+     * @param control service control
+     * @param args call arguments
+     * @return async response
+     */
+    public final Async<Call> ask(Class<? extends Service> service,
+            String control, Object... args) {
+        return find(Services.class)
+                .flatMap(srvs -> srvs.locate(service))
+                .map(s -> ControlAddress.of(s, control))
+                .map(c -> ask(c, args))
+                .orElseGet(() -> {
+                    Async<Call> err = new Async<>();
+                    err.fail(PError.of(ServiceUnavailableException.class, service.getSimpleName()));
+                    return err;
+                });
+    }
+
+    /**
+     * Evaluate a Pcl script, returning an async result. The result is wrapped
+     * into a {@link PArray} for convenience.
+     *
+     * @param script Pcl script
+     * @return async result
+     */
+    public final Async<PArray> eval(String script) {
+        return Async.extractArgs(ask(ScriptService.class, ScriptService.EVAL,
+                "@ " + self() + " {\n" + script + "\n}"));
     }
 
     /**
