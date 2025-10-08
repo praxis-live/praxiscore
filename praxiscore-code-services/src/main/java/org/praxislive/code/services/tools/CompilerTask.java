@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Neil C Smith
+ * Copyright 2025 Neil C Smith
  *
  * Forked from Janino - An embedded Java[TM] compiler
  *
@@ -65,7 +65,7 @@ public class CompilerTask {
         this.sources = Map.copyOf(sources);
         existingClasses = Map.of();
         messageHandler = DEFAULT_MESSAGE_HANDLER;
-        options = List.of("-Xlint:all");
+        options = List.of("");
     }
 
     public CompilerTask existingClasses(Map<String, Supplier<InputStream>> existing) {
