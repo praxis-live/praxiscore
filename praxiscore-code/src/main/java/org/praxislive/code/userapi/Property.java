@@ -62,13 +62,16 @@ public abstract class Property {
 
     protected void attach(CodeContext<?> context, Property previous) {
         this.context = context;
-        if (previous != null && previous.animator != null) {
-            animator = previous.animator;
-            previous.animator = null;
-            animator.attach(this);
-            if (animator.isAnimating()) {
-                previous.stopClock();
-                this.startClock();
+        if (previous != null) {
+            previous.reset();
+            if (previous.animator != null) {
+                animator = previous.animator;
+                previous.animator = null;
+                animator.attach(this);
+                if (animator.isAnimating()) {
+                    previous.stopClock();
+                    this.startClock();
+                }
             }
         }
     }
