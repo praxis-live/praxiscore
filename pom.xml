@@ -4,7 +4,7 @@
     
   <groupId>org.praxislive</groupId>
   <artifactId>praxiscore</artifactId>
-  <version>6.4.0-SNAPSHOT</version>
+  <version>6.4.0</version>
   <packaging>pom</packaging>
     
   <name>PraxisCORE</name>
@@ -56,11 +56,11 @@
 
   <distributionManagement>
     <snapshotRepository>
-      <id>sonatype-central-c2</id>
+      <id>sonatype-central</id>
       <url>https://central.sonatype.com/repository/maven-snapshots</url>
     </snapshotRepository>
     <repository>
-      <id>sonatype-central-c2</id>
+      <id>sonatype-central</id>
       <url>https://repo.maven.apache.org/maven2</url>
     </repository>
   </distributionManagement>
