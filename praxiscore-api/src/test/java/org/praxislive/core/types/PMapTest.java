@@ -2,57 +2,27 @@ package org.praxislive.core.types;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Stream;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.praxislive.core.AbstractTestBase;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Value;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-/**
- *
- *
- */
-public class PMapTest {
+public class PMapTest extends AbstractTestBase {
 
     public PMapTest() {
     }
 
-    @BeforeClass
-    public static void setUpClass() {
-    }
-
-    @AfterClass
-    public static void tearDownClass() {
-    }
-
-    @Before
-    public void setUp() {
-    }
-
-    @After
-    public void tearDown() {
-    }
-
-    /**
-     * Test of coerce method, of class PMap.
-     */
-    @Test
-    public void testCoerce() throws Exception {
-        PMap m = PMap.of("template", "public void draw(){");
-        String mStr = m.toString();
-        System.out.println(mStr);
-        PMap m2 = PMap.parse(mStr);
-        assertTrue(Utils.equivalent(m, m2));
-    }
-
     @Test
     public void testParse() throws Exception {
+        PMap map = PMap.of("template", "public void draw(){");
+        String mapString = map.toString();
+        log(mapString);
+        PMap parsed = PMap.parse(mapString);
+        assertTrue(Utils.equivalent(map, parsed));
+
         PMap m1 = PMap.builder()
                 .put("key1", "value1")
                 .put("key2", 2)
@@ -70,6 +40,35 @@ public class PMapTest {
         assertTrue(m1.equivalent(m2));
         assertTrue(m2.equivalent(m3));
         assertEquals(13.66, m3.getDouble("key4", 0), 0.001);
+    }
+
+    @Test
+    public void testPrint() throws Exception {
+        PArray array = PArray.ofObjects(true, false);
+        PMap childMap = PMap.of("k1", true, "k2", "This is\nmore than\none line");
+        PMap map = PMap.of("key1", 25,
+                "key2", array,
+                "key3", childMap,
+                "key4", "This is one line");
+        String print = map.print();
+        log(print);
+        assertEquals("""
+                     key1 25
+                     key2 {
+                       true false
+                     }
+                     key3 {
+                       k1 true
+                       k2 {This is
+                       more than
+                       one line}
+                     }
+                     key4 "This is one line"
+                     """, print + "\n");
+        PMap parsed = PMap.parse(print);
+        log(map);
+        log(parsed);
+        assertTrue(map.equivalent(parsed));
     }
 
     @Test

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -45,6 +45,12 @@ import org.praxislive.core.types.PString;
  *
  */
 public abstract class Value {
+
+    /**
+     * Base constructor.
+     */
+    protected Value() {
+    }
 
     /**
      * Values must override the default method to return a string representation
@@ -118,6 +124,25 @@ public abstract class Value {
             }
         }
         return type;
+    }
+
+    /**
+     * Output the value as text suitable for display. Compared to the default
+     * String output, this method may emphasize legibility over size or
+     * performance, for example by indenting or adding new lines. The text must
+     * remain parsable into equivalent values.
+     * <p>
+     * The default implementation of this method just calls {@link #toString()}.
+     * <p>
+     * Options may be passed in to control formatting of specific value types.
+     * Any type that acts as a collection of other types should pass the options
+     * when printing them.
+     *
+     * @param options any printing options
+     * @return display text
+     */
+    public String print(PrintOption... options) {
+        return toString();
     }
 
     /**
@@ -335,6 +360,23 @@ public abstract class Value {
             TYPES_BY_NAME = Map.copyOf(typesByName);
 
         }
+    }
+
+    /**
+     * A base type for options to pass in to
+     * {@link #print(org.praxislive.core.Value.PrintOption...)}.
+     * <p>
+     * Value types may subclass this class to create flags or parameters to
+     * control print output.
+     */
+    public static abstract class PrintOption {
+
+        /**
+         * Base constructor.
+         */
+        protected PrintOption() {
+        }
+
     }
 
 }

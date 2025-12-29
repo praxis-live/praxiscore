@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -237,7 +237,8 @@ public final class PMap extends Value {
                     sb.append(" ");
                     Value value = map.get(key);
                     if (value instanceof PArray || value instanceof PMap
-                            || value instanceof MapBasedValue) {
+                            || value instanceof MapBasedValue
+                            || value instanceof PArray.ArrayBasedValue) {
                         sb.append('{')
                                 .append(value.toString())
                                 .append('}');
@@ -293,6 +294,11 @@ public final class PMap extends Value {
             return map.keys().equals(other.map.keys()) && map.equals(other.map);
         }
         return false;
+    }
+
+    @Override
+    public String print(PrintOption... options) {
+        return Utils.print(this, options);
     }
 
     /**
@@ -446,11 +452,14 @@ public final class PMap extends Value {
      * Parse the given text into a PMap.
      *
      * @param text text to parse
-     * @return parsed PArray
+     * @return parsed PMap
      * @throws ValueFormatException
      */
     public static PMap parse(String text) throws ValueFormatException {
-        PArray arr = PArray.parse(text);
+        if (text.isEmpty()) {
+            return PMap.EMPTY;
+        }
+        PArray arr = PArray.parse(Utils.checkStripIndent(text));
         if (arr.isEmpty()) {
             return PMap.EMPTY;
         }
@@ -468,8 +477,10 @@ public final class PMap extends Value {
     }
 
     private static PMap coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof PMap) {
-            return (PMap) arg;
+        if (arg instanceof PMap map) {
+            return map;
+        } else if (arg instanceof MapBasedValue mapBased) {
+            return mapBased.dataMap();
         } else {
             return parse(arg.toString());
         }
@@ -743,6 +754,11 @@ public final class PMap extends Value {
                         .orElse(false);
             }
 
+        }
+
+        @Override
+        public String print(PrintOption... options) {
+            return data.print(options);
         }
 
     }
