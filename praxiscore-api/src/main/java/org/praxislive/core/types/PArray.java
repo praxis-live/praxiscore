@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -101,6 +101,7 @@ public final class PArray extends Value implements Iterable<Value> {
                         sb.append(' ');
                     }
                     if (entry instanceof PArray || entry instanceof PMap
+                            || entry instanceof ArrayBasedValue
                             || entry instanceof PMap.MapBasedValue) {
                         sb.append('{')
                                 .append(entry.toString())
@@ -153,9 +154,8 @@ public final class PArray extends Value implements Iterable<Value> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof PArray) {
-            PArray o = (PArray) obj;
-            return data.equals(o.data);
+        if (obj instanceof PArray other) {
+            return data.equals(other.data);
         }
         return false;
     }
@@ -232,6 +232,11 @@ public final class PArray extends Value implements Iterable<Value> {
         return List.copyOf(lst);
     }
 
+    @Override
+    public String print(PrintOption... options) {
+        return Utils.print(this, options);
+    }
+
     /**
      * Create a PArray from the given collection of values.
      *
@@ -253,6 +258,19 @@ public final class PArray extends Value implements Iterable<Value> {
     }
 
     /**
+     * Create a PArray from a collection of objects. The provided objects are
+     * converted to values by {@link Value#ofObject(java.lang.Object)}.
+     *
+     * @param objects array values as objects
+     * @return new PArray
+     */
+    public static PArray ofObjects(Object... objects) {
+        return Stream.of(objects)
+                .map(Value::ofObject)
+                .collect(collector());
+    }
+
+    /**
      * Parse the given text into a PArray.
      *
      * @param text text to parse
@@ -260,28 +278,18 @@ public final class PArray extends Value implements Iterable<Value> {
      * @throws ValueFormatException
      */
     public static PArray parse(String text) throws ValueFormatException {
-        if (text.length() == 0) {
+        if (text.isEmpty()) {
             return PArray.EMPTY;
         }
         try {
-            List<Token> tk = Tokenizer.parse(text);
+            List<Token> tk = Tokenizer.parse(Utils.checkStripIndent(text));
             List<Value> list = new ArrayList<>();
             for (Token t : tk) {
                 Token.Type type = t.getType();
                 switch (type) {
-                    case PLAIN:
-                    case QUOTED:
+                    case PLAIN, QUOTED, BRACED -> {
                         list.add(PString.of(t.getText()));
-                        break;
-                    case BRACED:
-                        String s = t.getText();
-                        list.add(PString.of(s));
-                        break;
-                    case COMMENT:
-                    case EOL:
-                        continue;
-                    default:
-                        throw new ValueFormatException();
+                    }
                 }
             }
             int size = list.size();
@@ -297,8 +305,10 @@ public final class PArray extends Value implements Iterable<Value> {
     }
 
     private static PArray coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof PArray) {
-            return (PArray) arg;
+        if (arg instanceof PArray array) {
+            return array;
+        } else if (arg instanceof ArrayBasedValue arrayBased) {
+            return arrayBased.dataArray();
         } else {
             return parse(arg.toString());
         }
@@ -420,6 +430,11 @@ public final class PArray extends Value implements Iterable<Value> {
                         .orElse(false);
             }
 
+        }
+
+        @Override
+        public String print(PrintOption... options) {
+            return data.print(options);
         }
 
     }

@@ -1,32 +1,18 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.praxislive.core.types;
 
-import org.praxislive.core.types.PBytes;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.praxislive.core.AbstractTestBase;
 import org.praxislive.core.DataObject;
 
-/**
- *
- * 
- */
-public class PBytesTest {
+public class PBytesTest extends AbstractTestBase {
 
     private static class Data implements DataObject {
 
@@ -88,78 +74,6 @@ public class PBytesTest {
         testBytes = os.toBytes();
     }
 
-    @BeforeClass
-    public static void setUpClass() {
-    }
-
-    @AfterClass
-    public static void tearDownClass() {
-    }
-
-    @Before
-    public void setUp() {
-    }
-
-    @After
-    public void tearDown() {
-    }
-
-    /**
-     * Test of toString method, of class PBytes.
-     */
-    @Test
-    public void testToString() {
-    }
-
-    /**
-     * Test of read method, of class PBytes.
-     */
-    @Test
-    public void testRead() {
-    }
-
-    /**
-     * Test of asInputStream method, of class PBytes.
-     */
-    @Test
-    public void testAsInputStream() {
-    }
-
-    /**
-     * Test of getSize method, of class PBytes.
-     */
-    @Test
-    public void testGetSize() {
-    }
-
-    /**
-     * Test of hashCode method, of class PBytes.
-     */
-    @Test
-    public void testHashCode() {
-    }
-
-    /**
-     * Test of equals method, of class PBytes.
-     */
-    @Test
-    public void testEquals() {
-    }
-
-    /**
-     * Test of isEquivalent method, of class PBytes.
-     */
-    @Test
-    public void testIsEquivalent() {
-    }
-
-    /**
-     * Test of isEmpty method, of class PBytes.
-     */
-    @Test
-    public void testIsEmpty() {
-    }
-
     /**
      * Test of forEachIn method, of class PBytes.
      */
@@ -169,7 +83,7 @@ public class PBytesTest {
         Data data = new Data();
         int[] count = new int[1];
         bytes.forEachIn(data, d -> {
-            System.out.println(d);
+            log(d);
             count[0]++;
         });
         assertEquals(data.x, 40, 0.001);
@@ -180,17 +94,12 @@ public class PBytesTest {
         FailedData failer = new FailedData();
         Exception ex = null;
         count[0] = 0;
-        try {
+        assertThrows(IllegalArgumentException.class, () -> {
             bytes.forEachIn(failer, f -> {
                 count[0]++;
             });
-        } catch (Exception e) {
-            System.out.println("Expected exception : " + e);
-            ex = e;
-        }
-        assertNotNull(ex);
+        });
         assertEquals(count[0], 0);
-        assertEquals(ex.getClass(), IllegalArgumentException.class);
     }
 
     /**
@@ -201,14 +110,14 @@ public class PBytesTest {
         PBytes bytes = testBytes;
         Data data = new Data();
         bytes = bytes.transformIn(data, d -> {
-            System.out.println(String.format("Data : %.2f,%.2f,%.2f", d.x, d.y, d.z));
+            log(String.format("Data : %.2f,%.2f,%.2f", d.x, d.y, d.z));
             d.x *= 2;
             d.y *= -2;
             d.z = Math.PI;
         });
         int[] count = new int[1];
         bytes.transformIn(data, d -> {
-            System.out.println(d);
+            log(d);
             count[0]++;
         });
         assertEquals(data.x, 40 * 2, 0.001);
@@ -225,7 +134,7 @@ public class PBytesTest {
     public void testStreamOf_Supplier() throws IOException {
         PBytes bytes = testBytes;
         List<Data> list = bytes.streamOf(Data::new).collect(Collectors.toList());
-        System.out.println(list);
+        log(list);
         assertEquals(list.size(), 2);
         assertEquals(list.get(0).x, 10, 0.001);
         assertEquals(list.get(0).y, 20, 0.001);
@@ -251,7 +160,7 @@ public class PBytesTest {
                     return d;
                 })
                 .collect(Collectors.toList());
-        System.out.println(list);
+        log(list);
         assertEquals(list.size(), 5);
         assertEquals(list.get(0).x, 10, 0.001);
         assertEquals(list.get(0).y, 20, 0.001);
@@ -277,66 +186,18 @@ public class PBytesTest {
     }
 
     /**
-     * Test of valueOf method, of class PBytes.
-     */
-    @Test
-    public void testValueOf_byteArr() {
-    }
-
-    /**
-     * Test of valueOf method, of class PBytes.
-     */
-    @Test
-    public void testValueOf_String() throws Exception {
-    }
-
-    /**
-     * Test of coerce method, of class PBytes.
-     */
-    @Test
-    public void testCoerce() throws Exception {
-    }
-
-    /**
-     * Test of from method, of class PBytes.
-     */
-    @Test
-    public void testFrom() {
-    }
-
-    /**
-     * Test of info method, of class PBytes.
-     */
-    @Test
-    public void testInfo() {
-    }
-
-    /**
      * Test of deserialize method, of class PBytes.
      */
     @Test
     public void testDeserialize() throws IOException {
-        int[] ints = new int[]{1,2,3,4,5};
+        int[] ints = new int[]{1, 2, 3, 4, 5};
         PBytes bytes = PBytes.serialize(ints);
-        System.out.println("Serialized size : " + bytes.size());
-        System.out.println("Base64 : " + bytes.toString());
+        log("Serialized size : " + bytes.size());
+        log("Base64 : " + bytes.toString());
         int[] out = bytes.deserialize(int[].class);
         assertArrayEquals(ints, out);
-        try {
+        assertThrows(IOException.class, () -> {
             double[] dbles = bytes.deserialize(double[].class);
-            fail("Deserialization to double[] should fail");
-        } catch (Exception e) {
-            System.out.println("Expected exception : " + e);
-        }
+        });
     }
-
-    /**
-     * Test of valueOf method, of class PBytes.
-     */
-    @Test
-    public void testValueOf_List() {
-    }
-
-
-
 }

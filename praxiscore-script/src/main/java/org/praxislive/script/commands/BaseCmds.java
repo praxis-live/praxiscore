@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -45,6 +45,7 @@ class BaseCmds {
     private static final Set SET = new Set();
     private static final Var VAR = new Var();
     private static final Echo ECHO = new Echo();
+    private static final Print PRINT = new Print();
 
     private BaseCmds() {
     }
@@ -54,6 +55,7 @@ class BaseCmds {
         commands.put("set", SET);
         commands.put("var", VAR);
         commands.put("echo", ECHO);
+        commands.put("print", PRINT);
     }
 
     private static class Set implements InlineCommand {
@@ -115,6 +117,18 @@ class BaseCmds {
                     args.stream()
                             .map(Value::toString)
                             .collect(Collectors.joining())));
+        }
+
+    }
+
+    private static class Print implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 1) {
+                throw new Exception();
+            }
+            return List.of(PString.of(args.get(0).print()));
         }
 
     }
