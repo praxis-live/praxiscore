@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -128,14 +128,31 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         writeConnections(writer);
     }
 
+    /**
+     * Write children to {@link TreeWriter}.
+     *
+     * @param writer tree writer
+     */
     protected final void writeChildren(TreeWriter writer) {
         childMap.forEach((id, child) -> writer.writeChild(id, child::write));
     }
 
+    /**
+     * Write connections to {@link TreeWriter}.
+     *
+     * @param writer tree writer
+     */
     protected final void writeConnections(TreeWriter writer) {
         connections.forEach(writer::writeConnection);
     }
 
+    /**
+     * Add child component.
+     *
+     * @param id child ID
+     * @param child child component
+     * @throws VetoException if ID is in use or child is not accepted
+     */
     protected void addChild(String id, Component child) throws VetoException {
         if (childMap.putIfAbsent(Objects.requireNonNull(id),
                 Objects.requireNonNull(child)) != null) {
@@ -150,14 +167,36 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         child.hierarchyChanged();
     }
 
+    /**
+     * Record the component type of the added child. Caches the type in a map
+     * for use during component writing.
+     *
+     * @param child added child component
+     * @param type component type
+     */
     protected void recordChildType(Component child, ComponentType type) {
         childTypeMap.put(Objects.requireNonNull(child), Objects.requireNonNull(type));
     }
 
+    /**
+     * Call through to
+     * {@link Component#parentNotify(org.praxislive.core.Container)}. The
+     * default implementation calls through with a reference to this container.
+     * Can be overridden to pass in a wrapping instance.
+     *
+     * @param child child to call
+     * @throws VetoException if child throws
+     */
     protected void notifyChild(Component child) throws VetoException {
         child.parentNotify(this);
     }
 
+    /**
+     * Remove the child with the given ID if it exists.
+     *
+     * @param id child ID
+     * @return removed child component or null
+     */
     protected Component removeChild(String id) {
         Component child = childMap.remove(id);
         if (child != null) {
@@ -174,6 +213,12 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         return child;
     }
 
+    /**
+     * Get the ID of the given component if it is a child of this container.
+     *
+     * @param child child component
+     * @return ID or null
+     */
     protected String getChildID(Component child) {
         for (Map.Entry<String, Component> entry : childMap.entrySet()) {
             if (entry.getValue() == child) {
@@ -183,11 +228,30 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         return null;
     }
 
+    /**
+     * Connect the ports on the given child components. Ports may be on the same
+     * child as long as they are distinct ports.
+     *
+     * @param component1 ID of first child component
+     * @param port1 ID of port on first component
+     * @param component2 ID of second child component
+     * @param port2 ID of port on second component
+     * @throws PortConnectionException if ports cannot be connected
+     */
     protected void connect(String component1, String port1, String component2, String port2)
             throws PortConnectionException {
         handleConnection(true, component1, port1, component2, port2);
     }
 
+    /**
+     * Disconnect the ports on the given child components. If the given ports
+     * are not connected, this method does nothing.
+     *
+     * @param component1 ID of first child component
+     * @param port1 ID of port on first component
+     * @param component2 ID of second child component
+     * @param port2 ID of port on second component
+     */
     protected void disconnect(String component1, String port1, String component2, String port2) {
         try {
             handleConnection(false, component1, port1, component2, port2);
@@ -223,6 +287,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         }
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#ADD_CHILD}.
+     */
     protected class AddChildControl extends AbstractAsyncControl {
 
         @Override
@@ -257,6 +324,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
         }
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#REMOVE_CHILD}.
+     */
     protected class RemoveChildControl implements Control {
 
         @Override
@@ -267,6 +337,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#CHILDREN}.
+     */
     protected class ChildrenControl implements Control {
 
         @Override
@@ -279,6 +352,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#CONNECT}.
+     */
     protected class ConnectControl implements Control {
 
         @Override
@@ -293,6 +369,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#DISCONNECT}.
+     */
     protected class DisconnectControl implements Control {
 
         @Override
@@ -307,6 +386,9 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
 
     }
 
+    /**
+     * Control that implements {@link ContainerProtocol#CONNECTIONS}.
+     */
     protected class ConnectionsControl implements Control {
 
         @Override

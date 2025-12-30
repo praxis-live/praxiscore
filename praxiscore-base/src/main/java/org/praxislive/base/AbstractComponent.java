@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2025 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -106,6 +106,11 @@ public abstract class AbstractComponent implements Component {
         writeMeta(writer);
     }
 
+    /**
+     * Write component type and info to {@link TreeWriter}.
+     *
+     * @param writer tree writer
+     */
     protected final void writeTypeAndInfo(TreeWriter writer) {
         ComponentType type;
         if (parent == null) {
@@ -126,6 +131,12 @@ public abstract class AbstractComponent implements Component {
         }
     }
 
+    /**
+     * Write the {@link ComponentProtocol#META} property to the
+     * {@link TreeWriter}.
+     *
+     * @param writer tree writer
+     */
     protected final void writeMeta(TreeWriter writer) {
         PMap value = meta.getValue();
         if (!value.isEmpty() && getInfo().controls().contains(ComponentProtocol.META)) {
@@ -133,6 +144,11 @@ public abstract class AbstractComponent implements Component {
         }
     }
 
+    /**
+     * Get the address of this component, if installed in a container.
+     *
+     * @return address or null
+     */
     protected ComponentAddress getAddress() {
         if (parent != null) {
             return parent.getAddress(this);
@@ -141,10 +157,22 @@ public abstract class AbstractComponent implements Component {
         }
     }
 
+    /**
+     * Get the {@link Lookup} for this component.
+     *
+     * @return lookup
+     */
     protected Lookup getLookup() {
         return parent == null ? Lookup.EMPTY : parent.getLookup();
     }
 
+    /**
+     * Find the address for the provided {@link Service}.
+     *
+     * @param service class of service
+     * @return address of service
+     * @throws ServiceUnavailableException if service cannot be found
+     */
     protected ComponentAddress findService(Class<? extends Service> service)
             throws ServiceUnavailableException {
         return getLookup().find(Services.class)
@@ -152,10 +180,19 @@ public abstract class AbstractComponent implements Component {
                 .orElseThrow(ServiceUnavailableException::new);
     }
 
+    /**
+     * Disconnect all ports.
+     */
     protected void disconnectAll() {
         ports.values().forEach(Port::disconnectAll);
     }
 
+    /**
+     * Register a control on this component.
+     *
+     * @param id control ID
+     * @param control control implementation
+     */
     protected final void registerControl(String id, Control control) {
         if (controls.putIfAbsent(Objects.requireNonNull(id),
                 Objects.requireNonNull(control)) != null) {
@@ -163,10 +200,21 @@ public abstract class AbstractComponent implements Component {
         }
     }
 
+    /**
+     * Remove a control from this component.
+     *
+     * @param id control ID
+     */
     protected final void unregisterControl(String id) {
         controls.remove(id);
     }
 
+    /**
+     * Register a port on this component.
+     *
+     * @param id port ID
+     * @param port port implementation
+     */
     protected final void registerPort(String id, Port port) {
         if (ports.putIfAbsent(Objects.requireNonNull(id),
                 Objects.requireNonNull(port)) != null) {
@@ -174,6 +222,11 @@ public abstract class AbstractComponent implements Component {
         }
     }
 
+    /**
+     * Remove a port from this component.
+     *
+     * @param id port ID
+     */
     protected final void unregisterPort(String id) {
         Port port = ports.remove(id);
         if (port != null) {
