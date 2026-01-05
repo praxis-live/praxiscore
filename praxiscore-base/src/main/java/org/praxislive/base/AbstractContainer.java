@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -226,6 +226,31 @@ public abstract class AbstractContainer extends AbstractComponent implements Con
             }
         }
         return null;
+    }
+
+    /**
+     * Reorder the container children based on the provided list of child IDs.
+     * IDs that do not correspond to child component will be ignored. Children
+     * not represented in the provided IDs will be added, in order, at the end.
+     * <p>
+     * This method fulfils the contract required by
+     * {@link ContainerProtocol#CHILDREN_ORDER}.
+     *
+     * @param childIDs list of child IDs
+     * @return list of reordered children
+     */
+    protected List<String> reorderChildren(List<String> childIDs) {
+        Map<String, Component> scratch = new LinkedHashMap<>();
+        childIDs.forEach(id -> {
+            Component child = childMap.get(id);
+            if (child != null) {
+                scratch.putIfAbsent(id, child);
+            }
+        });
+        childMap.forEach(scratch::putIfAbsent);
+        childMap.clear();
+        childMap.putAll(scratch);
+        return List.copyOf(childMap.keySet());
     }
 
     /**

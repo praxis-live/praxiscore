@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,6 +26,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.praxislive.core.ComponentType;
+import org.praxislive.core.protocols.ContainerProtocol;
 
 /**
  * Shared APIs for code root containers and code containers.
@@ -116,6 +117,17 @@ public interface ContainerDelegateAPI {
          * @return optional code template
          */
         String template() default "";
+    }
+
+    /**
+     * Marker interface to specify that the container should support reordering
+     * of its children by exposing the {@link ContainerProtocol#CHILDREN_ORDER}
+     * control.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface Reorderable {
+
     }
 
 }

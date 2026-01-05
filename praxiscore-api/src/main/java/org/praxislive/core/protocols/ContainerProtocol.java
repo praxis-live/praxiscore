@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -44,37 +44,42 @@ public final class ContainerProtocol implements Protocol {
     /**
      * Name of the add-child control.
      */
-    public final static String ADD_CHILD = "add-child";
+    public static final String ADD_CHILD = "add-child";
 
     /**
      * Name of the remove-child control.
      */
-    public final static String REMOVE_CHILD = "remove-child";
+    public static final String REMOVE_CHILD = "remove-child";
 
     /**
      * Name of the children control.
      */
-    public final static String CHILDREN = "children";
+    public static final String CHILDREN = "children";
 
     /**
      * Name of the connect control.
      */
-    public final static String CONNECT = "connect";
+    public static final String CONNECT = "connect";
 
     /**
      * Name of the disconnect control.
      */
-    public final static String DISCONNECT = "disconnect";
+    public static final String DISCONNECT = "disconnect";
 
     /**
      * Name of the connections control.
      */
-    public final static String CONNECTIONS = "connections";
+    public static final String CONNECTIONS = "connections";
 
     /**
      * Name of the supported-types control.
      */
-    public final static String SUPPORTED_TYPES = "supported-types";
+    public static final String SUPPORTED_TYPES = "supported-types";
+
+    /**
+     * Name of the children-order control.
+     */
+    public static final String CHILDREN_ORDER = "children-order";
 
     private final static ArgumentInfo STRING = PString.info();
 
@@ -83,7 +88,7 @@ public final class ContainerProtocol implements Protocol {
      * arguments, the child name and the component type. It returns no
      * arguments. It will respond with an error if the child cannot be added.
      */
-    public final static ControlInfo ADD_CHILD_INFO
+    public static final ControlInfo ADD_CHILD_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(STRING, ComponentType.info()),
                     List.of(),
@@ -93,7 +98,7 @@ public final class ContainerProtocol implements Protocol {
      * Info for the remove-child control. It is a function control that accepts
      * one argument, the child name. It returns no arguments.
      */
-    public final static ControlInfo REMOVE_CHILD_INFO
+    public static final ControlInfo REMOVE_CHILD_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(STRING),
                     List.of(),
@@ -104,7 +109,7 @@ public final class ContainerProtocol implements Protocol {
      * returns a PArray of child names. The response is equivalent to
      * {@link Container#children()}.
      */
-    public final static ControlInfo CHILDREN_INFO
+    public static final ControlInfo CHILDREN_INFO
             = ControlInfo.createReadOnlyPropertyInfo(
                     PArray.info(),
                     PMap.EMPTY);
@@ -115,7 +120,7 @@ public final class ContainerProtocol implements Protocol {
      * component name, and the second port name. It returns no arguments. It
      * will response with an error if the connection cannot be made.
      */
-    public final static ControlInfo CONNECT_INFO
+    public static final ControlInfo CONNECT_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(STRING, STRING, STRING, STRING),
                     List.of(),
@@ -126,7 +131,7 @@ public final class ContainerProtocol implements Protocol {
      * four arguments, the first component name, the first port name, the second
      * component name, and the second port name. It returns no arguments.
      */
-    public final static ControlInfo DISCONNECT_INFO
+    public static final ControlInfo DISCONNECT_INFO
             = ControlInfo.createFunctionInfo(
                     List.of(STRING, STRING, STRING, STRING),
                     List.of(),
@@ -137,7 +142,7 @@ public final class ContainerProtocol implements Protocol {
      * a PArray of PArray. Each internal PArray consists of four values,
      * corresponding to the arguments passed to each call to connect.
      */
-    public final static ControlInfo CONNECTIONS_INFO
+    public static final ControlInfo CONNECTIONS_INFO
             = ControlInfo.createReadOnlyPropertyInfo(
                     PArray.info(),
                     PMap.EMPTY);
@@ -151,8 +156,26 @@ public final class ContainerProtocol implements Protocol {
      * container's {@link Lookup} to facilitate implementation of this control
      * by child containers.
      */
-    public final static ControlInfo SUPPORTED_TYPES_INFO
+    public static final ControlInfo SUPPORTED_TYPES_INFO
             = Info.control(c -> c.readOnlyProperty().output(PArray.class));
+
+    /**
+     * Info for the (optional) children-order control. This is a function that
+     * can be used to reorder children in the container. The input is an array
+     * of component IDs. Children will be reordered based on the order of this
+     * array. Children not included in the input will be added in their original
+     * respective order after the reordered children. Values not representing
+     * existing child IDs will be ignored. This function cannot be used to add
+     * or remove children.
+     * <p>
+     * The output of the function will be the full, reordered child list, as
+     * will be returned from {@link #CHILDREN}.
+     */
+    public static final ControlInfo CHILDREN_ORDER_INFO = Info.control(
+            c -> c.function()
+                    .inputs(i -> i.type(PArray.class))
+                    .outputs(o -> o.type(PArray.class))
+    );
 
     /**
      * A component info for this protocol. Can be used with
@@ -179,7 +202,7 @@ public final class ContainerProtocol implements Protocol {
 
     @Override
     public Stream<String> optionalControls() {
-        return Stream.of(SUPPORTED_TYPES);
+        return Stream.of(SUPPORTED_TYPES, CHILDREN_ORDER);
     }
 
     @Override
@@ -199,6 +222,8 @@ public final class ContainerProtocol implements Protocol {
                 CONNECTIONS_INFO;
             case SUPPORTED_TYPES ->
                 SUPPORTED_TYPES_INFO;
+            case CHILDREN_ORDER ->
+                CHILDREN_ORDER_INFO;
             default ->
                 throw new IllegalArgumentException();
         };

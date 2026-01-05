@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,12 +22,15 @@
 package org.praxislive.code;
 
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
 import org.praxislive.base.FilteredTypes;
 import org.praxislive.base.MapTreeWriter;
 import org.praxislive.code.CodeContainerSupport.AddChildControl;
+import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -38,6 +41,7 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.PacketRouter;
 import org.praxislive.core.TreeWriter;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
@@ -183,8 +187,8 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     private Component findComponent(ComponentAddress address) {
         Component comp = this;
         for (int i = 1; i < address.depth(); i++) {
-            if (comp instanceof Container) {
-                comp = ((Container) comp).getChild(address.componentID(i));
+            if (comp instanceof Container cnt) {
+                comp = cnt.getChild(address.componentID(i));
             } else {
                 return null;
             }
@@ -195,6 +199,22 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     private void notifyChildrenChanged(long time) {
         Context<?> ctx = getCodeContext();
         ctx.invoke(time, ctx::onChildrenChanged);
+    }
+
+    private void reorderChildren(Call call, PacketRouter router) {
+        if (call.isRequest()) {
+            List<String> childIDs = PArray.from(call.args().get(0))
+                    .orElseThrow(IllegalArgumentException::new)
+                    .asListOf(String.class);
+            List<String> existingChildren = children().toList();
+            List<String> reordered = container.reorderChildren(childIDs);
+            if (!Objects.equals(existingChildren, reordered)) {
+                notifyChildrenChanged(call.time());
+            }
+            if (call.isReplyRequired()) {
+                router.route(call.reply(PArray.ofObjects(reordered.toArray())));
+            }
+        }
     }
 
     /**
@@ -244,7 +264,9 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
     public static class Connector<D extends CodeRootContainerDelegate> extends CodeRoot.Connector<D> {
 
         private CodeContainerSupport.TypesInfo typesInfo;
+
         private PMap displayHint;
+        private boolean reorderable;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
             super(task, delegate);
@@ -289,6 +311,15 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
                                 .map(PString::of)
                                 .collect(PArray.collector())
                 );
+            }
+            if (!reorderable
+                    && method.isAnnotationPresent(CodeRootContainerDelegate.Reorderable.class)) {
+                addControl(new WrapperControlDescriptor(
+                        ContainerProtocol.CHILDREN_ORDER,
+                        ContainerProtocol.CHILDREN_ORDER_INFO,
+                        getInternalIndex(),
+                        ctxt -> ctxt instanceof Context c ? c.getComponent()::reorderChildren : null));
+                reorderable = true;
             }
         }
 
@@ -360,6 +391,11 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
         @Override
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
+        }
+
+        @Override
+        protected List<String> reorderChildren(List<String> childIDs) {
+            return super.reorderChildren(childIDs);
         }
 
     }
