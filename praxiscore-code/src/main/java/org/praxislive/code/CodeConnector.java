@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -166,8 +166,6 @@ public abstract class CodeConnector<D extends CodeDelegate> {
 
     /**
      * Called by the CodeContext to access all processed control descriptors.
-     * Subclasses may override to extend, but should ensure to call the
-     * superclass method.
      *
      * @return map of control descriptors by ID
      */
@@ -177,8 +175,6 @@ public abstract class CodeConnector<D extends CodeDelegate> {
 
     /**
      * Called by the CodeContext to access all processed port descriptors.
-     * Subclasses may override to extend, but should ensure to call the
-     * superclass method.
      *
      * @return map of port descriptors by ID
      */
@@ -188,8 +184,6 @@ public abstract class CodeConnector<D extends CodeDelegate> {
 
     /**
      * Called by the CodeContext to access all processed reference descriptors.
-     * Subclasses may override to extend, but should ensure to call the
-     * superclass method.
      *
      * @return map of reference descriptors by ID
      */

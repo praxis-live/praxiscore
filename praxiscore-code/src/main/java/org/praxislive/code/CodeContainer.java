@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -26,11 +26,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.praxislive.base.AbstractContainer;
 import org.praxislive.base.AbstractProperty;
 import org.praxislive.base.FilteredTypes;
 import org.praxislive.code.CodeContainerSupport.AddChildControl;
+import org.praxislive.core.Call;
 import org.praxislive.core.Component;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -41,6 +43,7 @@ import org.praxislive.core.ControlInfo;
 import org.praxislive.core.ControlPort;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
+import org.praxislive.core.PacketRouter;
 import org.praxislive.core.Port;
 import org.praxislive.core.PortAddress;
 import org.praxislive.core.PortConnectionException;
@@ -51,6 +54,7 @@ import org.praxislive.core.Value;
 import org.praxislive.core.VetoException;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 
 /**
@@ -275,6 +279,22 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         ctx.invoke(time, ctx::onChildrenChanged);
     }
 
+    private void reorderChildren(Call call, PacketRouter router) {
+        if (call.isRequest()) {
+            List<String> childIDs = PArray.from(call.args().get(0))
+                    .orElseThrow(IllegalArgumentException::new)
+                    .asListOf(String.class);
+            List<String> existingChildren = children().toList();
+            List<String> reordered = container.reorderChildren(childIDs);
+            if (!Objects.equals(existingChildren, reordered)) {
+                notifyChildrenChanged(call.time());
+            }
+            if (call.isReplyRequired()) {
+                router.route(call.reply(PArray.ofObjects(reordered.toArray())));
+            }
+        }
+    }
+
     private class PortProxy implements Port {
 
         private final String id;
@@ -392,6 +412,8 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
     public static class Connector<D extends CodeContainerDelegate> extends CodeConnector<D> {
 
         private boolean hasPortProxies;
+
+        private boolean reorderable;
         private CodeContainerSupport.TypesInfo typesInfo;
 
         public Connector(CodeFactory.Task<D> task, D delegate) {
@@ -439,6 +461,15 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
             }
             if (typesInfo == null) {
                 typesInfo = CodeContainerSupport.analyseMethod(method, true);
+            }
+            if (!reorderable
+                    && method.isAnnotationPresent(CodeContainerDelegate.Reorderable.class)) {
+                addControl(new WrapperControlDescriptor(
+                        ContainerProtocol.CHILDREN_ORDER,
+                        ContainerProtocol.CHILDREN_ORDER_INFO,
+                        getInternalIndex(),
+                        ctxt -> ctxt instanceof Context c ? c.getComponent()::reorderChildren : null));
+                reorderable = true;
             }
         }
 
@@ -503,6 +534,11 @@ public class CodeContainer<D extends CodeContainerDelegate> extends CodeComponen
         @Override
         protected void notifyChild(Component child) throws VetoException {
             child.parentNotify(wrapper);
+        }
+
+        @Override
+        protected List<String> reorderChildren(List<String> childIDs) {
+            return super.reorderChildren(childIDs);
         }
 
         @Override
