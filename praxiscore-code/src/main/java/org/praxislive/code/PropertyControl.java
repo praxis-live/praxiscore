@@ -470,15 +470,16 @@ public class PropertyControl extends Property implements Control {
 
         private static Method extractMethod(CodeConnector<?> connector, String methodName) {
             try {
-                Method m = connector.getDelegate().getClass().getDeclaredMethod(methodName);
-                m.setAccessible(true);
-                return m;
-            } catch (NoSuchMethodException ex) {
-
+                Method method = connector.methods().stream()
+                        .filter(m -> m.getName().equals(methodName) && m.getParameterCount() == 0)
+                        .findFirst().orElse(null);
+                if (method != null) {
+                    method.setAccessible(true);
+                }
+                return method;
             } catch (Exception ex) {
-
+                return null;
             }
-            return null;
         }
 
     }
