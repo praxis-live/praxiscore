@@ -102,6 +102,8 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     private final Set<String> expose;
 
     private List<Plugin> plugins;
+    private List<Method> methods;
+    private List<Field> fields;
     private Map<String, ControlDescriptor<?>> extControls;
     private Map<String, PortDescriptor<?>> extPorts;
     private Map<String, ReferenceDescriptor<?>> extRefs;
@@ -129,11 +131,14 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     /**
      * Process will be called by the CodeContext.
      */
+    @SuppressWarnings("deprecation")
     final void process() {
         plugins = ALL_PLUGINS.stream().filter(p -> p.isSupportedConnector(this))
                 .collect(Collectors.toList());
-        analyseFields(extractFieldsToBase(delegate, factory.baseClass()));
-        analyseMethods(extractMethodsToBase(delegate, factory.baseClass()));
+        fields = extractFieldsToBase(delegate, factory.baseClass());
+        methods = extractMethodsToBase(delegate, factory.baseClass());
+        analyseFields(fields.toArray(Field[]::new));
+        analyseMethods(methods.toArray(Method[]::new));
         addDefaultControls();
         addDefaultPorts();
         addControl(new AsyncHandler(getInternalIndex()));
@@ -444,6 +449,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @param fields discovered fields
      */
+    @Deprecated(forRemoval = true)
     protected void analyseFields(Field[] fields) {
         for (Field f : fields) {
             if (Modifier.isStatic(f.getModifiers())) {
@@ -463,6 +469,7 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      *
      * @param methods discovered methods
      */
+    @Deprecated(forRemoval = true)
     protected void analyseMethods(Method[] methods) {
         for (Method m : methods) {
             if (Modifier.isStatic(m.getModifiers())) {
@@ -901,6 +908,32 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     }
 
     /**
+     * Return an immutable list of all the declared fields found in the delegate
+     * and its superclasses, up to but not including the factory base class. The
+     * list is ordered according to the class hierarchy, starting with the
+     * delegate.
+     *
+     * @see CodeFactory#baseClass()
+     * @return field list
+     */
+    public final List<Field> fields() {
+        return fields;
+    }
+
+    /**
+     * Return an immutable list of all the declared methods found in the
+     * delegate and its superclasses, up to but not including the factory base
+     * class. The list is ordered according to the class hierarchy, starting
+     * with the delegate.
+     *
+     * @see CodeFactory#baseClass()
+     * @return method list
+     */
+    public final List<Method> methods() {
+        return methods;
+    }
+
+    /**
      * Convert a Java name in camelCase to an ID in dash-case.
      *
      * @param javaName Java name to convert
@@ -977,30 +1010,24 @@ public abstract class CodeConnector<D extends CodeDelegate> {
         return valueType.converter().apply(PString.of(defaultString)).orElse(PString.EMPTY);
     }
 
-    private Field[] extractFieldsToBase(D delegate, Class<?> base) {
+    private List<Field> extractFieldsToBase(D delegate, Class<?> base) {
         Class<?> cls = delegate.getClass();
-        if (cls.getSuperclass().equals(base)) {
-            return cls.getDeclaredFields();
-        }
-        List<Field> fields = new ArrayList<>();
+        List<Field> fds = new ArrayList<>();
         while (cls != null && !cls.equals(base)) {
-            fields.addAll(0, Arrays.asList(cls.getDeclaredFields()));
+            fds.addAll(0, Arrays.asList(cls.getDeclaredFields()));
             cls = cls.getSuperclass();
         }
-        return fields.toArray(Field[]::new);
+        return List.copyOf(fds);
     }
 
-    private Method[] extractMethodsToBase(D delegate, Class<?> base) {
+    private List<Method> extractMethodsToBase(D delegate, Class<?> base) {
         Class<?> cls = delegate.getClass();
-        if (cls.getSuperclass().equals(base)) {
-            return cls.getDeclaredMethods();
-        }
-        List<Method> fields = new ArrayList<>();
+        List<Method> mds = new ArrayList<>();
         while (cls != null && !cls.equals(base)) {
-            fields.addAll(0, Arrays.asList(cls.getDeclaredMethods()));
+            mds.addAll(0, Arrays.asList(cls.getDeclaredMethods()));
             cls = cls.getSuperclass();
         }
-        return fields.toArray(Method[]::new);
+        return List.copyOf(mds);
     }
 
     /**
