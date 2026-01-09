@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -242,6 +242,15 @@ public abstract class Property {
             linkAs(converter, consumer);
         }
         return this;
+    }
+
+    /**
+     * Return a new {@link Linkable} for observing changing values.
+     *
+     * @return Linkable of values
+     */
+    public Linkable<Value> values() {
+        return new ValueLink();
     }
 
     /**
@@ -725,14 +734,21 @@ public abstract class Property {
         private BindingContext bindingContext;
         private ControlAddress boundAddress;
         private boolean inSync;
+        private Binding.SyncRate targetRate;
 
         private Sync(Property property) {
             this.property = property;
             this.adaptor = new Binding.PropertyAdaptor();
+            this.targetRate = Binding.SyncRate.Medium;
             this.adaptor.onChange(this::onChangeImpl)
-                    .onCheckAdjusting(a -> isAdjusting());
+                    .onCheckAdjusting(a -> isAdjusting())
+                    .onSync(a -> {
+                        if (a.getSyncRate() != targetRate) {
+                            a.setSyncRate(targetRate);
+                        }
+                    });
             this.adaptor.setActive(true);
-            this.adaptor.setSyncRate(Binding.SyncRate.Medium);
+            this.adaptor.setSyncRate(targetRate);
             this.link = new BaseLink() {
                 @Override
                 public void update(double value) {
@@ -792,6 +808,34 @@ public abstract class Property {
          */
         public Optional<ControlInfo> info() {
             return adaptor.info();
+        }
+
+        /**
+         * Mark whether this Sync requires polling of the bound value. Polling
+         * is done based on the requirements of all bindings on the same
+         * address. The property may still be updated if other bindings are
+         * active. To stop this property from receiving any update, call
+         * {@link #unbind()}.
+         *
+         * @param required whether polling is required
+         * @return this
+         */
+        public Sync poll(boolean required) {
+            targetRate = required ? Binding.SyncRate.Medium : Binding.SyncRate.None;
+            adaptor.setSyncRate(targetRate);
+            return this;
+        }
+
+        /**
+         * Mark this Sync as requiring a one-off poll of the bound value as
+         * quickly as possible. After polling the Sync will return to the
+         * previously requested polling rate, if any.
+         *
+         * @return this
+         */
+        public Sync pollNow() {
+            adaptor.setSyncRate(Binding.SyncRate.High);
+            return this;
         }
 
         private BindingContext findBindingContext() {
