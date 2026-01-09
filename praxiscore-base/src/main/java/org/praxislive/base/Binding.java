@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,7 @@ import org.praxislive.core.Value;
 public abstract class Binding {
 
     /**
-     * Rates for perdiodic syncing. Except for {@code None}, how these values
+     * Rates for periodic syncing. Except for {@code None}, how these values
      * translate to a sync period in milliseconds is governed by the
      * {@link BindingContext} implementation.
      */
