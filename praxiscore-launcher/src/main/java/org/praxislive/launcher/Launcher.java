@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
-import java.util.function.BiConsumer;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
@@ -176,6 +175,11 @@ public class Launcher {
                 hidden = true)
         private boolean noSignals;
 
+        @CommandLine.Option(names = "--no-autorun",
+                description = "Don't run autorun script.",
+                hidden = true)
+        private boolean noAutorun;
+
         @CommandLine.Parameters(description = "Extra command line arguments.")
         private List<String> extraArgs;
 
@@ -215,20 +219,24 @@ public class Launcher {
                 cidr = null;
             }
 
-            var autoRun = context.autoRunFile();
+            File autorun = null;
+            if (!child && !noAutorun) {
+                autorun = context.autoRunFile().orElse(null);
+            }
+
             if (file != null) {
                 if (child) {
                     error("Cannot specify --file and --child");
                     return 1;
                 }
-                if (autoRun.isPresent()) {
+                if (autorun != null) {
                     error("Cannot specify --file when auto-run file exists");
                     return 1;
                 }
             }
 
             final String script;
-            var scriptFile = autoRun.orElse(file);
+            File scriptFile = autorun == null ? file : autorun;
             if (scriptFile != null) {
                 scriptFile = scriptFile.getAbsoluteFile();
                 if (scriptFile.isDirectory()) {
