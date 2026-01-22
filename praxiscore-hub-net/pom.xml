@@ -19,32 +19,32 @@
     <dependency>
       <groupId>com.amazon.ion</groupId>
       <artifactId>ion-java</artifactId>
-      <version>1.11.10</version>
+      <version>1.11.11</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-common</artifactId>
-      <version>4.2.6.Final</version>
+      <version>4.2.9.Final</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-buffer</artifactId>
-      <version>4.2.6.Final</version>
+      <version>4.2.9.Final</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
-      <version>4.2.6.Final</version>
+      <version>4.2.9.Final</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec</artifactId>
-      <version>4.2.6.Final</version>
+      <version>4.2.9.Final</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec-http</artifactId>
-      <version>4.2.6.Final</version>
+      <version>4.2.9.Final</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
