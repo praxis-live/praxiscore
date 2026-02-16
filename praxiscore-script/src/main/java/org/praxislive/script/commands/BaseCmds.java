@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -113,10 +113,16 @@ class BaseCmds {
 
         @Override
         public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
-            return List.of(PString.of(
-                    args.stream()
-                            .map(Value::toString)
-                            .collect(Collectors.joining())));
+            if (args.isEmpty()) {
+                return List.of(PString.EMPTY);
+            } else if (args.size() == 1) {
+                return List.of(args.get(0));
+            } else {
+                return List.of(PString.of(
+                        args.stream()
+                                .map(Value::toString)
+                                .collect(Collectors.joining())));
+            }
         }
 
     }
