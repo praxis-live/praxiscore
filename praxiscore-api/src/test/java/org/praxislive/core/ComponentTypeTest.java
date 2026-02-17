@@ -1,17 +1,30 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+ *
+ * Copyright 2026 Neil C Smith.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 3 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * version 3 for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License version 3
+ * along with this work; if not, see http://www.gnu.org/licenses/
+ * 
+ *
+ * Please visit https://www.praxislive.org if you need additional information or
+ * have any questions.
  */
-
 package org.praxislive.core;
 
-import org.praxislive.core.ComponentType;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
@@ -20,49 +33,6 @@ import static org.junit.Assert.*;
 public class ComponentTypeTest {
 
     public ComponentTypeTest() {
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-    }
-
-    @AfterClass
-    public static void tearDownClass() throws Exception {
-    }
-
-    @Before
-    public void setUp() {
-    }
-
-    @After
-    public void tearDown() {
-    }
-
-    /**
-     * Test of toString method, of class ComponentType.
-     */
-    @Test
-    public void testToString() {
-        System.out.println("toString");
-        
-    }
-
-    /**
-     * Test of hashCode method, of class ComponentType.
-     */
-    @Test
-    public void testHashCode() {
-        System.out.println("hashCode");
-        
-    }
-
-    /**
-     * Test of equals method, of class ComponentType.
-     */
-    @Test
-    public void testEquals() {
-        System.out.println("equals");
-        
     }
 
     /**
@@ -99,33 +69,6 @@ public class ComponentTypeTest {
                 }
             }
         }
-    }
-
-    /**
-     * Test of valueOf method, of class ComponentType.
-     */
-    @Test
-    public void testValueOf() throws Exception {
-        System.out.println("valueOf");
-        
-    }
-
-    /**
-     * Test of info method, of class ComponentType.
-     */
-    @Test
-    public void testInfo() {
-        System.out.println("info");
-       
-    }
-
-    /**
-     * Test of coerce method, of class ComponentType.
-     */
-    @Test
-    public void testCoerce() throws Exception {
-        System.out.println("coerce");
-        
     }
 
 }
