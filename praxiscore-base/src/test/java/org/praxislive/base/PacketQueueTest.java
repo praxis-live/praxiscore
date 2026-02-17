@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,38 +21,19 @@
  */
 package org.praxislive.base;
 
+import org.junit.jupiter.api.Test;
 import org.praxislive.core.Call;
 import org.praxislive.core.ControlAddress;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  *
- * 
+ *
  */
 public class PacketQueueTest {
 
     public PacketQueueTest() {
-    }
-
-    @BeforeClass
-    public static void setUpClass() {
-    }
-
-    @AfterClass
-    public static void tearDownClass() {
-    }
-
-    @Before
-    public void setUp() {
-    }
-
-    @After
-    public void tearDown() {
     }
 
     @Test
@@ -73,7 +54,7 @@ public class PacketQueueTest {
         assertEquals(c2, pq.poll());
 
     }
-    
+
     @Test
     public void testWrappingPoll() {
         PacketQueue pq = new PacketQueue(Long.MAX_VALUE - 5000);
