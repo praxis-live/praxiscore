@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,6 +24,7 @@ package org.praxislive.code;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -54,10 +55,11 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
     private final ControlInfo info;
     private final boolean async;
     private final List<ValueMapper<?>> parameterMappers;
-    private final ValueMapper<?> returnMapper;
+    private final ValueMapper<Object> returnMapper;
 
     private FunctionControl control;
 
+    @SuppressWarnings("unchecked")
     private FunctionDescriptor(String id,
             int index,
             Method method,
@@ -69,7 +71,7 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         this.method = method;
         this.info = info;
         this.parameterMappers = parameterMappers;
-        this.returnMapper = returnMapper;
+        this.returnMapper = (ValueMapper<Object>) returnMapper;
         this.async = async;
     }
 
@@ -84,12 +86,12 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         }
         if (control == null) {
             if (async) {
-                control = new AsyncFunctionControl(parameterMappers, returnMapper);
+                control = new AsyncFunctionControl();
             } else {
-                control = new DirectFunctionControl(parameterMappers, returnMapper);
+                control = new DirectFunctionControl();
             }
         }
-        control.attach(context, method);
+        control.attach(context, this);
     }
 
     @Override
@@ -146,20 +148,27 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
     private static FunctionDescriptor createImpl(CodeConnector<?> connector,
             Method method, int index, PMap watchInfo) {
         method.setAccessible(true);
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        if (watchInfo != null && parameterTypes.length > 1) {
+        Parameter[] parameters = method.getParameters();
+        if (watchInfo != null && parameters.length > 1) {
             connector.getLog().log(LogLevel.ERROR,
                     "Watch has more than one parameter in method " + method.getName());
         }
-        ValueMapper<?>[] parameterMappers = new ValueMapper<?>[parameterTypes.length];
+        ValueMapper<?>[] parameterMappers = new ValueMapper<?>[parameters.length];
         for (int i = 0; i < parameterMappers.length; i++) {
-            Class<?> type = parameterTypes[i];
+            Parameter parameter = parameters[i];
+            Class<?> type = parameter.getType();
             ValueMapper<?> mapper = ValueMapper.find(type);
             if (mapper == null) {
                 connector.getLog().log(LogLevel.ERROR,
                         "Unsupported parameter type " + type.getSimpleName()
                         + " in method " + method.getName());
                 return null;
+            }
+            try {
+                mapper = AnnotationUtils.createValidatingMapper(mapper, parameter);
+            } catch (AnnotationUtils.TypeMismatchException ex) {
+                connector.getLog().log(LogLevel.WARNING,
+                        "Mismatched type info on parameter " + parameter);
             }
             parameterMappers[i] = mapper;
         }
@@ -197,26 +206,24 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
                 return null;
             }
         }
+        if (returnMapper != null) {
+            try {
+                returnMapper = AnnotationUtils.createValidatingMapper(returnMapper, method);
+            } catch (AnnotationUtils.TypeMismatchException ex) {
+                connector.getLog().log(LogLevel.WARNING,
+                        "Mismatched type info on method " + method);
+            }
+        }
         String id = connector.findID(method);
 
         ArgumentInfo[] inputArgInfo = new ArgumentInfo[parameterMappers.length];
         for (int i = 0; i < inputArgInfo.length; i++) {
-            Value.Type<?> type = parameterMappers[i].valueType();
-            PMap properties = type.emptyValue()
-                    .map(empty -> PMap.EMPTY)
-                    .orElse(PMap.of(ArgumentInfo.KEY_ALLOW_EMPTY, true));
-            inputArgInfo[i] = ArgumentInfo.of(type.asClass(), properties);
+            inputArgInfo[i] = parameterMappers[i].createInfo();
         }
 
         ArgumentInfo[] outputArgInfo;
         if (returnMapper != null) {
-            Value.Type<?> type = returnMapper.valueType();
-            PMap properties = type.emptyValue()
-                    .map(empty -> PMap.EMPTY)
-                    .orElse(PMap.of(ArgumentInfo.KEY_ALLOW_EMPTY, true));
-            outputArgInfo = new ArgumentInfo[]{
-                ArgumentInfo.of(type.asClass(), properties)
-            };
+            outputArgInfo = new ArgumentInfo[]{returnMapper.createInfo()};
         } else {
             outputArgInfo = new ArgumentInfo[0];
         }
@@ -241,7 +248,7 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
 
     private static abstract class FunctionControl implements Control {
 
-        abstract void attach(CodeContext<?> context, Method method);
+        abstract void attach(CodeContext<?> context, FunctionDescriptor descriptor);
 
         abstract void dispose();
 
@@ -253,37 +260,30 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
 
     private static class DirectFunctionControl extends FunctionControl {
 
-        private final List<ValueMapper<?>> parameterMappers;
-        private final ValueMapper<Object> returnMapper;
-
         private CodeContext<?> context;
-        private Method method;
+        private FunctionDescriptor dsc;
 
-        @SuppressWarnings("unchecked")
-        private DirectFunctionControl(List<ValueMapper<?>> parameterMappers,
-                ValueMapper<?> returnMapper) {
-            this.parameterMappers = parameterMappers;
-            this.returnMapper = (ValueMapper<Object>) returnMapper;
+        private DirectFunctionControl() {
         }
 
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
                 List<Value> args = call.args();
-                int reqCount = parameterMappers.size();
+                int reqCount = dsc.parameterMappers.size();
                 if (args.size() < reqCount) {
                     throw new IllegalArgumentException("Not enough arguments in call");
                 }
                 Object[] parameters = new Object[reqCount];
                 for (int i = 0; i < parameters.length; i++) {
-                    parameters[i] = parameterMappers.get(i).fromValue(args.get(i));
+                    parameters[i] = dsc.parameterMappers.get(i).fromValue(args.get(i));
                 }
                 try {
                     Object response = context.invokeCallable(call.time(),
-                            () -> method.invoke(context.getDelegate(), parameters));
+                            () -> dsc.method.invoke(context.getDelegate(), parameters));
                     if (call.isReplyRequired()) {
-                        if (returnMapper != null) {
-                            router.route(call.reply(returnMapper.toValue(response)));
+                        if (dsc.returnMapper != null) {
+                            router.route(call.reply(dsc.returnMapper.toValue(response)));
                         } else {
                             router.route(call.reply());
                         }
@@ -299,33 +299,27 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         }
 
         @Override
-        void attach(CodeContext<?> context, Method method) {
+        void attach(CodeContext<?> context, FunctionDescriptor descriptor) {
             this.context = context;
-            this.method = method;
+            this.dsc = descriptor;
         }
 
         @Override
         void dispose() {
             this.context = null;
-            this.method = null;
+            this.dsc = null;
         }
 
     }
 
     private static class AsyncFunctionControl extends FunctionControl {
 
-        private final List<ValueMapper<?>> parameterMappers;
-        private final ValueMapper<Object> returnMapper;
         private final Map<Call, CompletableFuture<?>> pending;
 
         private CodeContext<?> context;
-        private Method method;
+        private FunctionDescriptor dsc;
 
-        @SuppressWarnings("unchecked")
-        private AsyncFunctionControl(List<ValueMapper<?>> parameterMappers,
-                ValueMapper<?> returnMapper) {
-            this.parameterMappers = parameterMappers;
-            this.returnMapper = (ValueMapper<Object>) returnMapper;
+        private AsyncFunctionControl() {
             pending = new LinkedHashMap<>();
         }
 
@@ -334,17 +328,17 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
                 List<Value> args = call.args();
-                int reqCount = parameterMappers.size();
+                int reqCount = dsc.parameterMappers.size();
                 if (args.size() < reqCount) {
                     throw new IllegalArgumentException("Not enough arguments in call");
                 }
                 Object[] parameters = new Object[reqCount];
                 for (int i = 0; i < parameters.length; i++) {
-                    parameters[i] = parameterMappers.get(i).fromValue(args.get(i));
+                    parameters[i] = dsc.parameterMappers.get(i).fromValue(args.get(i));
                 }
                 try {
                     Object response = context.invokeCallable(call.time(),
-                            () -> method.invoke(context.getDelegate(), parameters));
+                            () -> dsc.method.invoke(context.getDelegate(), parameters));
                     if (call.isReplyRequired()) {
                         Async<Object> async = (Async<Object>) response;
                         if (async.done()) {
@@ -382,9 +376,9 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         }
 
         @Override
-        void attach(CodeContext<?> context, Method method) {
+        void attach(CodeContext<?> context, FunctionDescriptor descriptor) {
             this.context = context;
-            this.method = method;
+            this.dsc = descriptor;
         }
 
         @Override
@@ -400,12 +394,12 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         void dispose() {
             onStop();
             this.context = null;
-            this.method = null;
+            this.dsc = null;
         }
 
         private void handleComplete(Call call, Object result, PacketRouter router) {
             try {
-                router.route(call.reply(returnMapper.toValue(result)));
+                router.route(call.reply(dsc.returnMapper.toValue(result)));
             } catch (Exception ex) {
                 router.route(call.error(PError.of(ex)));
             }

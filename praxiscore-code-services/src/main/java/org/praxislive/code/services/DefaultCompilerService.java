@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -197,11 +197,13 @@ public class DefaultCompilerService extends AbstractRoot
 
             LogBuilder log = new LogBuilder(getLogLevel(map));
 
-            List<String> options = List.of("-proc:none",
+            List<String> options = List.of(
+                    "-proc:none",
+                    "-parameters",
                     "--release", String.valueOf(release.ordinal()),
                     "--add-modules", "ALL-MODULE-PATH",
                     "--module-path", defModulepath,
-                    "-classpath", buildClasspath());
+                    "--class-path", buildClasspath());
 
             Map<String, Supplier<InputStream>> shared
                     = Optional.ofNullable(map.get(CodeCompilerService.KEY_SHARED_CLASSES))

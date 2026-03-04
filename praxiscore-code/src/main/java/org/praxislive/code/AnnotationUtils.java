@@ -56,51 +56,65 @@ class AnnotationUtils {
     }
 
     /**
-     * Argument data derived from annotation information.
-     *
-     * @param mapper value mapper
-     * @param defaultValue default value
-     * @param info argument info
-     * @param validator predicate to check target value is valid
-     */
-    record ArgumentData<T>(ValueMapper<T> mapper, Value defaultValue,
-            ArgumentInfo info, Predicate<T> validator) {
-
-    }
-
-    static class TypeMismatchException extends Exception {
-
-        private TypeMismatchException() {
-        }
-
-    }
-
-    /**
      * Extract argument data based on annotations from {@link Type} on the
      * provided element.
      *
      * @param targetType the target type for the mapped
      * @param element annotatable element that may have type annotations
      * @return argument data or null
+     * @throws TypeMismatchException
      */
     static <T> ArgumentData<T> extractArgumentData(ValueMapper<T> mapper,
             AnnotatedElement element) throws TypeMismatchException {
         return switch (findTypeAnnotation(element)) {
             case Type an ->
-                extractTypeData(mapper, element, an);
+                extractTypeData(mapper, an);
             case Type.Number an ->
-                extractNumberData(mapper, element, an);
+                extractNumberData(mapper, an);
             case Type.Integer an ->
-                extractIntegerData(mapper, element, an);
+                extractIntegerData(mapper, an);
             case Type.String an ->
-                extractStringData(mapper, element, an);
+                extractStringData(mapper, an);
             case Type.Boolean an ->
-                extractBooleanData(mapper, element, an);
+                extractBooleanData(mapper, an);
             case Type.Resource an ->
-                extractResourceData(mapper, element, an);
+                extractResourceData(mapper, an);
             case null, default ->
                 null;
         };
+    }
+
+    /**
+     * Extract a {@link ValueMapper} that validates conversion and provides
+     * {@link ArgumentInfo} based on the annotated element. If no extra argument
+     * data is found, the existing mapper is returned.
+     *
+     * @param <T> mapper target type
+     * @param mapper base mapper
+     * @param element annotatable element that may have type annotations
+     * @return validating mapper or existing mapper
+     * @throws TypeMismatchException
+     */
+    static <T> ValueMapper<T> createValidatingMapper(ValueMapper<T> mapper,
+            AnnotatedElement element) throws TypeMismatchException {
+        ArgumentData<T> data = extractArgumentData(mapper, element);
+        if (data != null) {
+            return createValidatingMapper(data);
+        } else {
+            return mapper;
+        }
+    }
+
+    /**
+     * Create a {@link ValueMapper} that wraps the mapper in the provided data
+     * and validates the conversion.
+     *
+     * @param <T> mapper target type
+     * @param data argument data
+     * @return validating mapper
+     */
+    static <T> ValueMapper<T> createValidatingMapper(ArgumentData<T> data) {
+        return new ValidatingMapper<>(data);
     }
 
     static DoublePredicate rangePredicate(Type.Number annotation) {
@@ -116,7 +130,7 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractTypeData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type annotation) throws TypeMismatchException {
+            Type annotation) throws TypeMismatchException {
         Class<?> annotatedValueClass = Value.Type.of(annotation.value()).asClass();
         Class<?> mapperValueClass = mapper.valueType().asClass();
         if (annotatedValueClass != Value.class && annotatedValueClass != mapperValueClass) {
@@ -150,8 +164,7 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractBooleanData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type.Boolean annotation)
-            throws TypeMismatchException {
+            Type.Boolean annotation) throws TypeMismatchException {
         Class<?> targetType = TypeUtils.extractRawType(mapper.type());
         if (targetType == boolean.class || targetType == Boolean.class
                 || targetType == PBoolean.class) {
@@ -163,8 +176,7 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractIntegerData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type.Integer annotation)
-            throws TypeMismatchException {
+            Type.Integer annotation) throws TypeMismatchException {
 
         int min = annotation.min();
         int max = annotation.max();
@@ -202,8 +214,7 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractNumberData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type.Number annotation)
-            throws TypeMismatchException {
+            Type.Number annotation) throws TypeMismatchException {
 
         double min = annotation.min();
         double max = annotation.max();
@@ -241,9 +252,8 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractResourceData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type.Resource annotation)
-            throws TypeMismatchException {
-         Class<?> targetType = TypeUtils.extractRawType(mapper.type());
+            Type.Resource annotation) throws TypeMismatchException {
+        Class<?> targetType = TypeUtils.extractRawType(mapper.type());
         if (targetType == PResource.class) {
             return new ArgumentData<>(mapper, PString.EMPTY,
                     mapper.createInfo(), v -> true);
@@ -253,8 +263,7 @@ class AnnotationUtils {
     }
 
     private static <T> ArgumentData<T> extractStringData(ValueMapper<T> mapper,
-            AnnotatedElement element, Type.String annotation)
-            throws TypeMismatchException {
+            Type.String annotation) throws TypeMismatchException {
         String[] allowed = annotation.allowed();
         String def = annotation.def();
         boolean emptyIsDefault = annotation.emptyIsDefault();
@@ -336,6 +345,61 @@ class AnnotationUtils {
 
     private static IntPredicate rangePredicate(int min, int max) {
         return i -> i >= min && i <= max;
+    }
+
+    /**
+     * Argument data derived from annotation information.
+     *
+     * @param mapper value mapper
+     * @param defaultValue default value
+     * @param info argument info
+     * @param validator predicate to check target value is valid
+     */
+    static record ArgumentData<T>(ValueMapper<T> mapper, Value defaultValue,
+            ArgumentInfo info, Predicate<T> validator) {
+
+    }
+
+    static class TypeMismatchException extends Exception {
+
+        private TypeMismatchException() {
+        }
+
+    }
+
+    private static class ValidatingMapper<T> extends ValueMapper<T> {
+
+        private final ArgumentData<T> data;
+
+        private ValidatingMapper(ArgumentData<T> data) {
+            super(data.mapper().type(), data.mapper().valueType());
+            this.data = data;
+        }
+
+        @Override
+        public T fromValue(Value value) {
+            T obj = data.mapper().fromValue(value);
+            if (obj != null) {
+                if (data.validator().test(obj)) {
+                    return obj;
+                } else {
+                    throw new IllegalArgumentException();
+                }
+            } else {
+                return data.mapper().fromValue(data.defaultValue());
+            }
+        }
+
+        @Override
+        public Value toValue(T obj) {
+            return data.mapper().toValue(obj);
+        }
+
+        @Override
+        public ArgumentInfo createInfo() {
+            return data.info();
+        }
+
     }
 
 }
