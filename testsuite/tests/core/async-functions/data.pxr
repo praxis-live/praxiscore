@@ -1,7 +1,6 @@
-@ /data2 root:data {
-  .meta [map praxis.version 5.7.0-SNAPSHOT]
+@ /data root:data {
   @ ./functions core:custom {
-    .meta [map graph.x 265 graph.y 184]
+    .meta [map graph.x 105 graph.y 93]
     .code {
     @FN String uppercase(String input) {
         return input.toUpperCase(Locale.ROOT);
@@ -28,12 +27,4 @@
 
 }
   }
-  @ ./start-trigger core:start-trigger {
-    .meta [map graph.x 70 graph.y 59]
-  }
-  @ ./send core:routing:send {
-    .meta [map graph.x 455 graph.y 76]
-    .address /data1/test1.test
-  }
-  ~ ./start-trigger!out ./send!in
 }
