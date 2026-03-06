@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
+import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.OrderedMap;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueFormatException;
@@ -45,14 +46,21 @@ public final class PMap extends Value {
     /**
      * An empty PMap.
      */
-    public final static PMap EMPTY = new PMap(OrderedMap.of());
+    public static final PMap EMPTY = new PMap(OrderedMap.of());
+
+    /**
+     * Property key for use in {@link ArgumentInfo} to define a schema for the
+     * map. The value attached to this key should itself be a PMap, mapping keys
+     * to ArgumentInfo.
+     */
+    public static final String KEY_SCHEMA = "map-schema";
 
     /**
      * An operator for use with
      * {@link #merge(org.praxislive.core.types.PMap, org.praxislive.core.types.PMap, java.util.function.BinaryOperator)}
      * that only adds mappings where the key is not present in the base map.
      */
-    public final static BinaryOperator<Value> IF_ABSENT = (Value oldValue, Value newValue)
+    public static final BinaryOperator<Value> IF_ABSENT = (Value oldValue, Value newValue)
             -> oldValue == null ? newValue : oldValue;
 
     /**
@@ -61,7 +69,7 @@ public final class PMap extends Value {
      * that will replace mapped values in the base map, unless the new value is
      * empty in which case the mapping is removed.
      */
-    public final static BinaryOperator<Value> REPLACE = (Value oldValue, Value newValue)
+    public static final BinaryOperator<Value> REPLACE = (Value oldValue, Value newValue)
             -> newValue == null || newValue.isEmpty() ? null : newValue;
 
     private final OrderedMap<String, Value> map;

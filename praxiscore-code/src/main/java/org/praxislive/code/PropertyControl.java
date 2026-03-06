@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -450,8 +450,8 @@ public class PropertyControl extends Property implements Control {
             } else if (field.isAnnotationPresent(Type.Boolean.class)
                     || BooleanBinding.isBindableFieldType(type)) {
                 binding = BooleanBinding.create(connector, field);
-            } else if (ValueBinding.isBindableFieldType(type)) {
-                binding = ValueBinding.create(connector, field);
+            } else {
+                binding = ValueMapperBinding.create(connector, field);
             }
 
             if (binding == null && Property.class.isAssignableFrom(type)) {

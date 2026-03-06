@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,7 +41,7 @@ public final class PString extends Value implements Comparable<PString> {
     public static final String KEY_MIME_TYPE = ArgumentInfo.KEY_MIME_TYPE;
     public static final String KEY_EMPTY_IS_DEFAULT = ArgumentInfo.KEY_EMPTY_IS_DEFAULT;
 
-    public final static PString EMPTY = PString.of("");
+    public final static PString EMPTY = new PString("");
 
     private final String value;
 
@@ -88,17 +88,14 @@ public final class PString extends Value implements Comparable<PString> {
     }
 
     public static PString of(String str) {
-        if (str == null) {
-            throw new NullPointerException();
-        }
-        return new PString(str);
+        return str.isEmpty() ? PString.EMPTY : new PString(str);
     }
 
     public static PString of(Object obj) {
-        if (obj instanceof PString) {
-            return (PString) obj;
+        if (obj instanceof PString pString) {
+            return pString;
         } else {
-            return new PString(String.valueOf(obj));
+            return of(String.valueOf(obj));
         }
     }
 

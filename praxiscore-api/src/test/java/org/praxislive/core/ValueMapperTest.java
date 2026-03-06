@@ -1,15 +1,33 @@
+/*
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+ * 
+ * Copyright 2026 Neil C Smith.
+ * 
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 3 only, as
+ * published by the Free Software Foundation.
+ * 
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * version 3 for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License version 3
+ * along with this work; if not, see http://www.gnu.org/licenses/
+ * 
+ * 
+ * Please visit https://www.praxislive.org if you need additional information or
+ * have any questions.
+ */
 package org.praxislive.core;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.praxislive.core.types.PMap;
 
 /**
  *
@@ -18,6 +36,14 @@ public class ValueMapperTest {
 
     public static enum TEST_ENUM {
         ONE, TWO, THREE, FOUR
+    }
+
+    public static record RECORD_ONE(int value, boolean flag) {
+
+    }
+
+    public static record RECORD_TWO(String name, RECORD_ONE value) {
+
     }
 
     public ValueMapperTest() {
@@ -113,6 +139,35 @@ public class ValueMapperTest {
         assertEquals(PNumber.ZERO, mapper.toValue(null));
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.fromValue(PString.of("FOO")));
+    }
+
+    @Test
+    public void testRecordMapper() {
+        RECORD_ONE r1 = new RECORD_ONE(42, true);
+        PMap r1map = PMap.of("value", 42, "flag", true);
+        ValueMapper<RECORD_ONE> r1mapper = ValueMapper.find(RECORD_ONE.class);
+        assertNotNull(r1mapper);
+        assertEquals(r1map, r1mapper.toValue(r1));
+        assertEquals(r1, r1mapper.fromValue(r1map));
+
+        RECORD_TWO r2 = new RECORD_TWO("ValueMapperTest", r1);
+        PMap r2map = PMap.of("name", "ValueMapperTest", "value", r1map);
+        ValueMapper<RECORD_TWO> r2mapper = ValueMapper.find(RECORD_TWO.class);
+        assertNotNull(r2mapper);
+        assertEquals(r2map, r2mapper.toValue(r2));
+        assertEquals(r2, r2mapper.fromValue(r2map));
+
+        PMap schema = PMap.of("value",
+                ArgumentInfo.of(PNumber.class, PMap.of(PNumber.KEY_IS_INTEGER, true)),
+                "flag", ArgumentInfo.of(PBoolean.class));
+        ArgumentInfo info1 = r1mapper.createInfo();
+        assertEquals(schema, info1.properties().get(PMap.KEY_SCHEMA));
+        ArgumentInfo info2 = r2mapper.createInfo();
+        assertEquals(info1, PMap.from(
+                info2.properties().get(PMap.KEY_SCHEMA)).orElseThrow()
+                .get("value")
+        );
+
     }
 
 }

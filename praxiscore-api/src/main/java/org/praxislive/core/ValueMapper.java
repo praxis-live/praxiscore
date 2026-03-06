@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,13 +21,22 @@
  */
 package org.praxislive.core;
 
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.WeakHashMap;
 import java.util.function.Function;
 import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
@@ -107,6 +116,15 @@ public abstract class ValueMapper<T> {
     }
 
     /**
+     * Create a basic {@link ArgumentInfo} representing this value mapping.
+     *
+     * @return new ArgumentInfo
+     */
+    public ArgumentInfo createInfo() {
+        return ArgumentInfo.of(valueType.asClass());
+    }
+
+    /**
      * Find a ValueMapper capable of mapping Values to and from the provided
      * Class. Mappers for String, Boolean, Integer, Float and Double are
      * provided, along with their primitive counterparts where applicable.
@@ -125,9 +143,11 @@ public abstract class ValueMapper<T> {
     private static class Registry {
 
         private final Map<Type, ValueMapper<?>> map;
+        private final WeakHashMap<Type, WeakReference<ValueMapper<?>>> dynamicMap;
 
         private Registry() {
             map = new HashMap<>();
+            dynamicMap = new WeakHashMap<>();
             initDefaults();
         }
 
@@ -150,13 +170,35 @@ public abstract class ValueMapper<T> {
 
         @SuppressWarnings("unchecked")
         synchronized ValueMapper<?> find(Type type) {
+            ValueMapper<?> mapper = map.get(type);
+            if (mapper != null) {
+                return mapper;
+            }
+            WeakReference<ValueMapper<?>> mapperRef = dynamicMap.get(type);
+            if (mapperRef != null) {
+                mapper = mapperRef.get();
+                if (mapper != null) {
+                    return mapper;
+                } else {
+                    dynamicMap.remove(type);
+                }
+            }
+
             if (type instanceof Class) {
                 Class<?> cls = (Class<?>) type;
                 if (cls.isEnum()) {
-                    return new EnumMapper<>((Class<? extends Enum>) cls);
+                    mapper = new EnumMapper<>((Class<? extends Enum>) cls);
+                } else if (cls.isRecord()) {
+                    mapper = RecordMapper.create((Class<? extends Record>) cls);
                 }
             }
-            return map.get(type);
+
+            if (mapper != null) {
+                dynamicMap.put(type, new WeakReference<>(mapper));
+            }
+
+            return mapper;
+
         }
 
     }
@@ -191,6 +233,17 @@ public abstract class ValueMapper<T> {
                 }
             } else {
                 return value;
+            }
+        }
+
+        @Override
+        public ArgumentInfo createInfo() {
+            if (valueType().emptyValue().isPresent()) {
+                return super.createInfo();
+            } else {
+                return Info.argument().type(valueType().asClass())
+                        .property(ArgumentInfo.KEY_ALLOW_EMPTY, true)
+                        .build();
             }
         }
 
@@ -258,6 +311,13 @@ public abstract class ValueMapper<T> {
         @Override
         public Value toValue(Integer value) {
             return value == null ? PNumber.ZERO : PNumber.of(value);
+        }
+
+        @Override
+        public ArgumentInfo createInfo() {
+            return Info.argument().type(PNumber.class)
+                    .property(PNumber.KEY_IS_INTEGER, true)
+                    .build();
         }
 
     }
@@ -330,6 +390,126 @@ public abstract class ValueMapper<T> {
             } else {
                 return PString.of(value);
             }
+        }
+
+        @Override
+        public ArgumentInfo createInfo() {
+            return Info.argument().string()
+                    .allowed(Arrays.stream(enumCls.getEnumConstants())
+                            .map(Object::toString).toArray(String[]::new))
+                    .build();
+
+        }
+
+    }
+
+    private static class RecordMapper<R extends Record> extends ValueMapper<R> {
+
+        private final Constructor<R> constructor;
+        private final List<String> names;
+        private final List<ValueMapper<Object>> mappers;
+        private final List<Method> accessors;
+
+        private RecordMapper(Class<R> recordCls,
+                Constructor<R> constructor,
+                List<String> names,
+                List<ValueMapper<Object>> mappers,
+                List<Method> accessors) {
+            super(recordCls, PMap.class);
+            this.constructor = constructor;
+            this.names = names;
+            this.mappers = mappers;
+            this.accessors = accessors;
+        }
+
+        @Override
+        public R fromValue(Value value) {
+            if (value.isEmpty()) {
+                return null;
+            }
+            PMap input = PMap.from(value).orElseThrow(IllegalArgumentException::new);
+            Object[] parameters = new Object[names.size()];
+            for (int i = 0; i < parameters.length; i++) {
+                Value v = input.get(names.get(i));
+                Object o = mappers.get(i).fromValue(v);
+                parameters[i] = o;
+            }
+            try {
+                return constructor.newInstance(parameters);
+            } catch (IllegalArgumentException ex) {
+                throw ex;
+            } catch (ReflectiveOperationException ex) {
+                throw new IllegalArgumentException(ex);
+            }
+        }
+
+        @Override
+        public Value toValue(R value) {
+            if (value == null) {
+                return PMap.EMPTY;
+            }
+            try {
+                PMap.Entry[] entries = new PMap.Entry[names.size()];
+                for (int i = 0; i < entries.length; i++) {
+                    Object o = accessors.get(i).invoke(value);
+                    Value v = mappers.get(i).toValue(o);
+                    entries[i] = PMap.entry(names.get(i), v);
+                }
+                return PMap.ofEntries(entries);
+            } catch (ReflectiveOperationException ex) {
+                return PMap.EMPTY;
+            }
+        }
+
+        @Override
+        public ArgumentInfo createInfo() {
+            PMap.Entry[] schemaEntries = new PMap.Entry[names.size()];
+            for (int i = 0; i < schemaEntries.length; i++) {
+                schemaEntries[i] = PMap.entry(names.get(i), mappers.get(i).createInfo());
+            }
+            return Info.argument().type(PMap.class)
+                    .property(ArgumentInfo.KEY_ALLOW_EMPTY, true)
+                    .property(PMap.KEY_SCHEMA, PMap.ofEntries(schemaEntries))
+                    .build();
+        }
+
+        private static <R extends Record> RecordMapper<R> create(Class<R> recordCls) {
+            RecordComponent[] rcs = recordCls.getRecordComponents();
+            if (rcs == null) {
+                return null;
+            }
+            Constructor<R> constructor;
+            Class<?>[] parameters = Arrays.stream(rcs).map(RecordComponent::getType).toArray(Class<?>[]::new);
+            try {
+                constructor = recordCls.getDeclaredConstructor(parameters);
+                if (!constructor.trySetAccessible()) {
+                    return null;
+                }
+            } catch (NoSuchMethodException ex) {
+                return null;
+            }
+            List<String> names = new ArrayList<>(rcs.length);
+            List<ValueMapper<Object>> mappers = new ArrayList<>(rcs.length);
+            List<Method> accessors = new ArrayList<>(rcs.length);
+            for (RecordComponent rc : rcs) {
+                if (recordCls.equals(rc.getType())) {
+                    return null;
+                }
+                @SuppressWarnings("unchecked")
+                ValueMapper<Object> mapper = (ValueMapper<Object>) find(rc.getType());
+                if (mapper == null) {
+                    return null;
+                }
+                names.add(rc.getName());
+                mappers.add(mapper);
+                Method accessor = rc.getAccessor();
+                if (!accessor.trySetAccessible()) {
+                    return null;
+                }
+                accessors.add(accessor);
+            }
+            return new RecordMapper<>(recordCls, constructor, List.copyOf(names),
+                    List.copyOf(mappers), List.copyOf(accessors));
         }
 
     }
