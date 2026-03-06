@@ -338,4 +338,28 @@ public abstract class TestRunner extends CoreRootContainerDelegate {
     .arguments [array "text TEST count 4"]
     .expected [array TESTTESTTESTTEST]
   }
+  @ ./test-9 tests:test-call {
+    .description "Call make point"
+    .address /data/functions.make-point
+    .arguments [array 3 7]
+    .expected [array "x 3 y 7"]
+  }
+  @ ./test-10 tests:test-call {
+    .description "Call make point out of range"
+    .address /data/functions.make-point
+    .arguments [array 12 5]
+    .expect-error true
+  }
+  @ ./test-11 tests:test-call {
+    .description "Call make async point"
+    .address /data/functions.make-async-point
+    .arguments [array 10 20]
+    .expected [array "x 10 y 20"]
+  }
+  @ ./test-12 tests:test-call {
+    .description "Call swap point"
+    .address /data/functions.swap-point
+    .arguments [array "x 50 y 100"]
+    .expected [array "x 100 y 50"]
+  }
 }

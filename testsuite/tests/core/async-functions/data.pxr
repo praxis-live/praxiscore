@@ -2,20 +2,29 @@
   @ ./functions core:custom {
     .meta [map graph.x 105 graph.y 93]
     .code {
-    @FN String uppercase(String input) {
+    record Point(int x, int y) {
+
+    }
+
+    @FN
+    String uppercase(String input) {
         return input.toUpperCase(Locale.ROOT);
     }
-    
-    @FN Async<String> uppercaseAsync(String input) {
+
+    @FN
+    Async<String> uppercaseAsync(String input) {
         return async(input, s -> s.toUpperCase(Locale.ROOT));
     }
-    
-    @FN void noOp() {}
-    
-    @FN String error() {
+
+    @FN
+    void noOp() {
+    }
+
+    @FN
+    String error() {
         throw new UnsupportedOperationException();
     }
-    
+
     @FN.Watch(mime = "text/plain")
     Async<String> watchRepeat(PMap query) {
         return async(query, q -> {
@@ -24,6 +33,23 @@
             return text.repeat(count);
         });
     }
+
+    @FN
+    Point makePoint(@Type.Integer(min = 0, max = 10) int x,
+            @Type.Integer(min = 0, max = 10) int y) {
+        return new Point(x, y);
+    }
+
+    @FN
+    Async<Point> makeAsyncPoint(int x, int y) {
+        return async("", s -> new Point(x, y));
+    }
+
+    @FN
+    Point swapPoint(Point point) {
+        return new Point(point.y(), point.x());
+    }
+
 
 }
   }
