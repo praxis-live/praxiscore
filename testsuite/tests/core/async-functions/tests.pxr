@@ -1,0 +1,365 @@
+@ /tests root:custom {
+  .shared-code [map SHARED.TestRunner {package SHARED;
+
+import java.util.*;
+import org.praxislive.core.*;
+import org.praxislive.core.types.*;
+import org.praxislive.code.userapi.*;
+import org.praxislive.core.code.*;
+import org.praxislive.core.services.*;
+import static org.praxislive.code.userapi.Constants.*;
+
+public abstract class TestRunner extends CoreRootContainerDelegate {
+
+    @P PArray alsoStart;
+
+    @Inject List<String> tests;
+
+    @Override
+    @DisplayTable(properties = {"description", "status"})
+    @Reorderable
+    @SupportedTypes(system = false, custom = {
+        @CustomType(type = "tests:test", base = TestBase.class,
+                template = """
+                        
+                            @Override
+                            public void test() {
+                                fail("TODO - implement test");
+                            }
+                        
+                        """),
+        @CustomType(type = "tests:test-call", base = TestCall.class),
+        @CustomType(type = "tests:test-script", base = TestScript.class)
+    })
+    public void init() {
+    }
+
+    @Override
+    public void starting() {
+        tests.clear();
+        tests.addAll(children().toList());
+        if (tests.isEmpty()) {
+            log(ERROR, "<FAIL> No tests.");
+            _fail();
+            return;
+        }
+        try {
+            alsoStart.stream()
+                    .map(id -> ControlAddress.of("/" + id + ".start"))
+                    .forEach(start -> tell(start, ""));
+        } catch (Exception ex) {
+            log(ERROR, ex);
+            _fail();
+        }
+        _next();
+    }
+
+    @FN
+    void _next() {
+        if (tests.isEmpty()) {
+            log(INFO, "=== ALL TESTS PASSED ===");
+            exit(0);
+        } else {
+            String test = tests.removeFirst();
+            ask(ControlAddress.of(self().resolve(test), "_execute"));
+        }
+    }
+
+    @FN
+    void _fail() {
+        log(ERROR, "=== <FAIL> ===");
+        exit(1);
+    }
+
+    private void exit(int exitValue) {
+        ask(SystemManagerService.class, SystemManagerService.SYSTEM_EXIT, exitValue);
+    }
+
+    public static class TestBase extends CoreCodeDelegate {
+
+        enum State {
+            Ready, Running, Passed, Failed
+        }
+
+        @P String description;
+        @P @ReadOnly State status;
+        @Inject Property timer;
+
+        @Override
+        public void starting() {
+            status = State.Ready;
+        }
+
+        public void test() {
+            fail("Override test() to run tests");
+        }
+
+        public final void pass() {
+            pass("Test passed");
+        }
+
+        public final void pass(String message) {
+            requireState(State.Running);
+            log(INFO, "<PASS> : " + message);
+            status = State.Passed;
+            tell(ControlAddress.of(self().parent(), "_next"), "");
+        }
+
+        public final void fail(String message) {
+            requireState(State.Running);
+            log(ERROR, "<FAIL> : " + message);
+            status = State.Failed;
+            tell(ControlAddress.of(self().parent(), "_fail"), "");
+        }
+
+        @FN
+        final void _execute() {
+            requireState(State.Ready);
+            status = State.Running;
+            try {
+                log(INFO, "Test (" + self().componentID() + ") : " + description);
+                test();
+                if (status == State.Running && !timer.isAnimating()) {
+                    fail("Test still running - call pending(timeout) to keep test active");
+                }
+            } catch (Exception ex) {
+                fail(ex.toString());
+            }
+        }
+
+        public final void pending(double timeout) {
+            requireState(State.Running);
+            timer.set(0).to(timeout).in(timeout).whenDone(p -> {
+                if (status == State.Running) {
+                    fail("Test timed out");
+                }
+            });
+        }
+
+        private void requireState(State state) {
+            if (status != state) {
+                throw new IllegalStateException("Test is in state : " + status);
+            }
+        }
+
+    }
+
+    public static class TestCall extends TestBase {
+
+        @P(1) public Optional<ControlAddress> address;
+        @P(2) public PArray arguments;
+        @P(3) public PArray expected;
+        @P(4) public boolean expectError;
+
+        @Inject Async.Queue<Call> response;
+
+        @Override
+        public void init() {
+            response.onDone(this::onResponse, this::onFail);
+        }
+
+        @Override
+        public void test() {
+            response.add(ask(address.orElseThrow(), arguments.asList()));
+            pending(10);
+        }
+
+        public void onResponse(Call call) {
+            PArray result = PArray.of(call.args());
+            if (expectError) {
+                fail(call.from() + " returned [" + result
+                        + "] but expected ERROR");
+            } else if (expected.equivalent(result)) {
+                pass(call.from() + " returned [" + result + "]");
+            } else {
+                fail(call.from() + " returned [" + result
+                        + "] but expected [" + expected + "]");
+            }
+        }
+
+        public void onFail(PError error) {
+            String msg = "Call to " + address.orElse(null) + " returned error [" + error + "]";
+            if (expectError) {
+                pass(msg);
+            } else {
+                fail(msg);
+            }
+        }
+
+    }
+
+    public static class TestScript extends TestBase {
+
+        @P(1) public String script;
+        @P(2) public PArray expected;
+        @P(3) public boolean expectError;
+
+        @Inject Async.Queue<Call> response;
+
+        @Override
+        public void init() {
+            response.onDone(this::onResponse, this::onFail);
+        }
+
+        @Override
+        public void test() {
+            if (script.isBlank()) {
+                fail("No script provided");
+            }
+            response.add(ask(ScriptService.class, ScriptService.EVAL, script));
+            pending(10);
+        }
+
+        public void onResponse(Call call) {
+            PArray result = PArray.of(call.args());
+            if (expectError) {
+                fail("Script returned [" + result
+                        + "] but expected ERROR");
+            } else if (expected.equivalent(result)) {
+                pass("Script returned [" + result + "]");
+            } else {
+                fail("Script returned [" + result
+                        + "] but expected [" + expected + "]");
+            }
+        }
+
+        public void onFail(PError error) {
+            String msg = "Script returned error [" + error + "]";
+            if (expectError) {
+                pass(msg);
+            } else {
+                fail(msg);
+            }
+        }
+
+    }
+
+}
+}]
+  .code "extends SHARED.TestRunner;
+"
+  .also-start [array data]
+  @ ./test-1 tests:test-call {
+    .description "Call uppercase function"
+    .address /data/functions.uppercase
+    .arguments [array "hello world"]
+    .expected [array "HELLO WORLD"]
+  }
+  @ ./test-2 tests:test-call {
+    .description "Call uppercase function with extra args"
+    .address /data/functions.uppercase
+    .arguments [array "hello world" "extra argument"]
+    .expected [array "HELLO WORLD"]
+  }
+  @ ./test-3 tests:test-call {
+    .description "Call no-op function"
+    .address /data/functions.no-op
+  }
+  @ ./test-4 tests:test-call {
+    .description "Call error function"
+    .address /data/functions.error
+    .arguments [array FOO]
+    .expect-error true
+  }
+  @ ./test-5 tests:test {
+    .code {extends SHARED.TestRunner.TestBase;
+
+    String lowercase = "hello world";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Persist Async<String> response;
+
+    @Override
+    public void test() {
+        response = async(lowercase, s -> s.toUpperCase(Locale.ROOT));
+        pending(10);
+    }
+
+    @Override
+    public void update() {
+        if (response != null && response.done()) {
+            if (response.failed()) {
+                fail(response.error().errorType());
+            } else {
+                String result = response.result();
+                if (!result.equals(uppercase)) {
+                    fail("Expected " + uppercase + " but got " + result);
+                } else {
+                    pass();
+                }
+            }
+            response = null;
+        }
+    }
+
+
+}
+    .description "Run async task"
+  }
+  @ ./test-6 tests:test {
+    .code {extends SHARED.TestRunner.TestBase;
+
+    String lowercase = "hello world";
+    String uppercase = lowercase.toUpperCase(Locale.ROOT);
+
+    @Inject Async.Queue<String> response;
+
+    @Override
+    public void init() {
+        response.onDone(result -> {
+            if (Objects.equals(result, uppercase)) {
+                pass();
+            } else {
+                fail("Expected " + uppercase + " but got " + result);
+            }
+        }, err -> {
+            fail(err.errorType());
+        });
+    }
+
+    @Override
+    public void test() {
+        response.add(async(lowercase, s -> s.toUpperCase(Locale.ROOT)));
+        pending(10);
+    }
+
+}
+    .description "Run async task w/ Async.Queue"
+  }
+  @ ./test-7 tests:test-call {
+    .description "Call uppercase async function"
+    .address /data/functions.uppercase-async
+    .arguments [array "hello world"]
+    .expected [array "HELLO WORLD"]
+  }
+  @ ./test-8 tests:test-call {
+    .description "Call async watch function"
+    .address /data/functions.watch-repeat
+    .arguments [array "text TEST count 4"]
+    .expected [array TESTTESTTESTTEST]
+  }
+  @ ./test-9 tests:test-call {
+    .description "Call make point"
+    .address /data/functions.make-point
+    .arguments [array 3 7]
+    .expected [array "x 3 y 7"]
+  }
+  @ ./test-10 tests:test-call {
+    .description "Call make point out of range"
+    .address /data/functions.make-point
+    .arguments [array 12 5]
+    .expect-error true
+  }
+  @ ./test-11 tests:test-call {
+    .description "Call make async point"
+    .address /data/functions.make-async-point
+    .arguments [array 10 20]
+    .expected [array "x 10 y 20"]
+  }
+  @ ./test-12 tests:test-call {
+    .description "Call swap point"
+    .address /data/functions.swap-point
+    .arguments [array "x 50 y 100"]
+    .expected [array "x 100 y 50"]
+  }
+}

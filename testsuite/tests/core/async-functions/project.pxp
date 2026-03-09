@@ -28,14 +28,14 @@ hub {
   }
 }
 compiler {
-  release 11
+  release 21
 }
 libraries {}
 
 # <<<BUILD>>>
-include [file "data1.pxr"]
-include [file "data2.pxr"]
+include [file "data.pxr"]
+include [file "tests.pxr"]
 
 # <<<RUN>>>
-/data1.start
-/data2.start
+/data.start
+/tests.start
