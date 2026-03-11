@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -41,6 +41,18 @@ public class CodeRootDelegate extends CodeDelegate {
     }
 
     /**
+     * Mark the root to stop once the currently executing code has completed.
+     * <p>
+     * A key use for this method is to stop the root and disconnect the
+     * {@link Driver} before the current proxy call completes.
+     */
+    public final void markForStop() {
+        if (getContext() instanceof CodeRoot.Context ctx) {
+            ctx.markForStop();
+        }
+    }
+
+    /**
      * Mark a field referencing an interface implementation to be wrapped by an
      * interface proxy, and used to drive updates of the root. Any call to the
      * proxy will cause a root update on the calling thread, prior to calling
@@ -64,6 +76,50 @@ public class CodeRootDelegate extends CodeDelegate {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public @interface Driver {
+
+        /**
+         * Disable support for polling messages on the background thread.
+         *
+         * @return disable background polling
+         */
+        public boolean disableBackgroundPolling() default false;
+
+        /**
+         * Specify a custom driver thread context implementation. The value must
+         * be a class that can be instantiated through a default no-arg
+         * constructor (eg. static if in the delegate code). Providing a driver
+         * thread context will automatically disable background polling.
+         *
+         * @return driver thread context
+         */
+        public Class<? extends DriverThreadContext> driverThreadContext()
+                default DriverThreadContext.class;
+
+    }
+
+    /**
+     * Implementing classes can be used with
+     * {@link Driver#driverThreadContext()} to replace background polling with
+     * the ability to run tasks directly on the driver thread in between
+     * updates.
+     */
+    public interface DriverThreadContext {
+
+        /**
+         * Run task asynchronously on the driver thread. This is used to handle
+         * messages and tasks received in between driver updates.
+         *
+         * @param task task to execute
+         */
+        public void runLater(Runnable task);
+
+        /**
+         * Query whether the current thread is the driver thread.
+         *
+         * @return true if driver thread
+         */
+        public boolean isDriverThread();
+
     }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -331,6 +331,15 @@ public abstract class AbstractRoot implements Root {
     protected final void detachDelegate(Delegate delegate) {
         this.delegate.compareAndSet(delegate, null);
         interrupt();
+    }
+
+    /**
+     * Get the current delegate, if available.
+     *
+     * @return delegate or null
+     */
+    protected final Delegate getDelegate() {
+        return this.delegate.get();
     }
 
     /**
@@ -846,6 +855,35 @@ public abstract class AbstractRoot implements Root {
          */
         protected final ThreadFactory getThreadFactory() {
             return controller.threadFactory;
+        }
+
+        /**
+         * Invoke the provided task under the delegate lock on the current
+         * Thread. This may be used where the delegate requires to do more than
+         * just run updates. The delegate implementation should normally call
+         * {@link #doUpdate(long)} within the task for efficiency.
+         *
+         * @param <T> result type
+         * @param task task to invoke
+         * @return task result
+         * @throws Exception if task throws exception
+         */
+        protected final <T> T invoke(Callable<T> task) throws Exception {
+            lock.lock();
+            try {
+                return task.call();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        /**
+         * Check if this delegate is currently attached and active.
+         *
+         * @return true if active delegate
+         */
+        protected final boolean isActiveDelegate() {
+            return delegate.get() == this;
         }
 
         /**
