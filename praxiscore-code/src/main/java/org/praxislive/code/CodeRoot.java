@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,17 +22,23 @@
 package org.praxislive.code;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.base.BindingContextControl;
 import org.praxislive.base.MapTreeWriter;
+import org.praxislive.code.CodeRootDelegate.DriverThreadContext;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Container;
 import org.praxislive.core.Control;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.ExecutionContext;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
@@ -206,6 +212,10 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         return writer.build();
     }
 
+    private RootImpl getRootImpl() {
+        return root;
+    }
+
     /**
      * CodeContext subclass for CodeRoots.
      *
@@ -214,6 +224,7 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     public static class Context<D extends CodeRootDelegate> extends CodeContext<D> {
 
         private DriverDescriptor driverDesc;
+        private boolean markForStop;
 
         public Context(Connector<D> connector) {
             super(connector);
@@ -237,13 +248,30 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
         @Override
         protected void onStart() {
             if (driverDesc != null) {
-                getComponent().root.installDelegate(driverDesc);
+                getComponent().getRootImpl().installDelegate(driverDesc);
             }
         }
 
         @Override
         protected void onStop() {
-            getComponent().root.uninstallDelegate();
+            getComponent().getRootImpl().uninstallDelegate();
+        }
+
+        @Override
+        protected void flush() {
+            super.flush();
+            if (markForStop) {
+                markForStop = false;
+                if (getExecutionContext().getState() == ExecutionContext.State.ACTIVE) {
+                    handleStateChanged(ExecutionContext.State.IDLE, getTime(), true);
+                    getComponent().getRootImpl().uninstallDelegate();
+                    getComponent().getRootImpl().stop();
+                }
+            }
+        }
+
+        final void markForStop() {
+            markForStop = true;
         }
 
     }
@@ -377,11 +405,11 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
     private static class RootImpl extends AbstractRoot {
 
         private final CodeRoot<?> wrapper;
-
-        private DelegateImpl rootDelegate;
+        private final AtomicReference<DriverThreadContext> threadContext;
 
         private RootImpl(CodeRoot<?> wrapper) {
             this.wrapper = wrapper;
+            this.threadContext = new AtomicReference<>();
         }
 
         @Override
@@ -393,22 +421,38 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
             return getAddress();
         }
 
-        private void driverUpdate() {
-            if (rootDelegate != null) {
-                rootDelegate.handleUpdate(getRootHub().getClock().getTime());
-            }
-        }
-
         private void installDelegate(DriverDescriptor driverDesc) {
-            rootDelegate = new DelegateImpl();
-            attachDelegate(rootDelegate);
+            attachDelegate(new RootDelegateImpl(driverDesc.backgroundPoll));
         }
 
         private void uninstallDelegate() {
-            if (rootDelegate != null) {
+            if (getDelegate() instanceof RootDelegateImpl rootDelegate) {
                 detachDelegate(rootDelegate);
-                rootDelegate = null;
             }
+        }
+
+        private boolean updateFromDriver(long time) {
+            if (getDelegate() instanceof RootDelegateImpl rootDelegate) {
+                return rootDelegate.handleUpdate(time);
+            } else {
+                return false;
+            }
+        }
+
+        private <T> T invokeFromDriver(Callable<T> task) throws Exception {
+            if (getDelegate() instanceof RootDelegateImpl rootDelegate) {
+                return rootDelegate.handleInvoke(task);
+            } else {
+                throw new IllegalStateException("No active root delegate");
+            }
+        }
+
+        private long currentTime() {
+            return getRootHub().getClock().getTime();
+        }
+
+        private void setThreadContext(DriverThreadContext threadContext) {
+            this.threadContext.set(threadContext);
         }
 
         private boolean isRunning() {
@@ -430,17 +474,62 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                     getRouter());
         }
 
-        private class DelegateImpl extends Delegate {
+        private class RootDelegateImpl extends Delegate {
 
-            private DelegateImpl() {
-                super(delegateConfig()
-                        .pollInBackground()
-                        .forceUpdateAfter(1, TimeUnit.SECONDS)
-                );
+            private final AtomicBoolean pollQueued;
+
+            private RootDelegateImpl(boolean backgroundPoll) {
+                super(config(backgroundPoll));
+                pollQueued = new AtomicBoolean();
             }
 
-            private void handleUpdate(long time) {
-                doUpdate(time);
+            private boolean handleUpdate(long time) {
+                return super.doUpdate(time);
+            }
+
+            private <T> T handleInvoke(Callable<T> task) throws Exception {
+                return super.invoke(task);
+            }
+
+            private static DelegateConfiguration config(boolean backgroundPoll) {
+                DelegateConfiguration config = delegateConfig();
+                if (backgroundPoll) {
+                    config.pollInBackground();
+                }
+                config.forceUpdateAfter(5, TimeUnit.SECONDS);
+                return config;
+            }
+
+            @Override
+            protected void onQueueReceipt() {
+                try {
+                    DriverThreadContext ctxt = threadContext.get();
+                    if (ctxt != null) {
+                        if (pollQueued.compareAndSet(false, true)) {
+                            ctxt.runLater(() -> {
+                                pollQueued.set(false);
+                                doPollQueue();
+                            });
+                        }
+                        return;
+                    }
+                } catch (Throwable t) {
+                    // fall through
+                }
+                super.onQueueReceipt();
+            }
+
+            @Override
+            protected boolean isRootThread() {
+                try {
+                    DriverThreadContext ctxt = threadContext.get();
+                    if (ctxt != null) {
+                        return ctxt.isDriverThread();
+                    }
+                } catch (Throwable t) {
+                    // fall through
+                }
+                return super.isRootThread();
             }
 
         }
@@ -452,14 +541,19 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
         private final Field field;
         private final Object driver;
+        private final DriverThreadContext threadContext;
+        private final boolean backgroundPoll;
 
         private CodeRoot.Context<?> context;
         private DriverDescriptor next;
 
-        private DriverDescriptor(Field field, Object delegate) {
+        private DriverDescriptor(Field field, Object driver,
+                DriverThreadContext threadContext, boolean backgroundPoll) {
             super(DriverDescriptor.class, field.getName());
             this.field = field;
-            this.driver = delegate;
+            this.driver = driver;
+            this.threadContext = threadContext;
+            this.backgroundPoll = backgroundPoll;
         }
 
         @Override
@@ -472,9 +566,10 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                 previous.next = this;
             }
             try {
-                var proxy = context.getComponent().getProxyContext()
+                Object proxy = this.context.getComponent().getProxyContext()
                         .wrap(field.getType(), field.getName(), this, true);
                 field.set(context.getDelegate(), proxy);
+                this.context.getComponent().getRootImpl().setThreadContext(threadContext);
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
@@ -490,26 +585,43 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            // update clock
-            context.getComponent().root.driverUpdate();
-            // update might replace us - pass down the chain!
-            var active = this;
-            if (next != null) {
-                active = next;
-                while (active.next != null) {
-                    active = active.next;
+            RootImpl root = context.getComponent().getRootImpl();
+            return root.invokeFromDriver(() -> {
+                // check active
+                if (!context.checkActive()) {
+                    throw new UnsupportedOperationException("Root context is inactive");
                 }
-            }
-            if (active.context != null && active.context.checkActive()) {
-                return method.invoke(active.driver, args);
-            } else {
-                throw new UnsupportedOperationException();
-            }
+                // update clock
+                root.updateFromDriver(root.currentTime());
+                // update might replace us - pass down the chain!
+                DriverDescriptor active = this;
+                if (next != null) {
+                    active = next;
+                    while (active.next != null) {
+                        active = active.next;
+                    }
+                }
+                // If context changes, try to activate again.
+                // If the context changes and the root is stopped in the same cycle
+                // do not call into delegate.
+                try {
+                    if (active.context != null
+                            && (active.context == context || active.context.checkActive())) {
+                        return method.invoke(active.driver, args);
+                    } else {
+                        return null;
+                    }
+                } finally {
+                    context.flush();
+                }
+            });
+
         }
 
         private boolean isCompatible(DriverDescriptor other) {
             return other.field.getName().equals(field.getName())
-                    && other.field.getGenericType().equals(field.getGenericType());
+                    && other.field.getGenericType().equals(field.getGenericType())
+                    && other.backgroundPoll == backgroundPoll;
         }
 
         private static DriverDescriptor create(CodeRoot.Connector<?> connector,
@@ -519,14 +631,33 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                         "@Driver annotated field " + field.getName() + " is not an interface type.");
                 return null;
             }
+            DriverThreadContext threadContext = findThreadContext(connector, ann);
+            boolean backgroundPoll = threadContext == null && !ann.disableBackgroundPolling();
             try {
                 field.setAccessible(true);
                 Object driver = field.get(connector.getDelegate());
                 field.set(connector.getDelegate(), null);
-                return new DriverDescriptor(field, driver);
+                return new DriverDescriptor(field, driver, threadContext, backgroundPoll);
             } catch (Exception ex) {
                 connector.getLog().log(LogLevel.ERROR, ex,
                         "Cannot access @Driver annotated field " + field.getName());
+                return null;
+            }
+        }
+
+        private static DriverThreadContext findThreadContext(
+                CodeRoot.Connector<?> connector, CodeRootDelegate.Driver ann) {
+            Class<? extends DriverThreadContext> contextCls = ann.driverThreadContext();
+            if (contextCls == DriverThreadContext.class) {
+                return null;
+            }
+            try {
+                Constructor<? extends DriverThreadContext> cons = contextCls.getDeclaredConstructor();
+                cons.setAccessible(true);
+                return cons.newInstance();
+            } catch (Exception ex) {
+                connector.getLog().log(LogLevel.ERROR, ex,
+                        "Cannot create @Driver thread context from " + contextCls.getSimpleName());
                 return null;
             }
         }

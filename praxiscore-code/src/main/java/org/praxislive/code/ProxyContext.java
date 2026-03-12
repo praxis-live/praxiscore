@@ -125,7 +125,7 @@ class ProxyContext {
                     component.getCodeContext().flush();
                 }
             }
-            throw new UnsupportedOperationException();
+            return null;
         }
 
         private /*synchronized*/ void configure(Handler delegate, boolean direct) {

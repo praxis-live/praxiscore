@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -192,7 +192,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
                 if (requireClock) {
                     ctxt.addClockListener(driver);
                 }
-                handleStateChanged(ctxt, false);
+                handleStateChanged(ctxt.getState(), ctxt.getTime(), false);
             }
         }
     }
@@ -209,12 +209,12 @@ public abstract class CodeContext<D extends CodeDelegate> {
     protected void hierarchyChanged() {
     }
 
-    final void handleStateChanged(ExecutionContext source, boolean full) {
-        if (execState == source.getState()) {
+    final void handleStateChanged(ExecutionContext.State newState, long time, boolean full) {
+        if (execState == newState) {
             return;
         }
         ExecutionContext.State oldExecState = execState;
-        execState = source.getState();
+        execState = newState;
         if (full && execState == ExecutionContext.State.IDLE
                 && oldExecState != ExecutionContext.State.NEW) {
             onStop();
@@ -222,7 +222,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
         }
         onReset();
         descriptors.forEach(Descriptor::onReset);
-        update(source.getTime());
+        update(time);
         if (execState == ExecutionContext.State.ACTIVE) {
             descriptors.forEach(Descriptor::onInit);
             if (full) {
@@ -493,10 +493,10 @@ public abstract class CodeContext<D extends CodeDelegate> {
         if (execCtxt != null) {
             if (execCtxt.getState() == ExecutionContext.State.ACTIVE) {
                 var parent = getComponent().getParent();
-                if (parent instanceof CodeComponent) {
-                    ((CodeComponent) parent).getCodeContext().checkActive();
+                if (parent instanceof CodeComponent parentCC) {
+                    parentCC.getCodeContext().checkActive();
                 }
-                handleStateChanged(execCtxt, true);
+                handleStateChanged(execCtxt.getState(), execCtxt.getTime(), true);
                 return execState == ExecutionContext.State.ACTIVE;
             }
         }
@@ -710,7 +710,7 @@ public abstract class CodeContext<D extends CodeDelegate> {
 
         @Override
         public void stateChanged(ExecutionContext source) {
-            handleStateChanged(source, true);
+            handleStateChanged(source.getState(), source.getTime(), true);
         }
 
         @Override
