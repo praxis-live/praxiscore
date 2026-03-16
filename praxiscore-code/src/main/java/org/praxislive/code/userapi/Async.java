@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -24,14 +24,20 @@ package org.praxislive.code.userapi;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.SequencedMap;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.praxislive.core.Call;
+import org.praxislive.core.OrderedMap;
 import org.praxislive.core.Value;
 import org.praxislive.core.ValueMapper;
 import org.praxislive.core.types.PArray;
@@ -273,7 +279,8 @@ public final class Async<T> {
      * <p>
      * <strong>IMPORTANT : do not use completable futures returned from this
      * method inside component code.</strong> To react to Async completion from
-     * within component code, use an {@link Async.Queue}.
+     * within component code, use an {@link Async.Queue} or
+     * {@link Async.MapQueue}.
      * <p>
      * The completable future will automatically complete with the result or
      * failure of the Async. The link is one way - the Async will not respond to
@@ -426,10 +433,13 @@ public final class Async<T> {
      */
     public static final class Queue<T> extends Link<T> {
 
+        private static final PError EVICTED = PError.of("Async evicted from queue");
+
         private final Deque<Async<T>> deque;
 
         private int limit;
         private Consumer<Async<T>> onDoneHandler;
+        private Consumer<Async<T>> onEvictHandler;
 
         Queue() {
             deque = new ArrayDeque<>();
@@ -446,11 +456,12 @@ public final class Async<T> {
          */
         public Async<T> poll() {
             if (onDoneHandler == null && !deque.isEmpty()) {
-                var itr = deque.iterator();
+                Iterator<Async<T>> itr = deque.iterator();
                 while (itr.hasNext()) {
-                    var async = itr.next();
+                    Async<T> async = itr.next();
                     if (async.done()) {
                         itr.remove();
+                        // unlink but not evict
                         async.unlink(this);
                         return async;
                     }
@@ -478,9 +489,9 @@ public final class Async<T> {
             deque.add(async);
             async.link(this);
             if (deque.size() > limit) {
-                var cleared = deque.removeFirst();
-                cleared.unlink(this);
-                return cleared;
+                Async<T> ousted = deque.removeFirst();
+                processEvict(ousted);
+                return ousted;
             } else {
                 return null;
             }
@@ -520,11 +531,12 @@ public final class Async<T> {
                 int count = deque.size() - size;
                 List<Async<T>> list = new ArrayList<>(count);
                 for (int i = 0; i < count; i++) {
-                    var async = deque.removeFirst();
-                    async.unlink(this);
+                    Async<T> async = deque.removeFirst();
+                    processEvict(async);
                     list.add(async);
                 }
-                return list;
+                return List.copyOf(list);
+
             } else {
                 return List.of();
             }
@@ -547,8 +559,8 @@ public final class Async<T> {
         public List<Async<T>> clear() {
             List<Async<T>> list = new ArrayList<>(deque);
             deque.clear();
-            list.forEach(async -> async.unlink(this));
-            return list;
+            list.forEach(this::processEvict);
+            return List.copyOf(list);
         }
 
         /**
@@ -564,9 +576,9 @@ public final class Async<T> {
         public void onDone(Consumer<Async<T>> handler) {
             this.onDoneHandler = handler;
             if (!deque.isEmpty() && handler != null) {
-                var itr = deque.iterator();
+                Iterator<Async<T>> itr = deque.iterator();
                 while (itr.hasNext()) {
-                    var async = itr.next();
+                    Async<T> async = itr.next();
                     if (async.done()) {
                         itr.remove();
                         async.unlink(this);
@@ -596,10 +608,283 @@ public final class Async<T> {
             });
         }
 
+        /**
+         * Attach a handler for evicted Async. Only one handler may be attached
+         * at a time. The handler will be run when any Async in the queue is
+         * evicted due to a size limit.
+         *
+         * @param evictHandler handler for evicted Async, or null to remove
+         */
+        public void onEvict(Consumer<Async<T>> evictHandler) {
+            this.onEvictHandler = evictHandler;
+        }
+
+        /**
+         * Convenience method to add an
+         * {@link #onEvict(java.util.function.BiConsumer)} handler that fails
+         * the Async if evicted from the queue.
+         */
+        public void failOnEvict() {
+            onEvict(async -> async.fail(EVICTED));
+        }
+
         @Override
         void processDone(Async<T> async) {
             if (onDoneHandler != null && deque.remove(async)) {
                 onDoneHandler.accept(async);
+            }
+        }
+
+        private void processEvict(Async<T> async) {
+            async.unlink(this);
+            if (onEvictHandler != null) {
+                onEvictHandler.accept(async);
+            }
+        }
+
+    }
+
+    /**
+     * A mapping queue for handling Async instances with an attached value. The
+     * queue can be polled for added Async instances that have completed, or a
+     * handler can be attached to run on completion.
+     * <p>
+     * A queue cannot be constructed directly. Use the {@link Inject} annotation
+     * on a field. MapQueues will have handlers and limits automatically removed
+     * on reset, and will be cleared on disposal.
+     *
+     * @param <K> async result type
+     * @param <V> attached value type
+     */
+    public static final class MapQueue<K, V> extends Link<K> {
+
+        private static final PError EVICTED = Queue.EVICTED;
+
+        private final SequencedMap<Async<K>, V> map;
+
+        private int limit;
+        private BiConsumer<Async<K>, V> onDoneHandler;
+        private BiConsumer<Async<K>, V> onEvictHandler;
+
+        MapQueue() {
+            map = new LinkedHashMap<>();
+            this.limit = Integer.MAX_VALUE;
+        }
+
+        /**
+         * Retrieves and removes the next completed Async map entry, if
+         * available. Returns {@code null} if no completed Async is available.
+         * The caller should check whether any returned Async has failed before
+         * extracting the result or error.
+         * <p>
+         * In most cases prefer adding an
+         * {@link #onDone(java.util.function.BiConsumer, java.util.function.BiConsumer)}
+         * handler.
+         *
+         * @return next completed Async map entry or null
+         */
+        public Map.Entry<Async<K>, V> poll() {
+            if (onDoneHandler == null && !map.isEmpty()) {
+                Iterator<Map.Entry<Async<K>, V>> itr = map.sequencedEntrySet().iterator();
+                while (itr.hasNext()) {
+                    Map.Entry<Async<K>, V> entry = itr.next();
+                    Async<K> async = entry.getKey();
+                    if (async.done()) {
+                        itr.remove();
+                        // unlink but not evict
+                        async.unlink(this);
+                        return Map.entry(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Add an Async with value into the queue. If the Async is already
+         * completed, and an onDone handler has been attached, this will be
+         * executed before this method returns.
+         * <p>
+         * If the queue size limit has been reached, the least recently added
+         * entry will be evicted and returned to make space.
+         *
+         * @param async Async to add to queue
+         * @param value value to map to async
+         * @return evicted entry or null
+         */
+        public Map.Entry<Async<K>, V> add(Async<K> async, V value) {
+            Objects.requireNonNull(async);
+            Objects.requireNonNull(value);
+            if (async.done() && onDoneHandler != null) {
+                onDoneHandler.accept(async, value);
+                return null;
+            }
+            map.put(async, value);
+            async.link(this);
+            if (map.size() > limit) {
+                Map.Entry<Async<K>, V> ousted = map.pollFirstEntry();
+                processEvict(ousted);
+                return Map.entry(ousted.getKey(), ousted.getValue());
+            } else {
+                return null;
+            }
+        }
+
+        /**
+         * Remove the provided Async from the queue, returning the mapped value.
+         * If the provided Async is not in this queue, this method returns
+         * {@code null}.
+         *
+         * @param async Async to remove
+         * @return mapped value or null
+         */
+        public V remove(Async<K> async) {
+            V value = map.remove(async);
+            async.unlink(this);
+            return value;
+        }
+
+        /**
+         * Limit the queue to the provided size. If the current queue size is
+         * above the limit, the least recently added Async mappings will be
+         * evicted. Removed entries will be returned in an unmodifiable map,
+         * after being processed by any eviction handler.
+         *
+         * @param size requested size limit - at least 1.
+         * @return evicted mappings
+         * @throws IllegalArgumentException if size is less than 1.
+         */
+        @SuppressWarnings("unchecked")
+        public SequencedMap<Async<K>, V> limit(int size) {
+            if (size < 1) {
+                throw new IllegalArgumentException();
+            }
+            limit = size;
+            if (map.size() > size) {
+                int count = map.size() - size;
+                List<Map.Entry<Async<K>, V>> list = new ArrayList<>(count);
+                for (int i = 0; i < count; i++) {
+                    Map.Entry<Async<K>, V> entry = map.pollFirstEntry();
+                    processEvict(entry);
+                    list.add(entry);
+                }
+                SequencedMap<Async<K>, V> result = OrderedMap.ofEntries(
+                        list.toArray(Map.Entry[]::new));
+                return result;
+            } else {
+                return OrderedMap.of();
+            }
+        }
+
+        /**
+         * Query current number of Async in the queue.
+         *
+         * @return current number of Async
+         */
+        public int size() {
+            return map.size();
+        }
+
+        /**
+         * Clear all Async from the queue. Removed entries will be returned in
+         * an unmodifiable map, after being processed by any eviction handler.
+         *
+         * @return removed entries
+         */
+        public SequencedMap<Async<K>, V> clear() {
+            SequencedMap<Async<K>, V> result = OrderedMap.copyOf(map);
+            map.clear();
+            result.entrySet().forEach(this::processEvict);
+            return result;
+        }
+
+        /**
+         * Attach a handler for completed Async. Only one handler may be
+         * attached at a time. The handler will be run when any Async in the
+         * queue completes. The handler should check for failure before
+         * extracting any result or error. Any already completed Async in the
+         * queue will be passed to the handler before this method returns. A
+         * {@code null} value may be passed to remove the current handler.
+         *
+         * @param handler handler for completed Async, or null to remove
+         */
+        public void onDone(BiConsumer<Async<K>, V> handler) {
+            this.onDoneHandler = handler;
+            if (!map.isEmpty() && handler != null) {
+                Iterator<Map.Entry<Async<K>, V>> itr = map.sequencedEntrySet().iterator();
+                while (itr.hasNext()) {
+                    Map.Entry<Async<K>, V> entry = itr.next();
+                    Async<K> async = entry.getKey();
+                    if (async.done()) {
+                        itr.remove();
+                        async.unlink(this);
+                        handler.accept(async, entry.getValue());
+                    }
+                }
+            }
+        }
+
+        /**
+         * Convenience method to link separate result and error handlers to
+         * {@link #onDone(java.util.function.Consumer)}. This method does not
+         * accept {@code null} values.
+         *
+         * @param resultHandler handler for succesful Async result
+         * @param errorHandler handler for failed Async errors
+         */
+        public void onDone(BiConsumer<K, V> resultHandler,
+                BiConsumer<PError, V> errorHandler) {
+            Objects.requireNonNull(resultHandler);
+            Objects.requireNonNull(errorHandler);
+            onDone((async, value) -> {
+                if (async.failed()) {
+                    errorHandler.accept(async.error(), value);
+                } else {
+                    resultHandler.accept(async.result(), value);
+                }
+            });
+        }
+
+        /**
+         * Attach a handler for evicted Async. Only one handler may be attached
+         * at a time. The handler will be run when any Async in the queue is
+         * evicted due to a size limit.
+         *
+         * @param evictHandler handler for evicted Async, or null to remove
+         */
+        public void onEvict(BiConsumer<Async<K>, V> evictHandler) {
+            this.onEvictHandler = evictHandler;
+        }
+
+        /**
+         * Convenience method to add an
+         * {@link #onEvict(java.util.function.BiConsumer)} handler that fails
+         * the Async if evicted from the queue. If the value is an instance of
+         * Async, this will also be marked as failed.
+         */
+        public void failOnEvict() {
+            onEvict((asyncKey, value) -> {
+                asyncKey.fail(EVICTED);
+                if (value instanceof Async asyncValue) {
+                    asyncValue.fail(EVICTED);
+                }
+            });
+        }
+
+        @Override
+        void processDone(Async<K> async) {
+            if (onDoneHandler != null) {
+                V value = map.remove(async);
+                if (value != null) {
+                    onDoneHandler.accept(async, value);
+                }
+            }
+        }
+
+        private void processEvict(Map.Entry<Async<K>, V> entry) {
+            entry.getKey().unlink(this);
+            if (onEvictHandler != null) {
+                onEvictHandler.accept(entry.getKey(), entry.getValue());
             }
         }
 

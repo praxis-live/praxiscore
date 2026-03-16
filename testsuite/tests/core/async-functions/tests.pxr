@@ -362,4 +362,17 @@ public abstract class TestRunner extends CoreRootContainerDelegate {
     .arguments [array "x 50 y 100"]
     .expected [array "x 100 y 50"]
   }
+  @ ./test-13 tests:test-call {
+    .description "Call async swap point"
+    .address /data/functions.async-swap-point
+    .arguments [array 24 68]
+    .expected [array "x 68 y 24"]
+  }
+  @ ./test-14 tests:test-call {
+    .description "Call async swap point error"
+    .address /data/functions.async-swap-point-error
+    .arguments [array 24 68]
+    .expected [array "x 68 y 24"]
+    .expect-error true
+  }
 }

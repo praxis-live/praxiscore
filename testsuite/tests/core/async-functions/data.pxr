@@ -6,6 +6,19 @@
 
     }
 
+    @Inject Async.MapQueue<Point, Async<Point>> transformQueue;
+
+    @Override
+    public void init() {
+        transformQueue.onDone(
+                (in, out) -> {
+                    out.complete(swapPoint(in));
+                },
+                (err, out) -> {
+                    out.fail(err);
+                });
+    }
+
     @FN
     String uppercase(String input) {
         return input.toUpperCase(Locale.ROOT);
@@ -50,6 +63,21 @@
         return new Point(point.y(), point.x());
     }
 
+    @FN
+    Async<Point> asyncSwapPoint(int x, int y) {
+        Async<Point> reply = new Async<>();
+        transformQueue.add(makeAsyncPoint(x, y), reply);
+        return reply;
+    }
+
+    @FN
+    Async<Point> asyncSwapPointError(int x, int y) {
+        Async<Point> reply = new Async<>();
+        transformQueue.add(async("", s -> {
+            throw new UnsupportedOperationException();
+        }), reply);
+        return reply;
+    }
 
 }
   }
