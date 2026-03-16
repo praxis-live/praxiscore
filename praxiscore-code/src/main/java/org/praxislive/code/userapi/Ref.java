@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -751,6 +751,18 @@ public abstract class Ref<T> {
                 ref.init(Async.Queue::new);
                 ref.onReset(q -> {
                     q.onDone(null);
+                    q.onEvict(null);
+                    q.limit(Integer.MAX_VALUE);
+                });
+                ref.onDispose(q -> {
+                    q.clear();
+                });
+            });
+            register(Async.MapQueue.class, (ref) -> {
+                ref.init(Async.MapQueue::new);
+                ref.onReset(q -> {
+                    q.onDone(null);
+                    q.onEvict(null);
                     q.limit(Integer.MAX_VALUE);
                 });
                 ref.onDispose(q -> {

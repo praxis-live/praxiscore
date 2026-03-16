@@ -2,6 +2,8 @@ package org.praxislive.code.userapi;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.SequencedMap;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.praxislive.core.types.PError;
@@ -235,13 +237,20 @@ public class AsyncTest {
 
         async3.complete(3);
 
-        var list = queue.limit(2);
-        assertEquals(1, list.size());
-        assertEquals(async1, list.get(0));
+        List<Async<Integer>> evicted = new ArrayList<>();
+        queue.onEvict(evicted::add);
+        List<Async<Integer>> oustedList = queue.limit(2);
+        assertEquals(1, oustedList.size());
+        assertEquals(async1, oustedList.get(0));
+        assertEquals(oustedList, evicted);
         assertEquals(2, queue.size());
 
-        var ousted = queue.add(async4);
+        evicted.clear();
+        queue.failOnEvict();
+        Async<Integer> ousted = queue.add(async4);
         assertEquals(async2, ousted);
+        assertTrue(async2.done() && async2.failed());
+        assertTrue(evicted.isEmpty());
 
         async4.fail(PError.of("FOUR"));
 
@@ -282,6 +291,125 @@ public class AsyncTest {
         assertEquals("TWO", errors.get(0).message());
 
         queue.clear();
+        async4.complete(4);
+        assertEquals(2, results.size());
+        assertEquals(1, errors.size());
+
+    }
+
+    @Test
+    public void testMapQueuePoll() {
+        Async<Integer> async1 = new Async<>();
+        Async<Integer> async2 = new Async<>();
+        Async<Integer> async3 = new Async<>();
+        Async<Integer> async4 = new Async<>();
+
+        Async.MapQueue<Integer, String> map = new Async.MapQueue<>();
+        map.add(async1, "ONE");
+        map.add(async2, "TWO");
+        map.add(async3, "THREE");
+        map.add(async4, "FOUR");
+
+        assertEquals(4, map.size());
+        assertNull(map.poll());
+        async3.complete(3);
+        assertEquals(Map.entry(async3, "THREE"), map.poll());
+        assertNull(map.poll());
+        assertEquals(3, map.size());
+
+        async4.fail(PError.of("FOUR"));
+        async2.complete(2);
+        async1.complete(1);
+
+        assertEquals(async1, map.poll().getKey());
+        assertEquals(async2, map.poll().getKey());
+        assertEquals(async4, map.poll().getKey());
+        assertNull(map.poll());
+
+    }
+
+    @Test
+    public void testMapQueuePollSized() {
+        Async<Integer> async1 = new Async<>();
+        Async<Integer> async2 = new Async<>();
+        Async<Integer> async3 = new Async<>();
+        Async<Integer> async4 = new Async<>();
+        Async<String> asyncOne = new Async<>();
+        Async<String> asyncTwo = new Async<>();
+        Async<String> asyncThree = new Async<>();
+        Async<String> asyncFour = new Async<>();
+
+        Async.MapQueue<Integer, Async<String>> map = new Async.MapQueue<>();
+        map.add(async1, asyncOne);
+        map.add(async2, asyncTwo);
+        map.add(async3, asyncThree);
+
+        async3.complete(3);
+
+        List<Map.Entry<Async<Integer>, Async<String>>> evicted = new ArrayList<>();
+        map.onEvict((a, v) -> evicted.add(Map.entry(a, v)));
+        SequencedMap<Async<Integer>, Async<String>> oustedMap = map.limit(2);
+        assertEquals(1, evicted.size());
+        assertEquals(1, oustedMap.size());
+        assertEquals(async1, evicted.get(0).getKey());
+        assertEquals(asyncOne, evicted.get(0).getValue());
+        assertEquals(evicted, oustedMap.entrySet().stream().toList());
+        assertEquals(2, map.size());
+
+        evicted.clear();
+        map.failOnEvict();
+        Map.Entry<Async<Integer>, Async<String>> ousted = map.add(async4, asyncFour);
+        assertEquals(async2, ousted.getKey());
+        assertEquals(asyncTwo, ousted.getValue());
+        assertTrue(evicted.isEmpty());
+        assertTrue(async2.done() && async2.failed());
+        assertTrue(asyncTwo.done() && asyncTwo.failed());
+
+        async4.fail(PError.of("FAIL"));
+
+        assertEquals(Map.entry(async3, asyncThree), map.poll());
+        assertEquals(Map.entry(async4, asyncFour), map.poll());
+        assertNull(map.poll());
+
+    }
+
+    @Test
+    public void testMapQueueHandler() {
+        Async<Integer> async1 = new Async<>();
+        Async<Integer> async2 = new Async<>();
+        Async<Integer> async3 = new Async<>();
+        Async<Integer> async4 = new Async<>();
+
+        Async.MapQueue<Integer, String> map = new Async.MapQueue<>();
+
+        List<String> results = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        map.onDone(
+                (i, v) -> {
+                    results.add(v);
+                },
+                (e, v) -> {
+                    errors.add(v);
+                });
+
+        async3.complete(3);
+        map.add(async1, "ONE");
+        map.add(async2, "TWO");
+        map.add(async3, "THREE");
+        map.add(async4, "FOUR");
+
+        assertEquals(1, results.size());
+        assertEquals("THREE", results.get(0));
+
+        async1.complete(1);
+        async2.fail(PError.of("TWO"));
+        assertEquals(2, results.size());
+        assertEquals("ONE", results.get(1));
+        assertEquals(1, errors.size());
+        assertEquals("TWO", errors.get(0));
+
+        map.clear();
         async4.complete(4);
         assertEquals(2, results.size());
         assertEquals(1, errors.size());
