@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -111,6 +111,18 @@ class DataSink<T> extends Data.Sink<T> {
             } catch (Exception ex) {
                 context.getLog().log(LogLevel.ERROR, ex);
             }
+        }
+
+        @Override
+        public void onStop() {
+            if (sink != null) {
+                sink.flushCaches();
+            }
+        }
+
+        @Override
+        public void dispose() {
+            onStop();
         }
 
         static Descriptor create(CodeConnector<?> connector, Field field) {

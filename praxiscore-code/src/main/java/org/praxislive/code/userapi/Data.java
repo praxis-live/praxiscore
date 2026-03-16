@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -216,7 +216,8 @@ public class Data {
     public static abstract class Sink<T> implements Lookup.Provider {
 
         private final Pipe<T> input;
-        private final SinkPacket<T> packet;
+        private final SinkPacket<T> basePacket;
+        private final List<SinkPacket<T>> packets;
 
         private UnaryOperator<T> creator;
         private UnaryOperator<T> clearer;
@@ -227,7 +228,8 @@ public class Data {
         private long pass;
 
         public Sink() {
-            packet = new SinkPacket<>(this, null);
+            basePacket = new SinkPacket<>(this, null);
+            packets = new ArrayList<>();
             defaultFunctions();
             input = new Pipe<T>() {
                 @Override
@@ -276,6 +278,23 @@ public class Data {
         }
 
         /**
+         * Flush all cached data. Any data cached in packets in the pipeline
+         * will be disposed, using the
+         * {@link #onDispose(java.util.function.Consumer)} function if set.
+         */
+        public void flushCaches() {
+            List<SinkPacket<T>> caches = new ArrayList<>(packets);
+            packets.clear();
+            caches.forEach(p -> {
+                try {
+                    p.dispose();
+                } catch (Exception ex) {
+                    log(ex);
+                }
+            });
+        }
+
+        /**
          * Get the input pipe for this sink. The input pipe only supports the
          * addition of sources - it cannot be used as a source.
          *
@@ -295,18 +314,18 @@ public class Data {
          * @return data of type T (may or may not be the input data)
          */
         public T process(T data) {
-            packet.data = Objects.requireNonNull(data);
+            basePacket.data = Objects.requireNonNull(data);
             try {
                 if (input.sources.size() == 1) {
-                    input.processInPlace(packet, true, ++pass);
+                    input.processInPlace(basePacket, true, ++pass);
                 } else {
-                    input.processCached(packet, true, ++pass);
-                    input.writeOutput(input.dataPackets, packet, 0);
+                    input.processCached(basePacket, true, ++pass);
+                    input.writeOutput(input.dataPackets, basePacket, 0);
                 }
             } catch (Exception ex) {
                 log(ex);
             }
-            return packet.data;
+            return basePacket.data;
         }
 
         /**
@@ -472,17 +491,23 @@ public class Data {
 
         @Override
         public Packet<T> createPacket() {
-            return new SinkPacket<>(this.sink, sink.creator.apply(data));
+            SinkPacket<T> packet = new SinkPacket<>(this.sink, sink.creator.apply(data));
+            sink.packets.add(packet);
+            return packet;
         }
 
         @Override
         public void dispose() {
-            try {
-                Objects.requireNonNull(data);
-                sink.disposer.accept(data);
-                data = null;
-            } catch (Exception ex) {
-                sink.log(ex);
+            sink.packets.remove(this);
+            if (data != null) {
+                try {
+                    Objects.requireNonNull(data);
+                    sink.disposer.accept(data);
+                } catch (Exception ex) {
+                    sink.log(ex);
+                } finally {
+                    data = null;
+                }
             }
         }
 
