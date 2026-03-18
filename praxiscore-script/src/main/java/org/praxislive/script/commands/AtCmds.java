@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,11 +23,14 @@ package org.praxislive.script.commands;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import org.praxislive.core.Value;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
 import org.praxislive.core.ControlAddress;
+import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.core.types.PString;
@@ -109,7 +112,14 @@ class AtCmds {
 
             if (create != null) {
                 if (eval != null) {
-                    return create.andThen(eval);
+                    if (namespace.getVariable("_TRAP") != null) {
+                        ComponentAddress checkAddress = ctxt;
+                        ComponentType checkType = type;
+                        return create.onError(v -> verifyType(checkAddress, checkType))
+                                .andThen(eval);
+                    } else {
+                        return create.andThen(eval);
+                    }
                 } else {
                     return create;
                 }
@@ -119,6 +129,28 @@ class AtCmds {
                 throw new IllegalStateException();
             }
 
+        }
+
+        // @TODO v7 improve component type detection here
+        private StackFrame verifyType(ComponentAddress cmp, ComponentType type) {
+            return StackFrame.call(ControlAddress.of(cmp, ComponentProtocol.INFO), List.of())
+                    .andThen(args -> {
+                        ComponentType infoType = args.stream().limit(1)
+                                .flatMap(v -> ComponentInfo.from(v).stream())
+                                .flatMap(ci -> {
+                                    return Optional.ofNullable(
+                                            ci.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                                            .flatMap(ComponentType::from)
+                                            .stream();
+                                }).findFirst().orElse(null);
+                        if (type.equals(infoType)) {
+                            return StackFrame.empty();
+                        } else {
+                            throw new IllegalArgumentException(
+                                    "Component type mismatch - expected " + type
+                                    + ", actually " + infoType);
+                        }
+                    });
         }
     }
 
