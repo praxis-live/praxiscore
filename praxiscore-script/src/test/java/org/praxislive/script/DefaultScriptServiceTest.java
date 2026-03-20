@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -40,6 +40,8 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PError;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 
@@ -239,6 +241,96 @@ public class DefaultScriptServiceTest {
             }
             assertTrue(errors.contains("set"));
             assertTrue(errors.contains("BAZ ERROR"));
+        }
+
+    }
+
+    @Test
+    public void testEvalTrapComponentExists() throws Exception {
+        logTest("testEvalTrapComponentExists");
+        String script = """
+                        set allowed [array "@"]
+                        eval --trap-errors --allowed-commands $allowed {
+                            @ /root {
+                                @ ./valid test:component {
+                                    .value "VALID"
+                                }
+                                @ ./invalid test:foo {
+                                    .value "INVALID"
+                                }
+                                @ ./valid2 test:component {
+                                    .value "VALID TOO"
+                                }
+                            }
+                        }
+                        """;
+        var root = new DefaultScriptService();
+        try (var hub = new RootHubImpl("script", root)) {
+            ComponentInfo info = Info.component()
+                    .property(ComponentInfo.KEY_COMPONENT_TYPE, "test:component")
+                    .control("value", ci -> ci.property().input(a -> a.string()))
+                    .build();
+
+            hub.start();
+            hub.send("/script.eval", "/hub.result", script);
+            Call call = hub.poll();
+            logCall("Call to /root.add-child received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root.add-child", call.to().toString());
+            hub.dispatch(call.error(PError.of("Component exists")));
+
+            call = hub.poll();
+            logCall("Call to /root/valid.info received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root/valid.info", call.to().toString());
+            hub.dispatch(call.reply(info));
+
+            call = hub.poll();
+            logCall("Call to /root/valid.value received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root/valid.value", call.to().toString());
+            assertEquals(1, call.args().size());
+            assertEquals("VALID", call.args().get(0).toString());
+            hub.dispatch(call.reply());
+
+            call = hub.poll();
+            logCall("Call to /root.add-child received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root.add-child", call.to().toString());
+            hub.dispatch(call.error(PError.of("Component exists")));
+
+            call = hub.poll();
+            logCall("Call to /root/invalid.info received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root/invalid.info", call.to().toString());
+            hub.dispatch(call.reply(info));
+
+            call = hub.poll();
+            logCall("Call to /root.add-child received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root.add-child", call.to().toString());
+            hub.dispatch(call.reply());
+
+            call = hub.poll();
+            logCall("Call to /root/valid2.value received", call);
+            assertTrue(call.isRequest());
+            assertEquals("/root/valid2.value", call.to().toString());
+            assertEquals(1, call.args().size());
+            assertEquals("VALID TOO", call.args().get(0).toString());
+            hub.dispatch(call.reply());
+
+            call = hub.poll();
+            logCall("Result received", call);
+
+            assertTrue(call.isError());
+            String errors = call.args().get(0).toString();
+            if (VERBOSE) {
+                System.out.println("");
+                System.out.println("Completed with errors");
+                System.out.println("=====================");
+                System.out.println(errors);
+            }
+            assertTrue(errors.contains("test:foo"));
         }
 
     }
