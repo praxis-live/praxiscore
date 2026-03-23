@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,60 +21,55 @@
  */
 package org.praxislive.hub;
 
-import java.lang.System.Logger;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Value;
 import org.praxislive.core.Call;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.Settings;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.services.TaskService.Task;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
 
-import static java.lang.System.Logger.Level;
-
 /**
  *
  */
 class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider {
 
-    private final static Logger LOG = System.getLogger(DefaultTaskService.class.getName());
+    private static final String KEY_SYSTEM_THREADS = "hub.tasks.systemthreads";
 
+    private final boolean systemThreads;
     private final ExecutorService threadService;
-    private final Map<Future<Value>, Call> futures;
-    private final List<Future> completed;
 
     public DefaultTaskService() {
-        threadService = Executors.newCachedThreadPool((Runnable r) -> {
-            Thread thr = new Thread(r);
-            thr.setPriority(Thread.MIN_PRIORITY);
-            return thr;
-        });
-        futures = new HashMap<>();
-        completed = new ArrayList<>();
+        systemThreads = Settings.getBoolean(KEY_SYSTEM_THREADS, false);
+        if (systemThreads) {
+            threadService = Executors.newCachedThreadPool((Runnable r) -> {
+                Thread thr = new Thread(r);
+                thr.setPriority(Thread.MIN_PRIORITY);
+                return thr;
+            });
+        } else {
+            threadService = Executors.newVirtualThreadPerTaskExecutor();
+        }
     }
 
     @Override
     protected void activating() {
         setRunning();
     }
-    
+
     @Override
     protected void processCall(Call call, PacketRouter router) {
         if (call.isRequest()) {
             try {
-                submitTask(call);
+                submitTask(getRootHub(), call);
             } catch (Exception ex) {
                 router.route(call.error(PError.of(ex)));
             }
@@ -87,54 +82,23 @@ class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider
     }
 
     @Override
-    protected void update() {
-        for (Future<Value> future : futures.keySet()) {
-            if (future.isDone()) {
-                try {
-                    Value value = future.get();
-                    Call call = futures.get(future);
-                    call = call.reply(value);
-                    getRouter().route(call);
-                    completed.add(future);
-                } catch (Exception ex) {
-                    LOG.log(Level.TRACE, "", ex);
-                    if (ex instanceof ExecutionException) {
-                        Throwable t = ex.getCause();
-                        if (t instanceof Exception) {
-                            ex = (Exception) t;
-                        }
-                    }
-                    Call call = futures.get(future);
-                    call = call.error(PError.of(ex));
-                    getRouter().route(call);
-                    completed.add(future);
-                }
-            }
-        }
-        while (!completed.isEmpty()) {
-            futures.remove(completed.get(0));
-            completed.remove(0);
-        }
-    }
-
-    @Override
     protected void terminating() {
         threadService.shutdownNow();
     }
 
-    private void submitTask(Call call) throws Exception {
-        List<Value> args = call.args();
-        if (args.size() == 1) {
-            Value arg = args.get(0);
-            if (arg instanceof PReference) {
-                ((PReference) arg).as(Task.class).ifPresent(task -> {
-                    Future<Value> future = threadService.submit(task::execute);
-                    futures.put(future, call);
-                });
+    private void submitTask(RootHub hub, Call call) throws Exception {
+        Task task = PReference.from(call.args().getFirst())
+                .flatMap(ref -> ref.as(Task.class))
+                .orElseThrow(() -> new IllegalArgumentException("No task found"));
+        threadService.execute(() -> {
+            try {
+                Value value = task.execute();
+                hub.dispatch(call.reply(value));
+            } catch (Throwable t) {
+                PError error = PError.of(t instanceof Exception ex ? ex : new RuntimeException(t));
+                hub.dispatch(call.error(error));
             }
-        } else {
-            throw new IllegalArgumentException();
-        }
+        });
 
     }
 
