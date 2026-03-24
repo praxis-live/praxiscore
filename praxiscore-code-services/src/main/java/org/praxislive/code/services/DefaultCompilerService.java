@@ -24,6 +24,7 @@ package org.praxislive.code.services;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,6 +52,7 @@ import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PArray;
@@ -269,6 +272,11 @@ public class DefaultCompilerService extends AbstractRoot
 
     private class AddLibsControl implements Control, LibraryResolver.Context {
 
+        private static final String MAP_FILE_NAME = "libraries.map";
+        private static final String MAP_KEY_LIBRARIES = "libraries";
+        private static final String MAP_KEY_PROVIDED = "provided";
+        private static final String MAP_KEY_FILES = "files";
+
         private final LogBuilder log;
 
         private AddLibsControl() {
@@ -295,16 +303,19 @@ public class DefaultCompilerService extends AbstractRoot
         }
 
         private void process(PArray addLibs) throws Exception {
-            for (var value : addLibs) {
-                var resource = PResource.from(value)
+            for (Value value : addLibs) {
+                PResource resource = PResource.from(value)
                         .orElseThrow(IllegalArgumentException::new);
                 if (libResolved.contains(resource)) {
                     continue;
                 }
-                var entry = resolve(resource);
-                libResolved.add(entry.resource());
-                libProvided.addAll(entry.provides());
-                libFiles.addAll(entry.files());
+                if (libProvided.contains(resource)) {
+                    libResolved.add(resource);
+                    continue;
+                }
+                if (!processLibrariesMap(resource)) {
+                    processResource(resource);
+                }
             }
             libs = PArray.of(libResolved);
             libsAll = PArray.of(libProvided);
@@ -312,6 +323,39 @@ public class DefaultCompilerService extends AbstractRoot
                     .map(Path::toUri)
                     .map(PResource::of)
                     .collect(PArray.collector());
+        }
+
+        private boolean processLibrariesMap(PResource resource) throws Exception {
+            if (resource.toString().endsWith(MAP_FILE_NAME)) {
+                Path mapFile = findFile(resource, p -> p.toString().endsWith(MAP_FILE_NAME));
+                if (mapFile != null) {
+                    PMap map = PMap.parse(Files.readString(mapFile));
+                    List<PResource> resolved = extractStream(map, MAP_KEY_LIBRARIES)
+                            .map(v -> PResource.from(v).orElseThrow(IllegalArgumentException::new))
+                            .toList();
+                    List<PResource> provided = extractStream(map, MAP_KEY_PROVIDED)
+                            .map(v -> PResource.from(v).orElseThrow(IllegalArgumentException::new))
+                            .toList();
+                    List<Path> files = extractStream(map, MAP_KEY_FILES)
+                            .map(v -> Path.of(v.toString()))
+                            .map(p -> mapFile.getParent().resolve(p))
+                            .toList();
+                    libResolved.add(resource);
+                    libProvided.add(resource);
+                    libResolved.addAll(resolved);
+                    libProvided.addAll(provided);
+                    libFiles.addAll(files);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void processResource(PResource resource) throws Exception {
+            LibraryResolver.Entry entry = resolve(resource);
+            libResolved.add(entry.resource());
+            libProvided.addAll(entry.provides());
+            libFiles.addAll(entry.files());
         }
 
         private LibraryResolver.Entry resolve(PResource resource) throws Exception {
@@ -322,16 +366,27 @@ public class DefaultCompilerService extends AbstractRoot
                     return entry;
                 }
             }
-            return new LibraryResolver.Entry(resource, List.of(jarFile(resource).toPath()));
+            Path jarFile = findFile(resource, p -> p.toString().endsWith(".jar"));
+            if (jarFile != null) {
+                return new LibraryResolver.Entry(resource, List.of(jarFile));
+            } else {
+                throw new IllegalArgumentException("Invalid library : " + resource);
+            }
         }
 
-        private File jarFile(PResource res) {
-            List<URI> uris = res.resolve(getLookup());
+        private Path findFile(PResource resource, Predicate<Path> filter) {
+            List<URI> uris = resource.resolve(getLookup());
             return uris.stream()
-                    .filter(u -> "file".equals(u.getScheme()))
-                    .map(File::new)
-                    .filter(f -> f.exists() && f.getName().endsWith(".jar"))
-                    .findFirst().orElseThrow(() -> new IllegalArgumentException("Invalid library : " + res));
+                    .filter(u -> "file".equalsIgnoreCase(u.getScheme()))
+                    .map(Path::of)
+                    .filter(p -> filter.test(p) && Files.isReadable(p))
+                    .findFirst().orElse(null);
+        }
+
+        private Stream<Value> extractStream(PMap map, String key) {
+            return Optional.ofNullable(map.get(key))
+                    .flatMap(PArray::from).orElseThrow(IllegalArgumentException::new)
+                    .stream();
         }
 
         @Override
