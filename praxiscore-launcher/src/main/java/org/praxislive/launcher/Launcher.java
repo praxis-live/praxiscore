@@ -272,7 +272,7 @@ public class Launcher {
             int exitValue = 0;
 
             do {
-                var coreBuilder = NetworkCoreFactory.builder()
+                NetworkCoreFactory.Builder coreBuilder = NetworkCoreFactory.builder()
                         .childLauncher(new ChildLauncherImpl(context))
                         .exposeServices(List.of(
                                 CodeCompilerService.class,
@@ -291,25 +291,26 @@ public class Launcher {
                     coreBuilder.allowRemoteServerConnection();
                 }
 
-                var coreFactory = coreBuilder.build();
+                NetworkCoreFactory coreFactory = coreBuilder.build();
 
-                var hubBuilder = Hub.builder()
+                Hub.Builder hubBuilder = Hub.builder()
                         .setCoreRootFactory(coreFactory)
                         .extendLookup(main);
-                if (script != null) {
-                    hubBuilder.addExtension(new ScriptRunner(List.of(script)));
-                }
                 if (interactive) {
                     var terminalIO = createTerminalIO();
                     hubBuilder.addExtension(terminalIO);
                 }
 
-                var logLevel = LogLevel.INFO;
+                LogLevel logLevel = LogLevel.INFO;
                 hubBuilder.addExtension(new LogServiceImpl(logLevel));
                 hubBuilder.extendLookup(logLevel);
 
-                var hub = hubBuilder.build();
+                Hub hub = hubBuilder.build();
                 hub.start();
+
+                if (script != null) {
+                    hub.eval(script);
+                }
 
                 if (requireServer) {
                     var serverInfo = coreFactory.awaitInfo(30, TimeUnit.SECONDS);

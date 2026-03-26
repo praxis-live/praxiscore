@@ -70,7 +70,51 @@ public abstract class AbstractRoot implements Root {
      * inside {@link #activating()} if required.
      */
     protected static enum State {
-        NEW, INITIALIZING, INITIALIZED, ACTIVE_IDLE, ACTIVE_RUNNING, TERMINATING, TERMINATED
+
+        // @TODO for v7 consider moving to RUNNING_ACTIVE and RUNNING_IDLE.
+        /**
+         * Uninitialized root. Equivalent to {@link ExecutionContext.State#NEW}.
+         */
+        NEW,
+        /**
+         * Root in the process of initializing.
+         */
+        INITIALIZING,
+        /**
+         * Root initialized and ready to activate.
+         */
+        INITIALIZED,
+        /**
+         * Activated root in an idle state. Equivalent to
+         * {@link ExecutionContext.State#IDLE}.
+         */
+        ACTIVE_IDLE,
+        /**
+         * Activated root in a running state. Equivalent to
+         * {@link ExecutionContext.State#ACTIVE}.
+         */
+        ACTIVE_RUNNING,
+        /**
+         * Root in the process of terminating.
+         */
+        TERMINATING,
+        /**
+         * Root terminated. Equivalent to
+         * {@link ExecutionContext.State#TERMINATED}.
+         */
+        TERMINATED;
+
+        /**
+         * Check whether this state is one of the provided states.
+         *
+         * @param first first state to check against
+         * @param second second state to check against
+         * @return true if this is one of the provided states
+         */
+        public boolean isOneOf(State first, State second) {
+            return this == first || this == second;
+        }
+
     }
 
     private static final System.Logger LOG = System.getLogger(AbstractRoot.class.getName());
@@ -358,8 +402,11 @@ public abstract class AbstractRoot implements Root {
      * @return true if the task has been successfully submitted
      */
     protected final boolean invokeLater(Runnable task) {
+        if (state.get().isOneOf(State.TERMINATING, State.TERMINATED)) {
+            return false;
+        }
         boolean ok = queue.add(task);
-        if (ok) {
+        if (state.get().isOneOf(State.ACTIVE_RUNNING, State.ACTIVE_IDLE) && ok) {
             controller.onQueueReceipt();
         }
         return ok;
@@ -424,8 +471,7 @@ public abstract class AbstractRoot implements Root {
             return;
         }
 
-        State currentState = state.get();
-        if (currentState != State.ACTIVE_IDLE && currentState != State.ACTIVE_RUNNING) {
+        if (!state.get().isOneOf(State.ACTIVE_RUNNING, State.ACTIVE_IDLE)) {
             return;
         }
 
@@ -483,16 +529,15 @@ public abstract class AbstractRoot implements Root {
     }
 
     private void processPacket(Packet packet) {
-        if (packet instanceof Call) {
-            Call call = (Call) packet;
+        if (packet instanceof Call call) {
             try {
                 processCall(call, router);
             } catch (Throwable t) {
                 LOG.log(System.Logger.Level.ERROR, "Uncaught exception processing call", t);
                 if (call.isReplyRequired()) {
                     Exception ex;
-                    if (t instanceof Exception) {
-                        ex = (Exception) t;
+                    if (t instanceof Exception exception) {
+                        ex = exception;
                     } else {
                         ex = new IllegalStateException(t);
                     }
