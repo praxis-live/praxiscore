@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -109,7 +109,7 @@ public class BasicCoreRoot extends AbstractRoot {
         Map<String, Control> ctrls = new HashMap<>();
         buildControlMap(ctrls);
         controls.putAll(ctrls);
-        var extCtrls = installExtensions();
+        Map<String, Root.Controller> extCtrls = installExtensions();
         setRunning(); // calls starting()
         extCtrls.forEach(this::startRoot);
     }
@@ -272,12 +272,12 @@ public class BasicCoreRoot extends AbstractRoot {
             return Map.of();
         }
         Map<String, Root.Controller> ctrls = new LinkedHashMap<>();
-        for (var ext : exts) {
-            var services = extractServices(ext);
+        for (Root ext : exts) {
+            List<Class<? extends Service>> services = extractServices(ext);
             String extID = Hub.EXT_PREFIX + Integer.toHexString(ext.hashCode());
             try {
                 LOG.log(Level.DEBUG, "Installing extension {0}", extID);
-                var ctrl = installRoot(extID, ext);
+                Root.Controller ctrl = installRoot(extID, ext);
                 ctrls.put(extID, ctrl);
             } catch (Exception ex) {
                 LOG.log(Level.ERROR, "Failed to install extension\n{0} to /{1}\n{2}",
@@ -285,7 +285,7 @@ public class BasicCoreRoot extends AbstractRoot {
                 continue;
             }
             ComponentAddress ad = ComponentAddress.of("/" + extID);
-            for (var service : services) {
+            for (Class<? extends Service> service : services) {
                 LOG.log(Level.DEBUG, "Registering service {0}", service);
                 hubAccess.registerService(service, ad);
             }

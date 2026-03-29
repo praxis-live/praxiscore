@@ -22,6 +22,7 @@
 package org.praxislive.core;
 
 import java.util.List;
+import java.util.Optional;
 import org.praxislive.core.types.PError;
 
 /**
@@ -357,6 +358,24 @@ public final class Call extends Packet {
         return createCall(toAddress, fromAddress, timeCode,
                 List.copyOf(args),
                 Type.INVOKE_QUIET);
+    }
+
+    /**
+     * Utility method to find a {@link PError} for the provided Call. An empty
+     * optional will be returned if {@link #isError()} is false or the arguments
+     * do not include any PError.
+     *
+     * @param call error call
+     * @return error if present
+     */
+    public static Optional<PError> findError(Call call) {
+        if (call.isError()) {
+            return call.args().stream()
+                    .flatMap(v -> PError.from(v).stream())
+                    .findFirst();
+        } else {
+            return Optional.empty();
+        }
     }
 
     private static Call createCall(

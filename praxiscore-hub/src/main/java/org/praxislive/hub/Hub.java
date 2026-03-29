@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -41,6 +42,7 @@ import org.praxislive.core.Lookup;
 import org.praxislive.core.Packet;
 import org.praxislive.core.Root;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.Value;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
 import org.praxislive.script.DefaultScriptService;
@@ -67,33 +69,35 @@ public final class Hub {
     private final Lookup lookup;
     private final RootHubImpl rootHub;
     private final List<String> rootIDs;
+    private final ExternalAccess externalAccess;
 
     private Root.Controller coreController;
     long startTime;
 
     private Hub(Builder builder) {
         CoreRootFactory coreFactory = builder.coreRootFactory;
-        List<Root> exts = new ArrayList<>();
-        extractExtensions(builder, exts);
+        externalAccess = new ExternalAccess();
+        List<Root> exts = Stream.concat(
+                Stream.of(
+                        new DefaultComponentFactoryService(),
+                        new DefaultScriptService(),
+                        new DefaultTaskService(),
+                        externalAccess),
+                builder.extensions.stream()).toList();
+
         core = coreFactory.createCoreRoot(new Accessor(), exts);
-        List<Object> lookupContent = new ArrayList<>();
-        lookupContent.add(new ServicesImpl());
-        lookupContent.add(new ComponentRegistryImpl());
-        lookupContent.addAll(builder.lookupContent);
-        Lookup lkp = Lookup.of(lookupContent.toArray());
+
+        Lookup lkp = Lookup.of(Stream.concat(
+                Stream.of(new ServicesImpl(), new ComponentRegistryImpl()),
+                builder.lookupContent.stream()).toArray());
+
         lkp = coreFactory.extendLookup(lkp);
+
         lookup = lkp;
         roots = new ConcurrentHashMap<>();
         services = new ConcurrentHashMap<>();
         rootHub = new RootHubImpl();
         rootIDs = new CopyOnWriteArrayList<>();
-    }
-
-    private void extractExtensions(Builder builder, List<Root> exts) {
-        exts.add(new DefaultComponentFactoryService());
-        exts.add(new DefaultScriptService());
-        exts.add(new DefaultTaskService());
-        exts.addAll(builder.extensions);
     }
 
     /**
@@ -161,6 +165,16 @@ public final class Hub {
      */
     public boolean isAlive() {
         return coreController.isAlive();
+    }
+
+    /**
+     * Execute a script in the hub.
+     *
+     * @param script script to execute
+     * @return future for script response
+     */
+    public Future<List<Value>> eval(String script) {
+        return externalAccess.eval(script);
     }
 
     /**

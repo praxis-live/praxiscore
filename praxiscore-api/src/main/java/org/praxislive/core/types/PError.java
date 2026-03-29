@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -192,17 +192,24 @@ public final class PError extends Value {
      * Create a PError wrapping the given Exception. The message will be taken
      * from the exception, and the error type will be the simple name of the
      * exception's class.
+     * <p>
+     * If the exception is a {@link WrapperException} then the wrapped PError
+     * will be returned.
      *
      * @param ex exception
      * @return PError instance
      */
     public static PError of(Exception ex) {
-        String type = ex.getClass().getSimpleName();
-        String msg = ex.getMessage();
-        if (msg == null) {
-            msg = "";
+        if (ex instanceof WrapperException wex) {
+            return wex.error();
+        } else {
+            String type = ex.getClass().getSimpleName();
+            String msg = ex.getMessage();
+            if (msg == null) {
+                msg = "";
+            }
+            return new PError(type, msg, ex);
         }
-        return new PError(type, msg, ex);
     }
 
     /**
@@ -264,6 +271,44 @@ public final class PError extends Value {
         Value stack = data.get(KEY_STACK_TRACE);
         return new PError(type.toString(), message.toString(), null,
                 stack == null ? "" : stack.toString(), data);
+    }
+
+    /**
+     * An exception type that can be used to wrap a PError in cases where
+     * conversion (back) to an exception is desired. If the {@link #exception()}
+     * value is present on the PError, this is set to the cause of the wrapper
+     * exception.
+     */
+    public static class WrapperException extends RuntimeException {
+
+        private static final String UNKNOWN_MESSAGE = "Unknown Error";
+        private static final PError UNKNOWN = PError.of(UNKNOWN_MESSAGE);
+
+        private final PError error;
+
+        /**
+         * Create a wrapper exception for the given PError.
+         *
+         * @param error wrapped error
+         */
+        public WrapperException(PError error) {
+            this(error == null ? UNKNOWN : error, error == null ? UNKNOWN_MESSAGE : error.toString());
+        }
+
+        private WrapperException(PError error, String message) {
+            super(message, error.exception().orElse(null));
+            this.error = error;
+        }
+
+        /**
+         * Access the wrapped PError.
+         *
+         * @return wrapped error
+         */
+        public PError error() {
+            return error;
+        }
+
     }
 
 }
