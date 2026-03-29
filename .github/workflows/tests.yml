@@ -3,6 +3,9 @@ name: Test Suite
 on:
   [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build and test on ${{ matrix.os }}, JDK ${{ matrix.java }}
@@ -17,9 +20,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
@@ -32,4 +37,3 @@ jobs:
           ./praxiscore/bin/praxis --show-environment
       - name: Run Test Suite
         run: ./praxiscore/bin/praxis -f ./testsuite/
-
