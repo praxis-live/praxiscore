@@ -28,12 +28,17 @@ import java.util.concurrent.TimeUnit;
 import org.praxislive.core.MainThread;
 import org.praxislive.hub.Hub;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Files;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
@@ -44,6 +49,7 @@ import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.SystemManagerService;
 import org.praxislive.hub.net.NetworkCoreFactory;
 import picocli.CommandLine;
+import picocli.CommandLine.UnmatchedArgumentException;
 
 /**
  * Main entry point for parsing command line arguments and launching a
@@ -78,6 +84,9 @@ public class Launcher {
 
     static final String LISTENING_STATUS = "Listening at : ";
 
+    private static final ResourceBundle MESSAGES
+            = ResourceBundle.getBundle(Launcher.class.getPackageName() + ".Messages");
+
     /**
      * Main entry point.
      *
@@ -86,7 +95,35 @@ public class Launcher {
      * @param args the command line arguments, possibly amended
      */
     public static void main(Launcher.Context context, String[] args) {
-        int ret = new CommandLine(new Exec(context)).execute(args);
+        int ret = 0;
+        Exec exec = new Exec(context);
+        CommandLine cmd = new CommandLine(exec);
+        cmd.setResourceBundle(context.resourceBundle());
+        try {
+            CommandLine.ParseResult parse = cmd.parseArgs(args);
+            if (cmd.isUsageHelpRequested()) {
+                cmd.usage(cmd.getOut());
+                ret = cmd.getCommandSpec().exitCodeOnUsageHelp();
+            } else if (cmd.isVersionHelpRequested()) {
+                String versionOutput = MessageFormat.format(
+                        context.resourceBundle().getString("message.version"),
+                        context.version());
+                cmd.getOut().println(versionOutput);
+                ret = cmd.getCommandSpec().exitCodeOnVersionHelp();
+            } else {
+                ret = exec.call();
+            }
+        } catch (CommandLine.ParameterException ex) {
+            cmd.getErr().println(ex.getMessage());
+            if (!UnmatchedArgumentException.printSuggestions(ex, cmd.getErr())) {
+                ex.getCommandLine().usage(cmd.getErr());
+            }
+            ret = cmd.getCommandSpec().exitCodeOnInvalidInput();
+        } catch (Exception ex) {
+            ex.printStackTrace(cmd.getErr());
+            ret = cmd.getCommandSpec().exitCodeOnExecutionException();
+        }
+
         System.exit(ret);
     }
 
@@ -102,8 +139,25 @@ public class Launcher {
         throw new IllegalArgumentException();
     }
 
+    private static String version() {
+        String version = "DEV";
+
+        try (InputStream pomProps = Launcher.class.getResourceAsStream(
+                "/META-INF/maven/org.praxislive/praxiscore-launcher/pom.properties")) {
+            if (pomProps != null) {
+                Properties props = new Properties();
+                props.load(pomProps);
+                version = props.getProperty("version", version);
+            }
+        } catch (IOException ex) {
+            // fall through
+        }
+
+        return version;
+    }
+
     /**
-     * Context for launching child processes.
+     * Context for creating child processes and customizing launcher.
      */
     public static interface Context {
 
@@ -131,43 +185,56 @@ public class Launcher {
             return Optional.empty();
         }
 
+        /**
+         * A String representation of the version. The default value is
+         * calculated from the version of the Launcher module.
+         *
+         * @return version string
+         */
+        public default String version() {
+            return Launcher.version();
+        }
+
+        /**
+         * A resource bundle to use for launcher messages, help, etc. The
+         * default value provides all required messages. To override only a
+         * subset, call the default method and use its value as the parent
+         * resource bundle.
+         *
+         * @return resource bundle
+         */
+        public default ResourceBundle resourceBundle() {
+            return MESSAGES;
+        }
+
     }
 
     @CommandLine.Command(mixinStandardHelpOptions = true)
     private static class Exec implements Callable<Integer> {
 
         @CommandLine.Option(names = {"-f", "--file"},
-                description = "A script file or project directory to run.")
+                descriptionKey = "option.file.help")
         private File file;
 
         @CommandLine.Option(names = {"-p", "--port"},
                 converter = PortConverter.class,
-                description = "{auto | 0 .. 65535} : Launch a server on the specified port. "
-                + "If 0 or auto, a port is automatically chosen. "
-                + "Unless --network is specified, connections are only supported over local loopback. "
-                + "The port is reported to standard out as \"Listening at : [port]\".")
+                descriptionKey = "option.port.help")
         private Integer port;
 
         @CommandLine.Option(names = {"-n", "--network"},
-                description = "{all | CIDR mask} : Launch a server that supports remote "
-                + "connections, from all addresses or matching mask. "
-                + "Implies --port auto if not otherwise specified.")
+                descriptionKey = "option.network.help")
         private String network;
 
         @CommandLine.Option(names = {"-i", "--interactive"},
-                description = {"Allow for controlling the hub via PCL commands over the command line."})
+                descriptionKey = "option.interactive.help")
         private boolean interactive;
 
         @CommandLine.Option(names = "--child",
-                description = {"Configure the process to run as a child process. "
-                    + "Implies --port auto unless specified.",
-                    "A child process may not respond to normal termination signals, "
-                    + "instead relying on the parent process to be terminated."
-                })
+                descriptionKey = "option.child.help")
         private boolean child;
 
         @CommandLine.Option(names = "--show-environment",
-                description = {"Output useful debugging information about process environment."})
+                descriptionKey = "option.environment.help")
         private boolean showEnv;
 
         @CommandLine.Option(names = "--no-signal-handlers",
