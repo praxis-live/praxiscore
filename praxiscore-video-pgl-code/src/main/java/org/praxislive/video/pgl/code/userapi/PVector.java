@@ -70,6 +70,7 @@ import org.praxislive.core.DataObject;
  *
  * @webref math
  */
+@SuppressWarnings("removal")
 public class PVector implements Serializable, DataObject {
 
     /**
@@ -1074,6 +1075,7 @@ public class PVector implements Serializable, DataObject {
     }
 
     @Override
+    @Deprecated(forRemoval = true)
     public void writeTo(DataOutput out) throws Exception {
         out.writeDouble(x);
         out.writeDouble(y);
@@ -1081,6 +1083,7 @@ public class PVector implements Serializable, DataObject {
     }
 
     @Override
+    @Deprecated(forRemoval = true)
     public void readFrom(DataInput in) throws Exception {
         x = in.readDouble();
         y = in.readDouble();
@@ -1090,6 +1093,7 @@ public class PVector implements Serializable, DataObject {
     private final static OptionalInt SIZE = OptionalInt.of(3 * Double.BYTES);
     
     @Override
+    @Deprecated(forRemoval = true)
     public OptionalInt size() {
         return SIZE;
     }

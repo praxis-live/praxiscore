@@ -22,9 +22,13 @@
 package org.praxislive.core.types;
 
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.ReadOnlyBufferException;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,52 +38,8 @@ import org.praxislive.core.DataObject;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("removal")
 public class PBytesTest extends AbstractTestBase {
-
-    private static class Data implements DataObject {
-
-        double x, y, z;
-
-        Data() {
-        }
-
-        Data(double x, double y, double z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-
-        @Override
-        public void writeTo(DataOutput out) throws Exception {
-            out.writeDouble(x);
-            out.writeDouble(y);
-            out.writeDouble(z);
-        }
-
-        @Override
-        public void readFrom(DataInput in) throws Exception {
-            x = in.readDouble();
-            y = in.readDouble();
-            z = in.readDouble();
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Data : %.2f,%.2f,%.2f", x, y, z);
-        }
-    }
-
-    private static class FailedData implements DataObject {
-
-        @Override
-        public void writeTo(DataOutput out) throws Exception {
-        }
-
-        @Override
-        public void readFrom(DataInput in) throws Exception {
-        }
-
-    }
 
     private final PBytes testBytes;
 
@@ -92,8 +52,95 @@ public class PBytesTest extends AbstractTestBase {
         dos.writeDouble(40);
         dos.writeDouble(50);
         dos.writeDouble(60);
-        dos.flush();
         testBytes = os.toBytes();
+    }
+
+    @Test
+    public void testAsByteBuffer() {
+        ByteBuffer buffer = testBytes.asByteBuffer();
+        for (double d : new double[]{10, 20, 30, 40, 50, 60}) {
+            assertEquals(d, buffer.getDouble(), 0.001);
+        }
+        assertFalse(buffer.hasRemaining());
+        buffer.clear();
+        assertThrows(ReadOnlyBufferException.class, () -> buffer.putDouble(0, 0));
+        assertEquals(0, PBytes.EMPTY.asByteBuffer().capacity());
+    }
+
+    @Test
+    public void testAsInputStream() throws IOException {
+        try (DataInputStream dis = new DataInputStream(testBytes.asInputStream())) {
+            for (double d : new double[]{10, 20, 30, 40, 50, 60}) {
+                assertEquals(d, dis.readDouble(), 0.001);
+            }
+            assertEquals(0, dis.available());
+        }
+    }
+
+    @Test
+    public void testCopy() {
+        PBytes source = PBytes.valueOf(new byte[]{0, 1, 2, 3});
+        byte[] copy = source.copyBytes();
+        assertArrayEquals(new byte[]{0, 1, 2, 3}, copy);
+        copy[0] = 10;
+        copy = source.copyBytes();
+        assertArrayEquals(new byte[]{0, 1, 2, 3}, copy);
+        copy = source.copyBytes(1, 3);
+        assertArrayEquals(new byte[]{1, 2}, copy);
+        copy = source.copyBytes(3, 6);
+        assertArrayEquals(new byte[]{3, 0, 0}, copy);
+        assertThrows(IndexOutOfBoundsException.class, () -> {
+            byte[] ba = source.copyBytes(5, 7);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            byte[] ba = source.copyBytes(3, 0);
+        });
+    }
+
+    @Test
+    public void testRead() {
+        PBytes source = PBytes.valueOf(new byte[]{0, 1, 2, 3});
+        byte[] read = new byte[4];
+        source.read(read);
+        assertArrayEquals(new byte[]{0, 1, 2, 3}, read);
+        read = new byte[5];
+        source.read(read);
+        assertArrayEquals(new byte[]{0, 1, 2, 3, 0}, read);
+        read = new byte[4];
+        source.read(1, read);
+        assertArrayEquals(new byte[]{1, 2, 3, 0}, read);
+        read = new byte[1];
+        source.read(2, read);
+        assertEquals(2, read[0]);
+        read = new byte[4];
+        source.read(1, read, 2, 2);
+        assertArrayEquals(new byte[]{0, 0, 1, 2}, read);
+        assertThrows(IndexOutOfBoundsException.class, () -> {
+            source.read(1, new byte[1], 2, 2);
+        });
+    }
+
+    @Test
+    public void testValueOfByteBuffer() {
+        ByteBuffer buffer = testBytes.asByteBuffer();
+        buffer.getDouble();
+        buffer.getDouble();
+        PBytes range = PBytes.valueOf(buffer);
+        assertEquals(4 * Double.BYTES, range.size());
+        double[] read = new double[4];
+        DoubleBuffer db = range.asByteBuffer().asDoubleBuffer();
+        db.get(read);
+        assertArrayEquals(new double[]{30, 40, 50, 60}, read, 0.001);
+        assertFalse(db.hasRemaining());
+    }
+
+    @Test
+    public void testValueOfByteArrayRange() {
+        byte[] data = testBytes.copyBytes();
+        PBytes range = PBytes.valueOf(data, 3 * Double.BYTES, 4 * Double.BYTES);
+        DoubleBuffer db = range.asByteBuffer().asDoubleBuffer();
+        assertEquals(40, db.get(), 0.001);
+        assertFalse(db.hasRemaining());
     }
 
     /**
@@ -221,5 +268,50 @@ public class PBytesTest extends AbstractTestBase {
         assertThrows(IOException.class, () -> {
             double[] dbles = bytes.deserialize(double[].class);
         });
+    }
+
+    private static class Data implements DataObject {
+
+        double x, y, z;
+
+        Data() {
+        }
+
+        Data(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        @Override
+        public void writeTo(DataOutput out) throws Exception {
+            out.writeDouble(x);
+            out.writeDouble(y);
+            out.writeDouble(z);
+        }
+
+        @Override
+        public void readFrom(DataInput in) throws Exception {
+            x = in.readDouble();
+            y = in.readDouble();
+            z = in.readDouble();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Data : %.2f,%.2f,%.2f", x, y, z);
+        }
+    }
+
+    private static class FailedData implements DataObject {
+
+        @Override
+        public void writeTo(DataOutput out) throws Exception {
+        }
+
+        @Override
+        public void readFrom(DataInput in) throws Exception {
+        }
+
     }
 }
