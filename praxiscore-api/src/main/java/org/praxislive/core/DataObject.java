@@ -25,10 +25,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.util.OptionalInt;
 
-/**
- *
- * 
- */
+@Deprecated(forRemoval = true)
 public interface DataObject {
     
     public void writeTo(DataOutput out) throws Exception;

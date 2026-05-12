@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -48,8 +48,7 @@ class PMapClassLoader extends ClassLoader {
             throw new ClassNotFoundException(name);
         }
         PBytes data = PBytes.from(dataArg).orElseThrow(() -> new ClassNotFoundException(name));
-        byte[] bytes = new byte[data.size()];
-        data.read(bytes);
+        byte[] bytes = data.copyBytes();
         return defineClass(name, bytes, 0, bytes.length);
     }
 }

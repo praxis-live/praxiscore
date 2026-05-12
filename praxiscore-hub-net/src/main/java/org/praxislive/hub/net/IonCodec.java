@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -424,9 +424,7 @@ class IonCodec {
     }
 
     private void writeBytes(IonWriter writer, PBytes bytes) throws IOException {
-        byte[] tmp = new byte[bytes.size()];
-        bytes.read(tmp);
-        writer.writeBlob(tmp);
+        writer.writeBlob(bytes.copyBytes());
     }
 
     private void writeSend(IonWriter writer, Message.Send message) throws IOException {

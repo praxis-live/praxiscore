@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  *
  */
+@SuppressWarnings("removal")
 public class StructTest {
 
     private PBytes data1, data2;

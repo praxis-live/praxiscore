@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -30,10 +30,12 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
@@ -51,7 +53,8 @@ import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.DataObject;
 
 /**
- *
+ * A value type wrapping an immutable array of bytes. The String representation
+ * of a PBytes is Base64 encoded.
  */
 public final class PBytes extends Value {
 
@@ -60,10 +63,12 @@ public final class PBytes extends Value {
      */
     public static final String TYPE_NAME = "Bytes";
 
+    /**
+     * An empty PBytes.
+     */
     public static final PBytes EMPTY = new PBytes(new byte[0], "");
 
     private final byte[] bytes;
-
     private String str;
 
     private PBytes(byte[] bytes, String str) {
@@ -83,17 +88,97 @@ public final class PBytes extends Value {
         return str;
     }
 
-    public void read(byte[] dst) {
-        System.arraycopy(bytes, 0, dst, 0, bytes.length);
+    /**
+     * Copy the bytes data into a new array.
+     *
+     * @return copy of data
+     */
+    public byte[] copyBytes() {
+        return Arrays.copyOf(bytes, bytes.length);
     }
 
-//    public ByteBuffer asByteBuffer() {
-//        return ByteBuffer.wrap(bytes).asReadOnlyBuffer();
-//    }
+    /**
+     * Copy a range of the bytes data into a new array.
+     *
+     * @param from initial index to copy, inclusive
+     * @param to final index to copy, exclusive
+     * @return copy of data
+     * @throws ArrayIndexOutOfBoundsException if {@code from < 0} or
+     * {@code from > size()}
+     * @throws IllegalArgumentException if {@code from > to}
+     */
+    public byte[] copyBytes(int from, int to) {
+        return Arrays.copyOfRange(bytes, from, to);
+    }
+
+    /**
+     * Copy the data from this PBytes into the provided array. If the
+     * destination is a different size to this PBytes the minimum of
+     * {@code dst.length} or {@link #size()} bytes will be written.
+     *
+     * @param dst destination array
+     */
+    public void read(byte[] dst) {
+        System.arraycopy(bytes, 0, dst, 0, Math.min(bytes.length, dst.length));
+    }
+
+    /**
+     * Copy the data from this PBytes into the provided array, reading from
+     * index in the PBytes data. The data is written into the start of the
+     * destination. If the destination is a different size to the available data
+     * in this PBytes the minimum of {@code dst.length} or
+     * {@code size() - index} will be written.
+     *
+     * @param index starting read index
+     * @param dst destination array
+     * @throws IndexOutOfBoundsException if index is less than 0 or greater than
+     * size
+     */
+    public void read(int index, byte[] dst) {
+        System.arraycopy(bytes, index, dst, 0, Math.min(bytes.length - index, dst.length));
+    }
+
+    /**
+     * Copy length amount of data from this PBytes into the provided array,
+     * reading from index in the PBytes data and writing from offset in the
+     * destination array.
+     *
+     * @param index starting read index
+     * @param dst destination array
+     * @param offset starting write index
+     * @param length number of bytes to read
+     * @throws IndexOutOfBoundsException if the index or offset are out of
+     * bounds, or there is not length amount of data to read or capacity to
+     * write in the destination.
+     */
+    public void read(int index, byte[] dst, int offset, int length) {
+        System.arraycopy(bytes, index, dst, offset, length);
+    }
+
+    /**
+     * Create a {@link ByteBuffer} to access the data in this PBytes. The
+     * returned buffer is read-only.
+     *
+     * @return created read-only ByteBuffer
+     */
+    public ByteBuffer asByteBuffer() {
+        return ByteBuffer.wrap(bytes).asReadOnlyBuffer();
+    }
+
+    /**
+     * Create an {@link InputStream} to read the data from this PBytes.
+     *
+     * @return created input stream
+     */
     public InputStream asInputStream() {
         return new ByteArrayInputStream(bytes);
     }
 
+    /**
+     * The size of this PBytes in bytes.
+     *
+     * @return size in bytes
+     */
     public int size() {
         return bytes.length;
     }
@@ -142,6 +227,7 @@ public final class PBytes extends Value {
      * @return deserialized object
      * @throws IOException
      */
+    @Deprecated(forRemoval = true)
     public <T extends Serializable> T deserialize(Class<T> type) throws IOException {
         ObjectInputStream ois = new ObjectInputStream(asInputStream());
         try {
@@ -164,6 +250,8 @@ public final class PBytes extends Value {
      * @param container
      * @param consumer
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public <T extends DataObject> void forEachIn(T container, Consumer<T> consumer) {
         Spliterator<T> splitr = new StreamableSpliterator<>(new ByteArrayInputStream(bytes), () -> container);
         splitr.forEachRemaining(consumer);
@@ -178,6 +266,8 @@ public final class PBytes extends Value {
      * @param transformer
      * @return transformed data
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public <T extends DataObject> PBytes transformIn(T container, Consumer<T> transformer) {
         OutputStream os = new OutputStream(size());
         DataOutputStream dos = new DataOutputStream(os);
@@ -205,6 +295,8 @@ public final class PBytes extends Value {
      * @param supplier of DataObject
      * @return Stream of DataObject
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public <T extends DataObject> Stream<T> streamOf(Supplier<T> supplier) {
         return isEmpty() ? Stream.empty()
                 : StreamSupport.stream(new StreamableSpliterator<>(
@@ -221,6 +313,8 @@ public final class PBytes extends Value {
      * @param supplier
      * @return Stream of DataObject
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public <T extends DataObject> Stream<T> streamOf(int count, Supplier<T> supplier) {
         return Stream.concat(streamOf(supplier), Stream.generate(supplier)).limit(count);
     }
@@ -232,21 +326,67 @@ public final class PBytes extends Value {
      * @param <T>
      * @return collector
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public static <T extends DataObject> Collector<T, ?, PBytes> collector() {
         return new StreamableCollector<>();
     }
 
+    /**
+     * Create a PBytes out of the provided byte array. The array will be copied.
+     *
+     * @param bytes source bytes
+     * @return created PBytes
+     */
     public static PBytes valueOf(byte[] bytes) {
-        return new PBytes(bytes.clone(), null);
+        return new PBytes(Arrays.copyOf(bytes, bytes.length), null);
     }
 
-    public static PBytes parse(String str) throws ValueFormatException {
-        if (str.trim().isEmpty()) {
+    /**
+     * Create a PBytes out of a range of the provided byte array. The range will
+     * be copied.
+     * <p>
+     * The range is copied using {@link Arrays#copyOfRange(byte[], int, int)}.
+     * The final index may lie outside the provided bytes, in which case range
+     * is padded with zeroes.
+     *
+     * @param bytes source bytes
+     * @param from the initial index of the range, inclusive
+     * @param to the final index of the range, exclusive.
+     * @return created PBytes
+     */
+    public static PBytes valueOf(byte[] bytes, int from, int to) {
+        return new PBytes(Arrays.copyOfRange(bytes, from, to), null);
+    }
+
+    /**
+     * Create a PBytes from a {@link ByteBuffer}. The resulting PBytes will
+     * contain the data from the buffer position to its limit. After this method
+     * all the remaining data in the buffer will have been consumed.
+     *
+     * @param buffer source bytebuffer
+     * @return created PBytes
+     */
+    public static PBytes valueOf(ByteBuffer buffer) {
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        return new PBytes(bytes, null);
+    }
+
+    /**
+     * Parse the provided String as a PBytes.
+     *
+     * @param bytestring bytes as string
+     * @return created PBytes
+     * @throws ValueFormatException if string is invalid
+     */
+    public static PBytes parse(String bytestring) throws ValueFormatException {
+        if (bytestring.trim().isEmpty()) {
             return PBytes.EMPTY;
         }
         try {
-            byte[] bytes = Base64.getMimeDecoder().decode(str);
-            return new PBytes(bytes, str);
+            byte[] bytes = Base64.getMimeDecoder().decode(bytestring);
+            return new PBytes(bytes, bytestring);
         } catch (Exception ex) {
             throw new ValueFormatException(ex);
         }
@@ -258,6 +398,8 @@ public final class PBytes extends Value {
      * @param list
      * @return PBytes of data
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public static PBytes of(List<? extends DataObject> list) {
         if (list.isEmpty()) {
             return PBytes.EMPTY;
@@ -282,6 +424,7 @@ public final class PBytes extends Value {
      * @return PBytes of serialized data
      * @throws IOException
      */
+    @Deprecated(forRemoval = true)
     public static PBytes serialize(Serializable obj) throws IOException {
         OutputStream os = new OutputStream();
         try (ObjectOutputStream oos = new ObjectOutputStream(os)) {
@@ -292,37 +435,76 @@ public final class PBytes extends Value {
     }
 
     private static PBytes coerce(Value arg) throws ValueFormatException {
-        if (arg instanceof PBytes) {
-            return (PBytes) arg;
+        if (arg instanceof PBytes pBytes) {
+            return pBytes;
         } else {
             return parse(arg.toString());
         }
     }
 
-    public static Optional<PBytes> from(Value arg) {
+    /**
+     * Cast or convert the provided value into a PBytes, wrapped in an Optional.
+     * If the value is already a PBytes, the Optional will wrap the existing
+     * value. If the value is not a PBytes and cannot be converted into one, an
+     * empty Optional is returned.
+     *
+     * @param value value
+     * @return optional PBytes
+     */
+    public static Optional<PBytes> from(Value value) {
         try {
-            return Optional.of(coerce(arg));
+            return Optional.of(coerce(value));
         } catch (ValueFormatException ex) {
             return Optional.empty();
         }
     }
 
+    /**
+     * Utility method to create an {@link ArgumentInfo} for arguments of type
+     * PBytes.
+     *
+     * @return argument info
+     */
     public static ArgumentInfo info() {
         return ArgumentInfo.of(PBytes.class, PMap.EMPTY);
     }
 
+    /**
+     * An OutputStream for creating a PBytes.
+     */
     public static class OutputStream extends ByteArrayOutputStream {
 
+        /**
+         * Create an OutputStream with the default buffer size.
+         */
         public OutputStream() {
         }
 
+        /**
+         * Create an OutputStream with the provided buffer size.
+         *
+         * @param size buffer size
+         */
         public OutputStream(int size) {
             super(size);
         }
 
+        /**
+         * Create a PBytes from the output data. The OutputStream will no longer
+         * be usable after this method has been called.
+         *
+         * @return created PBytes
+         */
         public synchronized PBytes toBytes() {
-            // @TODO zero copy if buf.length == count?
-            return new PBytes(toByteArray(), null);
+            byte[] bytes = buf;
+            int size = count;
+            buf = null;
+            count = 0;
+            if (bytes.length == size) {
+                return new PBytes(bytes, null);
+            } else {
+                return new PBytes(Arrays.copyOf(bytes, size), null);
+            }
         }
 
     }
@@ -338,6 +520,7 @@ public final class PBytes extends Value {
 
     }
 
+    @SuppressWarnings("removal")
     private static class StreamableCollector<T extends DataObject> implements Collector<T, DataOutputImpl, PBytes> {
 
         @Override
@@ -390,6 +573,7 @@ public final class PBytes extends Value {
 
     }
 
+    @SuppressWarnings("removal")
     private static class StreamableSpliterator<T extends DataObject> implements Spliterator<T> {
 
         private final ByteArrayInputStream is;

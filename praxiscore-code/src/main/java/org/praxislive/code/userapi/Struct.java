@@ -41,6 +41,8 @@ import org.praxislive.core.DataObject;
  * </pre>
  *
  */
+@Deprecated(forRemoval = true)
+@SuppressWarnings("removal")
 public abstract class Struct implements DataObject {
     
     private DataObject[] data = new DataObject[0];
