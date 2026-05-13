@@ -21,12 +21,16 @@
  */
 package org.praxislive.core;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PString;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 
 /**
@@ -43,6 +47,10 @@ public class ValueMapperTest {
     }
 
     public static record RECORD_TWO(String name, RECORD_ONE value) {
+
+    }
+
+    public static record LIST_RECORD(List<RECORD_ONE> values, boolean flag) {
 
     }
 
@@ -167,6 +175,75 @@ public class ValueMapperTest {
                 info2.properties().get(PMap.KEY_SCHEMA)).orElseThrow()
                 .get("value")
         );
+
+    }
+
+    @Test
+    public void testListMapper() {
+        ValueMapper<List<String>> strListMap1 = ValueMapper.findListMapper(String.class);
+        ValueMapper<?> strListMap2 = ValueMapper.find(
+                new TypeLiteral<List<String>>() {
+                }.type());
+        assertSame(strListMap1, strListMap2);
+
+        PArray array = PArray.of(PString.of("ONE"), PString.of("TWO"));
+        List<String> strings = strListMap1.fromValue(array);
+        assertEquals(List.of("ONE", "TWO"), strings);
+        assertEquals(array, strListMap1.toValue(strings));
+        ValueMapper<List<Value>> valueListMapper = ValueMapper.findListMapper(Value.class);
+        assertSame(array.asList(), valueListMapper.fromValue(array));
+        ValueMapper<List<PString>> stringListMapper = ValueMapper.findListMapper(PString.class);
+        assertSame(array.asList(), stringListMapper.fromValue(array));
+        ValueMapper<List<PArray>> parrayListMapper = ValueMapper.findListMapper(PArray.class);
+        List<PArray> parrayList = parrayListMapper.fromValue(array);
+        assertNotSame(array.asList(), parrayList);
+        assertEquals("ONE", parrayList.getFirst().get(0).toString());
+
+        ValueMapper<List<RECORD_ONE>> listR1Mapper
+                = ValueMapper.findListMapper(RECORD_ONE.class);
+        List<RECORD_ONE> r1s = List.of(
+                new RECORD_ONE(21, false),
+                new RECORD_ONE(42, true)
+        );
+        PArray r1array = PArray.of(
+                PMap.of("value", 21, "flag", false),
+                PMap.of("value", 42, "flag", true)
+        );
+        assertEquals(r1array, listR1Mapper.toValue(r1s));
+        assertEquals(r1s, listR1Mapper.fromValue(r1array));
+
+        ValueMapper<List<LIST_RECORD>> listRecordMapper
+                = ValueMapper.findListMapper(LIST_RECORD.class);
+        List<LIST_RECORD> listRecords = List.of(
+                new LIST_RECORD(r1s, false),
+                new LIST_RECORD(List.of(), true)
+        );
+        PArray listRecordArray = PArray.of(
+                PMap.of("values", r1array, "flag", false),
+                PMap.of("values", PArray.EMPTY, "flag", true)
+        );
+        assertEquals(listRecordArray, listRecordMapper.toValue(listRecords));
+        assertEquals(listRecords, listRecordMapper.fromValue(listRecordArray));
+
+    }
+
+    private static abstract class TypeLiteral<T> {
+
+        private final Type type;
+
+        private TypeLiteral() {
+            Type superclass = getClass().getGenericSuperclass();
+            if (superclass instanceof ParameterizedType param
+                    && param.getActualTypeArguments().length == 1) {
+                type = param.getActualTypeArguments()[0];
+            } else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        Type type() {
+            return type;
+        }
 
     }
 

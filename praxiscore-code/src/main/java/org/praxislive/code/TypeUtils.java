@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -107,14 +107,14 @@ class TypeUtils {
     }
 
     /**
-     * Build a simplified version of the type to use as a Port category. This
-     * reflects the generic type signature but using
+     * Build a simplified text representation of the type (eg. to use as a port
+     * category). The text reflects the generic type signature but using
      * {@link Class#getSimpleName()} for all concrete types.
      *
      * @param type type to convert
-     * @return port category as String
+     * @return simplified type as text
      */
-    static String portCategory(Type type) {
+    static String simpleName(Type type) {
         StringBuilder sb = new StringBuilder();
         buildSimpleName(sb, type);
         return sb.toString();

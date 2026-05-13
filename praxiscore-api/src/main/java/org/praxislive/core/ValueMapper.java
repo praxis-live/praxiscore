@@ -24,6 +24,7 @@ package org.praxislive.core;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.function.Function;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
@@ -42,7 +44,18 @@ import org.praxislive.core.types.PString;
 
 /**
  * ValueMappers translate values of type Value to another Java type. See
- * {@link #find(java.lang.Class)} to access pre-registered ValueMappers.
+ * {@link #find(java.lang.Class)} or {@link #find(java.lang.reflect.Type)} to
+ * access available system mappers. This class may also be subclassed to do
+ * validation or custom mapping.
+ * <p>
+ * System mappers for String, Boolean, Integer, Float and Double are provided,
+ * along with their primitive counterparts where applicable. Mappers for all
+ * registered Value types are provided as a convenience.
+ * <p>
+ * Mappers will be created on demand for any Enum type. Mappers will be created
+ * on demand for any {@link Record} type containing system mappable fields.
+ * Mappers will be created on demand for any {@link List} of system mappable
+ * elements.
  *
  * @param <T> Java type
  */
@@ -126,10 +139,7 @@ public abstract class ValueMapper<T> {
 
     /**
      * Find a ValueMapper capable of mapping Values to and from the provided
-     * Class. Mappers for String, Boolean, Integer, Float and Double are
-     * provided, along with their primitive counterparts where applicable.
-     * Mappers will be created on demand for any Enum type. Mappers for all
-     * registered Value types are provided as a convenience.
+     * Class.
      *
      * @param <T> mapped class
      * @param type mapped class
@@ -138,6 +148,43 @@ public abstract class ValueMapper<T> {
     @SuppressWarnings("unchecked")
     public static <T> ValueMapper<T> find(Class<T> type) {
         return (ValueMapper<T>) REGISTRY.find(type);
+    }
+
+    /**
+     * Find a ValueMapper capable of mapping Values to and from the provided
+     * {@link Type}.
+     *
+     * @param type mapped type
+     * @return value mapper or null
+     */
+    public static ValueMapper<?> find(Type type) {
+        return REGISTRY.find(type);
+    }
+
+    /**
+     * Find a ValueMapper capable of mapping Values to and from a {@link List}
+     * of the provided Class. Lists produced by the mapper will be immutable.
+     *
+     * @param <T> mapped class
+     * @param type mapped class
+     * @return value mapper or null.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> ValueMapper<List<T>> findListMapper(Class<T> type) {
+        return (ValueMapper<List<T>>) REGISTRY.find(new ParameterizedTypeImpl(List.class, type));
+    }
+
+    /**
+     * Find a ValueMapper capable of mapping Values to and from a {@link List}
+     * of the provided {@link Type}. Lists produced by the mapper will be
+     * immutable.
+     *
+     * @param type mapped type
+     * @return value mapper or null.
+     */
+    @SuppressWarnings("unchecked")
+    public static ValueMapper<List<?>> findListMapper(Type type) {
+        return (ValueMapper<List<?>>) REGISTRY.find(new ParameterizedTypeImpl(List.class, type));
     }
 
     private static class Registry {
@@ -184,12 +231,20 @@ public abstract class ValueMapper<T> {
                 }
             }
 
-            if (type instanceof Class) {
-                Class<?> cls = (Class<?>) type;
-                if (cls.isEnum()) {
-                    mapper = new EnumMapper<>((Class<? extends Enum>) cls);
-                } else if (cls.isRecord()) {
-                    mapper = RecordMapper.create((Class<? extends Record>) cls);
+            switch (type) {
+                case Class<?> cls -> {
+                    if (cls.isEnum()) {
+                        mapper = new EnumMapper<>((Class<? extends Enum>) cls);
+                    } else if (cls.isRecord()) {
+                        mapper = RecordMapper.create((Class<? extends Record>) cls);
+                    }
+                }
+                case ParameterizedType param -> {
+                    if (param.getRawType().equals(List.class)) {
+                        mapper = ListMapper.create(param);
+                    }
+                }
+                default -> {
                 }
             }
 
@@ -496,7 +551,7 @@ public abstract class ValueMapper<T> {
                     return null;
                 }
                 @SuppressWarnings("unchecked")
-                ValueMapper<Object> mapper = (ValueMapper<Object>) find(rc.getType());
+                ValueMapper<Object> mapper = (ValueMapper<Object>) find(rc.getGenericType());
                 if (mapper == null) {
                     return null;
                 }
@@ -510,6 +565,101 @@ public abstract class ValueMapper<T> {
             }
             return new RecordMapper<>(recordCls, constructor, List.copyOf(names),
                     List.copyOf(mappers), List.copyOf(accessors));
+        }
+
+    }
+
+    private static class ListMapper<T> extends ValueMapper<List<T>> {
+
+        private final ValueMapper<T> elementMapper;
+
+        private ListMapper(ParameterizedType type, ValueMapper<T> elementMapper) {
+            super(type, PArray.class);
+            this.elementMapper = elementMapper;
+        }
+
+        @Override
+        public List<T> fromValue(Value value) {
+            List<Value> data = PArray.from(value)
+                    .map(PArray::asList)
+                    .orElseThrow(IllegalArgumentException::new);
+            if (elementMapper instanceof ValueMapperImpl<?> valueMapper) {
+                Class<?> valueClass = valueMapper.valueType().asClass();
+                if (Value.class == valueClass
+                        || data.stream().allMatch(valueClass::isInstance)) {
+                    return (List<T>) data;
+                }
+            }
+            return data.stream()
+                    .map(elementMapper::fromValue)
+                    .toList();
+        }
+
+        @Override
+        public Value toValue(List<T> value) {
+            if (elementMapper instanceof ValueMapperImpl) {
+                return PArray.of((List<Value>) value);
+            } else {
+                return value.stream()
+                        .map(v -> elementMapper.toValue(v))
+                        .collect(PArray.collector());
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <T> ListMapper<T> create(ParameterizedType genericType) {
+            if (!Objects.equals(genericType.getRawType(), List.class)) {
+                return null;
+            }
+            Type[] elementTypes = genericType.getActualTypeArguments();
+            if (elementTypes.length != 1) {
+                return null;
+            }
+            ValueMapper<?> elementMapper = ValueMapper.find(elementTypes[0]);
+            if (elementMapper == null) {
+                return null;
+            }
+            return (ListMapper<T>) new ListMapper(genericType, elementMapper);
+
+        }
+    }
+
+    private static class ParameterizedTypeImpl implements ParameterizedType {
+
+        private final Class<?> rawType;
+        private final Type[] typeArguments;
+
+        private ParameterizedTypeImpl(Class<?> rawType, Type typeArgument) {
+            this.rawType = rawType;
+            this.typeArguments = new Type[]{typeArgument};
+        }
+
+        @Override
+        public Type[] getActualTypeArguments() {
+            return Arrays.copyOf(typeArguments, typeArguments.length);
+        }
+
+        @Override
+        public Type getRawType() {
+            return rawType;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return this == other || other instanceof ParameterizedType p
+                    && Objects.equals(rawType, p.getRawType())
+                    && Arrays.equals(typeArguments, p.getActualTypeArguments())
+                    && p.getOwnerType() == null;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(typeArguments) ^ Objects.hashCode(rawType);
         }
 
     }

@@ -6,6 +6,8 @@
 
     }
 
+    @P @Config.Port(false) List<Point> pointList;
+
     @Inject Async.MapQueue<Point, Async<Point>> transformQueue;
 
     @Override
@@ -79,6 +81,14 @@
         return reply;
     }
 
+    @FN
+    Async<List<Point>> asyncPointListConcat(List<Point> list) {
+        return async(List.of(pointList, list), lists -> {
+            return lists.stream().flatMap(List::stream).toList();
+        });
+    }
+
 }
+    .point-list [array [map x 1 y 1] [map x 2 y 2]]
   }
 }

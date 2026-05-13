@@ -23,6 +23,7 @@
 package org.praxislive.code;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -129,8 +130,8 @@ abstract class ValueMapperBinding extends PropertyControl.Binding {
 
         @SuppressWarnings("unchecked")
         private static MappedField createImpl(CodeConnector<?> connector, Field field) {
-            Class<?> cls = field.getType();
-            ValueMapper<Object> mapper = (ValueMapper<Object>) ValueMapper.find(cls);
+            ValueMapper<Object> mapper
+                    = (ValueMapper<Object>) ValueMapper.find(field.getGenericType());
             if (mapper == null) {
                 return null;
             }
@@ -164,10 +165,11 @@ abstract class ValueMapperBinding extends PropertyControl.Binding {
                 }
             }
             if (defValue == null || defObject == null) {
+                String typeName = TypeUtils.simpleName(field.getGenericType());
                 connector.getLog().log(LogLevel.WARNING,
-                        "Type " + cls.getSimpleName()
+                        "Type " + typeName
                         + " does not support default value, consider Optional<"
-                        + cls.getSimpleName() + ">");
+                        + typeName + ">");
                 defValue = PString.EMPTY;
             }
             return new MappedField(mapper, defValue, info, validator, field);
@@ -232,12 +234,11 @@ abstract class ValueMapperBinding extends PropertyControl.Binding {
 
         @SuppressWarnings("unchecked")
         private static OptionalField createImpl(CodeConnector<?> connector, Field field) {
-            Class<?> optCls = TypeUtils.extractRawType(
-                    TypeUtils.extractTypeParameter(field.getGenericType()));
-            if (optCls == null) {
+            Type optType = TypeUtils.extractTypeParameter(field.getGenericType());
+            if (optType == null) {
                 return null;
             }
-            ValueMapper<Object> mapper = (ValueMapper<Object>) ValueMapper.find(optCls);
+            ValueMapper<Object> mapper = (ValueMapper<Object>) ValueMapper.find(optType);
             if (mapper == null) {
                 return null;
             }
