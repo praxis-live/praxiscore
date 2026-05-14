@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -162,7 +162,7 @@ public abstract class DataPort<T> implements Port {
             this.type = type;
             this.info = PortInfo.create(DataPort.class,
                     PortInfo.Direction.IN,
-                    PMap.of("category", TypeUtils.portCategory(type)));
+                    PMap.of("category", TypeUtils.simpleName(type)));
         }
 
         @Override
@@ -354,7 +354,7 @@ public abstract class DataPort<T> implements Port {
             this.type = type;
             this.info = PortInfo.create(DataPort.class,
                     PortInfo.Direction.OUT,
-                    PMap.of("category", TypeUtils.portCategory(type)));
+                    PMap.of("category", TypeUtils.simpleName(type)));
         }
 
         @Override

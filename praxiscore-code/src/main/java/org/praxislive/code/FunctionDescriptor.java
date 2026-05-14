@@ -25,6 +25,7 @@ package org.praxislive.code;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -156,11 +157,11 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
         ValueMapper<?>[] parameterMappers = new ValueMapper<?>[parameters.length];
         for (int i = 0; i < parameterMappers.length; i++) {
             Parameter parameter = parameters[i];
-            Class<?> type = parameter.getType();
+            Type type = parameter.getParameterizedType();
             ValueMapper<?> mapper = ValueMapper.find(type);
             if (mapper == null) {
                 connector.getLog().log(LogLevel.ERROR,
-                        "Unsupported parameter type " + type.getSimpleName()
+                        "Unsupported parameter type " + TypeUtils.simpleName(type)
                         + " in method " + method.getName());
                 return null;
             }
@@ -186,22 +187,22 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
             }
         } else if (returnType == Async.class) {
             async = true;
-            Class<?> asyncReturnType = TypeUtils.extractRawType(
-                    TypeUtils.extractTypeParameter(method.getGenericReturnType())
-            );
+            Type asyncReturnType = TypeUtils.extractTypeParameter(method.getGenericReturnType());
             returnMapper = asyncReturnType == null ? null
                     : ValueMapper.find(asyncReturnType);
             if (returnMapper == null) {
                 connector.getLog().log(LogLevel.ERROR,
-                        "Unsupported Async type " + method.getGenericReturnType()
+                        "Unsupported Async type "
+                        + TypeUtils.simpleName(method.getGenericReturnType())
                         + " in method " + method.getName());
                 return null;
             }
         } else {
-            returnMapper = ValueMapper.find(returnType);
+            returnMapper = ValueMapper.find(method.getGenericReturnType());
             if (returnMapper == null) {
                 connector.getLog().log(LogLevel.ERROR,
-                        "Unsupported return type " + returnType.getSimpleName()
+                        "Unsupported return type "
+                        + TypeUtils.simpleName(method.getGenericReturnType())
                         + " in method " + method.getName());
                 return null;
             }
