@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -25,6 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -90,8 +91,15 @@ public final class NetworkCoreFactory implements Hub.CoreRootFactory {
 
     @Override
     public synchronized Lookup extendLookup(Lookup lookup) {
-        if (root instanceof ServerCoreRoot) {
-            return Lookup.of(lookup, ((ServerCoreRoot) root).getResourceResolver());
+        List<Object> ext = new ArrayList<>();
+        if (childLauncher != null) {
+            ext.add(childLauncher);
+        }
+        if (root instanceof ServerCoreRoot scr) {
+            ext.add(scr.getResourceResolver());
+        }
+        if (!ext.isEmpty()) {
+            return Lookup.of(lookup, ext.toArray());
         } else {
             return lookup;
         }

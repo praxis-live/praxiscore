@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.praxislive.core.Clock;
 import org.praxislive.core.ComponentAddress;
+import org.praxislive.core.HubProxy;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Packet;
 import org.praxislive.core.Root;
@@ -76,7 +77,7 @@ public final class Hub {
 
     private Hub(Builder builder) {
         CoreRootFactory coreFactory = builder.coreRootFactory;
-        externalAccess = new ExternalAccess();
+        externalAccess = new ExternalAccess(this);
         List<Root> exts = Stream.concat(
                 Stream.of(
                         new DefaultComponentFactoryService(),
@@ -177,6 +178,10 @@ public final class Hub {
         return externalAccess.eval(script);
     }
 
+    public HubProxy createHubProxy() {
+        return externalAccess.createHubProxy();
+    }
+
     /**
      * Return an exit value for the hub. This may be used as the exit value for
      * the hub process. The default value is 0.
@@ -189,6 +194,10 @@ public final class Hub {
         } else {
             return 0;
         }
+    }
+
+    List<String> roots() {
+        return List.copyOf(rootIDs);
     }
 
     private boolean registerRootController(String id, Root.Controller controller) {
@@ -362,8 +371,19 @@ public final class Hub {
          *
          * @return registered root IDs
          */
+        @Deprecated(forRemoval = true)
         public String[] getRootIDs() {
             return Hub.this.getRootIDs();
+        }
+
+        /**
+         * Get a list of the registered root IDs. The returned list is an
+         * immutable snapshot.
+         *
+         * @return registered root IDs
+         */
+        public List<String> rootIDs() {
+            return Hub.this.roots();
         }
 
         /**
