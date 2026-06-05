@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,6 @@
 package org.praxislive.base;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,6 +163,7 @@ public class BindingContextControl implements Control, BindingContext {
                 infoAdaptor = new InfoAdaptor();
                 infoAdaptor.setSyncRate(SyncRate.Low);
                 BindingContextControl.this.bind(infoAddress, infoAdaptor);
+                infoAdaptor.update();
             }
         }
 
@@ -264,6 +264,7 @@ public class BindingContextControl implements Control, BindingContext {
                 syncPeriod = delayForRate(highRate);
                 nextSyncTime = 0;
                 syncing.add(this);
+                processSync(context.getTime());
             }
         }
 
@@ -329,8 +330,8 @@ public class BindingContextControl implements Control, BindingContext {
                 if (activeAdaptor != null) {
                     activeAdaptor.onError(call.args());
                     activeAdaptor = null;
-                } else {
-                    LOG.log(System.Logger.Level.DEBUG, "Error on sync call - {0}", call.from());
+                } else if (activeCall.args().isEmpty()) {
+                    adaptors.forEach(Adaptor::syncError);
                 }
                 activeCall = null;
             }

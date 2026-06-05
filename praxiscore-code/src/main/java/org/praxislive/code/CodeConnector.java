@@ -61,6 +61,7 @@ import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.ComponentInfo;
 import org.praxislive.core.ComponentType;
+import org.praxislive.core.HubProxy;
 import org.praxislive.core.Info;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Value;
@@ -749,6 +750,16 @@ public abstract class CodeConnector<D extends CodeDelegate> {
             DataSink.Descriptor dsdsc = DataSink.Descriptor.create(this, field);
             if (dsdsc != null) {
                 addReference(dsdsc);
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        if (HubProxy.class.equals(field.getType())) {
+            HubProxyImpl.Descriptor hbdsc = HubProxyImpl.Descriptor.create(this, field);
+            if (hbdsc != null) {
+                addReference(hbdsc);
                 return true;
             } else {
                 return false;

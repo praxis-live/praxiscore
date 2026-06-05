@@ -50,6 +50,9 @@ import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PString;
 
 import static java.lang.System.Logger.Level;
+import org.praxislive.core.ComponentInfo;
+import org.praxislive.core.Info;
+import org.praxislive.core.protocols.ComponentProtocol;
 
 /**
  * A base implementation of a core root for use with {@link Hub}. This is the
@@ -59,7 +62,13 @@ import static java.lang.System.Logger.Level;
  */
 public class BasicCoreRoot extends AbstractRoot {
 
-    private final static Logger LOG = System.getLogger(BasicCoreRoot.class.getName());
+    private static final Logger LOG = System.getLogger(BasicCoreRoot.class.getName());
+
+    private static final ComponentInfo INFO = Info.component()
+            .merge(RootManagerService.API_INFO)
+            .control(SystemManagerService.SYSTEM_EXIT,
+                    SystemManagerService.SYSTEM_EXIT_INFO)
+            .build();
 
     private final Hub.Accessor hubAccess;
     private final List<Root> exts;
@@ -189,6 +198,11 @@ public class BasicCoreRoot extends AbstractRoot {
      * @param ctrls map of control id to control
      */
     protected void buildControlMap(Map<String, Control> ctrls) {
+        ctrls.computeIfAbsent(ComponentProtocol.INFO, k -> (call, router) -> {
+            if (call.isReplyRequired()) {
+                router.route(call.reply(INFO));
+            }
+        });
         ctrls.computeIfAbsent(RootManagerService.ADD_ROOT, k -> new AddRootControl());
         ctrls.computeIfAbsent(RootManagerService.REMOVE_ROOT, k -> new RemoveRootControl());
         ctrls.computeIfAbsent(RootManagerService.ROOTS, k -> new RootsControl());

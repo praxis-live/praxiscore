@@ -246,6 +246,12 @@ public abstract class Binding {
         protected void update() {
         }
 
+        /**
+         * Optional hook called whenever a sync call fails.
+         */
+        protected void syncError() {
+        }
+
     }
 
     /**
@@ -264,6 +270,7 @@ public abstract class Binding {
         private Consumer<Value> onChangeHandler;
         private Consumer<PropertyAdaptor> onConfigChangeHandler;
         private Consumer<PropertyAdaptor> onSyncHandler;
+        private Consumer<PropertyAdaptor> onSyncErrorHandler;
         private Predicate<PropertyAdaptor> adjustingHandler;
 
         /**
@@ -326,14 +333,27 @@ public abstract class Binding {
         /**
          * Set a handler to be called whenever the binding has received a
          * successful sync response. The value may not have changed. Only one
-         * sync handler may be set at a time. A value of {code null} will remove
-         * the handler.
+         * sync handler may be set at a time. A value of {@code null} will
+         * remove the handler.
          *
          * @param onSyncHandler handler to be called on sync
          * @return this for chaining
          */
         public PropertyAdaptor onSync(Consumer<PropertyAdaptor> onSyncHandler) {
             this.onSyncHandler = onSyncHandler;
+            return this;
+        }
+
+        /**
+         * Set a handler to be called whenever the binding has received an
+         * unsuccessful sync response. Only one sync error handler may be set at
+         * a time. A value of {@code null} will remove the handler.
+         *
+         * @param onSyncErrorHandler handler to be called on sync error
+         * @return this for chaining
+         */
+        public PropertyAdaptor onSyncError(Consumer<PropertyAdaptor> onSyncErrorHandler) {
+            this.onSyncErrorHandler = onSyncErrorHandler;
             return this;
         }
 
@@ -376,6 +396,13 @@ public abstract class Binding {
             }
             if (onSyncHandler != null) {
                 onSyncHandler.accept(this);
+            }
+        }
+
+        @Override
+        protected void syncError() {
+            if (onSyncErrorHandler != null) {
+                onSyncErrorHandler.accept(this);
             }
         }
 
