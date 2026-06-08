@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -37,9 +37,8 @@ import org.praxislive.purl.PackageURL;
  *
  */
 public class MimaResolver implements LibraryResolver {
-    
+
     MimaWrapper mima;
-    
 
     @Override
     public Optional<Entry> resolve(PResource resource, Context context) throws Exception {
@@ -65,30 +64,31 @@ public class MimaResolver implements LibraryResolver {
         PResource root = resource;
         List<PResource> provides = new ArrayList<>();
         List<Path> files = new ArrayList<>();
-        
+
         for (Artifact dep : resolved) {
             Artifact ex = findExisting(installed, dep);
             if (ex == null) {
-                Path file = dep.getFile().toPath();
                 PResource purl = toPURL(dep);
                 if (matchingArtifacts(dep, artifact)) {
                     root = purl;
                 }
                 provides.add(purl);
-                files.add(file);
+                if (!Objects.equals("pom", dep.getExtension())) {
+                    files.add(dep.getFile().toPath());
+                }
                 context.log().log(LogLevel.INFO, "Installing dependency " + purl);
             } else {
                 if (!Objects.equals(dep.getVersion(), ex.getVersion())) {
-                        context.log().log(LogLevel.WARNING,
-                                "Found already installed dependency " + toPURL(ex)
-                                + " instead of version " + dep.getVersion());
-                    } else {
-                        context.log().log(LogLevel.INFO,
-                                "Found already installed dependency " + toPURL(ex));
-                    }
+                    context.log().log(LogLevel.WARNING,
+                            "Found already installed dependency " + toPURL(ex)
+                            + " instead of version " + dep.getVersion());
+                } else {
+                    context.log().log(LogLevel.INFO,
+                            "Found already installed dependency " + toPURL(ex));
+                }
             }
         }
-        
+
         return Optional.of(new Entry(root, files, provides));
     }
 
@@ -109,7 +109,7 @@ public class MimaResolver implements LibraryResolver {
                 purl.qualifiers().flatMap(q -> Optional.ofNullable(q.get("type"))).orElse("jar"),
                 purl.version().orElse(""));
     }
-    
+
     private static PResource toPURL(Artifact artifact) {
         PackageURL.Builder builder = PackageURL.builder()
                 .withType("maven")
@@ -145,7 +145,7 @@ public class MimaResolver implements LibraryResolver {
         }
         return List.copyOf(list);
     }
-    
+
     private static Artifact findExisting(List<Artifact> installed, Artifact artifact) {
         return installed.stream()
                 .filter(lib -> matchingArtifacts(lib, artifact))
