@@ -270,6 +270,183 @@ public class VecTest {
     }
 
     @Test
+    void testGenerateIndexed_BufF2() {
+        Vec.BufF2 buffer = Vec.BufF2.allocate(4);
+        assertEquals(4, buffer.capacity());
+        assertEquals(0, buffer.count());
+        buffer.generateIndexed(3, (d, i) -> {
+            d.x = i * 2;
+            d.y = d.x + 1;
+        });
+        assertArrayEquals(new float[]{
+            0, 1,
+            2, 3,
+            4, 5,
+            0, 0
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
+    void testGenerateIndexed_BufF3() {
+        Vec.BufF3 buffer = Vec.BufF3.allocate(4);
+        assertEquals(4, buffer.capacity());
+        assertEquals(0, buffer.count());
+        buffer.generateIndexed(3, (d, i) -> {
+            d.x = i * 3;
+            d.y = d.x + 1;
+            d.z = d.y + 1;
+        });
+        assertArrayEquals(new float[]{
+            0, 1, 2,
+            3, 4, 5,
+            6, 7, 8,
+            0, 0, 0
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
+    void testGenerateIndexed_BufF4() {
+        Vec.BufF4 buffer = Vec.BufF4.allocate(4);
+        assertEquals(4, buffer.capacity());
+        assertEquals(0, buffer.count());
+        buffer.generateIndexed(3, (d, i) -> {
+            d.x = i * 4;
+            d.y = d.x + 1;
+            d.z = d.y + 1;
+            d.w = d.z + 1;
+        });
+        assertArrayEquals(new float[]{
+            0, 1, 2, 3,
+            4, 5, 6, 7,
+            8, 9, 10, 11,
+            0, 0, 0, 0
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
+    void testMerge_BufF() {
+        Vec.BufF2 buf2 = Vec.BufF2.fromVecList(List.of(
+                new Vec.D2(1, 2),
+                new Vec.D2(3, 4),
+                new Vec.D2(5, 6),
+                new Vec.D2(7, 8),
+                new Vec.D2(9, 10)
+        ));
+        Vec.BufF3 buf3 = Vec.BufF3.allocate(4);
+        Vec.BufF4 buf4 = Vec.BufF4.allocate(5);
+        int copied = buf3.merge(buf2, (dst, src) -> {
+            dst.y = src.x;
+            dst.z = src.y;
+        });
+        assertEquals(0, copied);
+        assertEquals(0, buf3.count());
+        buf3.count(4);
+        copied = buf3.merge(buf2, (dst, src) -> {
+            dst.y = src.x;
+            dst.z = src.y;
+        });
+        assertEquals(4, copied);
+        assertArrayEquals(new float[]{
+            0, 1, 2,
+            0, 3, 4,
+            0, 5, 6,
+            0, 7, 8
+        }, buf3.data(), 0.001f);
+        buf4.count(3);
+        copied = buf4.merge(buf3, (dst, src) -> {
+            dst.x = src.z;
+            dst.y = -src.y;
+            dst.w = src.z * 2;
+        });
+        assertEquals(3, copied);
+        assertEquals(3, buf4.count());
+        assertArrayEquals(new float[]{
+            2, -1, 0, 4,
+            4, -3, 0, 8,
+            6, -5, 0, 12,
+            0, 0, 0, 0,
+            0, 0, 0, 0
+        }, buf4.data(), 0.001f);
+        buf4.count(5);
+        copied = buf2.merge(buf4, (dst, src) -> {
+            dst.x = src.y;
+            dst.y = src.w;
+        });
+        assertEquals(5, copied);
+        assertEquals(5, buf2.count());
+        assertArrayEquals(new float[]{
+            -1, 4,
+            -3, 8,
+            -5, 12,
+            0, 0,
+            0, 0
+        }, buf2.data(), 0.001f);
+    }
+
+    @Test
+    void testTransformIndexed_BufF2() {
+        Vec.BufF2 buffer = Vec.BufF2.fromVecList(List.of(
+                new Vec.D2(1, 2),
+                new Vec.D2(3, 4),
+                new Vec.D2(5, 6)
+        ));
+        buffer.transformIndexed((d, i) -> {
+            d.y = d.x;
+            d.x *= -1 - i;
+        });
+        assertArrayEquals(new float[]{
+            -1, 1,
+            -6, 3,
+            -15, 5
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
+    void testTransformIndexed_BufF3() {
+        Vec.BufF3 buffer = Vec.BufF3.fromVecList(List.of(
+                new Vec.D3(1, 2, 3),
+                new Vec.D3(4, 5, 6),
+                new Vec.D3(7, 8, 9)
+        ));
+        buffer.transformIndexed((d, i) -> {
+            d.y = d.x;
+            d.x *= -1 - i;
+            d.z = 0;
+        });
+        assertArrayEquals(new float[]{
+            -1, 1, 0,
+            -8, 4, 0,
+            -21, 7, 0
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
+    void testTransformIndexed_BufF4() {
+        Vec.BufF4 buffer = Vec.BufF4.fromVecList(List.of(
+                new Vec.D4(1, 2, 3, 4),
+                new Vec.D4(5, 6, 7, 8),
+                new Vec.D4(9, 10, 11, 12)
+        ));
+        buffer.transformIndexed((d, i) -> {
+            d.y = d.x;
+            d.x *= -1 - i;
+            d.z += 100;
+            d.w = 0;
+        });
+        assertArrayEquals(new float[]{
+            -1, 1, 103, 0,
+            -10, 5, 107, 0,
+            -27, 9, 111, 0
+        }, buffer.data(), 0.001f);
+        assertEquals(3, buffer.count());
+    }
+
+    @Test
     void testGenerateIndexed_BufI2() {
         Vec.BufI2 buffer = Vec.BufI2.allocate(4);
         assertEquals(4, buffer.capacity());
