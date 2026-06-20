@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,6 +22,7 @@
  */
 package org.praxislive.code;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +53,7 @@ import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PBytes;
 
 /**
  *
@@ -188,9 +190,14 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
         return StringLoader.INSTANCE;
     }
 
+    public static Loader<PBytes> getBytesLoader() {
+        return PBytesLoader.INSTANCE;
+    }
+
+    // @TODO in v7 use readAllAsString - keep existing line delimiters
     private static class StringLoader extends Loader<String> {
 
-        private final static StringLoader INSTANCE = new StringLoader();
+        private static final StringLoader INSTANCE = new StringLoader();
 
         private StringLoader() {
             super(String.class);
@@ -212,6 +219,35 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
         @Override
         public String getEmptyValue() {
             return "";
+        }
+
+    }
+
+    private static class PBytesLoader extends Loader<PBytes> {
+
+        private static final PBytesLoader INSTANCE = new PBytesLoader();
+
+        private PBytesLoader() {
+            super(PBytes.class);
+        }
+
+        @Override
+        public PBytes load(URI uri) throws IOException {
+            try (BufferedInputStream bis = new BufferedInputStream(
+                    uri.toURL().openStream())) {
+                PBytes.OutputStream bos = new PBytes.OutputStream();
+                bis.transferTo(bos);
+                return bos.toBytes();
+            } catch (IOException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new IOException(ex);
+            }
+        }
+
+        @Override
+        public PBytes getEmptyValue() {
+            return PBytes.EMPTY;
         }
 
     }

@@ -71,6 +71,7 @@ import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogBuilder;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.types.PArray;
+import org.praxislive.core.types.PBytes;
 
 /**
  * Base class for analysing a {@link CodeDelegate} and creating the resources
@@ -695,10 +696,17 @@ public abstract class CodeConnector<D extends CodeDelegate> {
     }
 
     private boolean analyseResourcePropertyField(P ann, Field field) {
-        if (field.getAnnotation(Type.Resource.class) != null
-                && String.class.equals(field.getType())) {
-            ResourceProperty.Descriptor rpd
-                    = ResourceProperty.Descriptor.create(this, ann, field, ResourceProperty.getStringLoader());
+        if (field.getAnnotation(Type.Resource.class) != null) {
+            ResourceProperty.Descriptor rpd;
+            if (String.class.equals(field.getType())) {
+                rpd = ResourceProperty.Descriptor.create(this, ann, field,
+                        ResourceProperty.getStringLoader());
+            } else if (PBytes.class.equals(field.getType())) {
+                rpd = ResourceProperty.Descriptor.create(this, ann, field,
+                        ResourceProperty.getBytesLoader());
+            } else {
+                rpd = null;
+            }
             if (rpd != null) {
                 addControl(rpd);
                 if (shouldAddPort(field)) {
