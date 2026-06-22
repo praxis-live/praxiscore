@@ -33,42 +33,36 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.praxislive.code.userapi.Config;
 import org.praxislive.code.userapi.OnChange;
 import org.praxislive.code.userapi.OnError;
 import org.praxislive.code.userapi.P;
+import org.praxislive.code.userapi.Type;
 import org.praxislive.core.Value;
 import org.praxislive.core.Control;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Port;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.PortInfo;
 import org.praxislive.core.TreeWriter;
 import org.praxislive.core.services.TaskService;
 import org.praxislive.core.types.PError;
-import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBytes;
 
 /**
  *
  */
 public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
-
-    private final static ControlInfo INFO = ControlInfo.createPropertyInfo(
-            PResource.info(true),
-            PString.EMPTY,
-            PMap.EMPTY);
-
-    private final static ControlInfo PREF_INFO = ControlInfo.createPropertyInfo(
-            PResource.info(true),
-            PString.EMPTY,
-            PMap.of("preferred", true));
 
     private final Loader<V> loader;
     private Field field;
@@ -274,8 +268,33 @@ public final class ResourceProperty<V> extends AbstractAsyncProperty<V> {
             this.field = field;
             this.onChange = onChange;
             this.onError = onError;
-            this.info = field.isAnnotationPresent(Config.Preferred.class)
-                    ? PREF_INFO : INFO;
+            PArray mimeTypes = Optional.ofNullable(field.getAnnotation(Type.Resource.class))
+                    .map(ann -> {
+                        String[] mimes = ann.mime();
+                        if (mimes.length == 0) {
+                            return PArray.EMPTY;
+                        } else {
+                            return Stream.of(mimes)
+                                    .map(PString::of)
+                                    .collect(PArray.collector());
+                        }
+                    }).orElse(PArray.EMPTY);
+            Info.PropertyInfoBuilder infoBld = Info.control().property()
+                    .input(a -> {
+                        Info.ValueInfoBuilder bld = a.type(PResource.class)
+                                .property(PResource.KEY_ALLOW_EMPTY, true);
+                        if (!mimeTypes.isEmpty()) {
+                            bld.property(PResource.KEY_MIME_TYPES, mimeTypes);
+                        }
+                        return bld;
+                    })
+                    .defaultValue(PString.EMPTY);
+
+            boolean preferred = field.isAnnotationPresent(Config.Preferred.class);
+            if (preferred) {
+                infoBld.property("preferred", true);
+            }
+            this.info = infoBld.build();
         }
 
         @Override

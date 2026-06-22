@@ -255,8 +255,21 @@ class AnnotationUtils {
             Type.Resource annotation) throws TypeMismatchException {
         Class<?> targetType = TypeUtils.extractRawType(mapper.type());
         if (targetType == PResource.class) {
+            String[] mimes = annotation.mime();
+            PArray mimeTypes = mimes.length == 0 ? PArray.EMPTY
+                    : Stream.of(mimes)
+                            .map(PString::of)
+                            .collect(PArray.collector());
+            ArgumentInfo info = Info.argument(a -> {
+                Info.ValueInfoBuilder bld = a.type(PResource.class)
+                        .property(PResource.KEY_ALLOW_EMPTY, true);
+                if (!mimeTypes.isEmpty()) {
+                    bld.property(PResource.KEY_MIME_TYPES, mimeTypes);
+                }
+                return bld;
+            });
             return new ArgumentData<>(mapper, PString.EMPTY,
-                    mapper.createInfo(), v -> true);
+                    info, v -> true);
         } else {
             throw new TypeMismatchException();
         }
