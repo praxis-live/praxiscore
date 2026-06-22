@@ -221,6 +221,15 @@ public @interface Type {
     @Retention(RetentionPolicy.RUNTIME)
     public static @interface Resource {
 
+        /**
+         * Optional list of mime types to filter supported resources. Any
+         * non-empty value will be added as an info hint where it may be used to
+         * filter resource selection in a UI, etc. The default value is empty.
+         *
+         * @return optional mime filters
+         */
+        public java.lang.String[] mime() default {};
+
     }
 
 }

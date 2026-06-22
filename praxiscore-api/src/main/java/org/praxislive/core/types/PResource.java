@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -42,6 +42,13 @@ public final class PResource extends Value implements Comparable<PResource> {
     public static final String TYPE_NAME = "Resource";
 
     public final static String KEY_ALLOW_EMPTY = ArgumentInfo.KEY_ALLOW_EMPTY;
+
+    /**
+     * Optional key for hints to supported mime types for a resource. The
+     * attribute should be an array of values. The hint might be used to filter
+     * resource selection in a UI, etc.
+     */
+    public static final String KEY_MIME_TYPES = "mime-types";
 
     private final URI uri;
 
