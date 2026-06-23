@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -45,7 +45,7 @@ public class LogService implements Service {
                                 LogLevel.DEBUG.name()
                             ),
                             a -> a.type(Value.class)
-                                    .property(ArgumentInfo.KEY_VARARGS, PBoolean.TRUE))
+                                    .attribute(ArgumentInfo.KEY_VARARGS, PBoolean.TRUE))
             );
 
     @Override

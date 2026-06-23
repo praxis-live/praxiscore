@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -72,7 +72,7 @@ public final class Watch {
             Class<? extends Value> responseType) {
         return Info.control().function()
                 .outputs(Info.argument().type(responseType).build())
-                .property(WATCH_KEY, PMap.of(MIME_KEY, mimeType))
+                .attribute(WATCH_KEY, PMap.of(MIME_KEY, mimeType))
                 .build();
     }
 
@@ -83,7 +83,7 @@ public final class Watch {
      * @return true if a Watch control
      */
     public static boolean isWatch(ControlInfo info) {
-        return info.properties().get(WATCH_KEY) != null;
+        return info.attributes().get(WATCH_KEY) != null;
     }
 
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -27,7 +27,7 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 
 /**
- * Information on the type, inputs, outputs and properties of a {@link Control}.
+ * Information on the type, inputs, outputs and attributes of a {@link Control}.
  */
 public final class ControlInfo extends PMap.MapBasedValue {
 
@@ -143,9 +143,26 @@ public final class ControlInfo extends PMap.MapBasedValue {
      * This method is equivalent to calling
      * {@link PMap.MapBasedValue#dataMap()}.
      *
+     * @deprecated replaced by {@link #attributes()} to reduce confusion with
+     * property controls.
+     *
      * @return property map
      */
+    @Deprecated(forRemoval = true)
     public PMap properties() {
+        return dataMap();
+    }
+
+    /**
+     * Access the map of attributes. The map includes the type, inputs, outputs
+     * and defaults, as well as any custom or optional attributes.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return attribute map
+     */
+    public PMap attributes() {
         return dataMap();
     }
 
@@ -182,18 +199,18 @@ public final class ControlInfo extends PMap.MapBasedValue {
      *
      * @param inputs list of input info
      * @param outputs list of output info
-     * @param properties additional properties (may be null)
+     * @param attributes additional attributes (may be null)
      * @return control info
      */
     public static ControlInfo createFunctionInfo(List<ArgumentInfo> inputs,
-            List<ArgumentInfo> outputs, PMap properties) {
+            List<ArgumentInfo> outputs, PMap attributes) {
         List<ArgumentInfo> ins = inputs == null ? List.of() : List.copyOf(inputs);
         List<ArgumentInfo> outs = outputs == null ? List.of() : List.copyOf(outputs);
         PMap map = PMap.of(KEY_TYPE, Type.Function,
                 KEY_INPUTS, PArray.of(ins),
                 KEY_OUTPUTS, PArray.of(outs));
-        if (properties != null) {
-            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        if (attributes != null) {
+            map = PMap.merge(map, attributes, PMap.IF_ABSENT);
         }
         return new ControlInfo(Type.Function, ins, outs, List.of(), map);
     }
@@ -201,13 +218,13 @@ public final class ControlInfo extends PMap.MapBasedValue {
     /**
      * Create ControlInfo for an action control.
      *
-     * @param properties additional properties (may be null)
+     * @param attributes additional attributes (may be null)
      * @return control info
      */
-    public static ControlInfo createActionInfo(PMap properties) {
+    public static ControlInfo createActionInfo(PMap attributes) {
         PMap map = PMap.of(KEY_TYPE, Type.Action);
-        if (properties != null) {
-            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        if (attributes != null) {
+            map = PMap.merge(map, attributes, PMap.IF_ABSENT);
         }
         return new ControlInfo(Type.Action, List.of(), List.of(), List.of(), map);
     }
@@ -217,23 +234,23 @@ public final class ControlInfo extends PMap.MapBasedValue {
      *
      * @param argument property value info
      * @param def default value
-     * @param properties additional properties (may be null)
+     * @param attributes additional attributes (may be null)
      * @return control info
      */
     public static ControlInfo createPropertyInfo(ArgumentInfo argument,
-            Value def, PMap properties) {
-        return createPropertyInfo(List.of(argument), List.of(def), properties);
+            Value def, PMap attributes) {
+        return createPropertyInfo(List.of(argument), List.of(def), attributes);
     }
 
     public static ControlInfo createPropertyInfo(List<ArgumentInfo> arguments,
-            List<Value> defaults, PMap properties) {
+            List<Value> defaults, PMap attributes) {
         List<ArgumentInfo> ins = arguments == null ? List.of() : List.copyOf(arguments);
         List<Value> defs = defaults == null ? List.of() : List.copyOf(defaults);
         PMap map = PMap.of(KEY_TYPE, Type.Property,
                 KEY_INPUTS, PArray.of(ins),
                 KEY_DEFAULTS, PArray.of(defs));
-        if (properties != null) {
-            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        if (attributes != null) {
+            map = PMap.merge(map, attributes, PMap.IF_ABSENT);
         }
         return new ControlInfo(Type.Property, ins, ins, defs, map);
     }
@@ -242,21 +259,21 @@ public final class ControlInfo extends PMap.MapBasedValue {
      * Create ControlInfo for a read-only property control.
      *
      * @param argument property value info
-     * @param properties additional properties (may be null)
+     * @param attributes additional attributes (may be null)
      * @return control info
      */
     public static ControlInfo createReadOnlyPropertyInfo(ArgumentInfo argument,
-            PMap properties) {
-        return createReadOnlyPropertyInfo(List.of(argument), properties);
+            PMap attributes) {
+        return createReadOnlyPropertyInfo(List.of(argument), attributes);
     }
 
     public static ControlInfo createReadOnlyPropertyInfo(List<ArgumentInfo> arguments,
-            PMap properties) {
+            PMap attributes) {
         List<ArgumentInfo> outs = arguments == null ? List.of() : List.copyOf(arguments);
         PMap map = PMap.of(KEY_TYPE, Type.ReadOnlyProperty,
                 KEY_OUTPUTS, PArray.of(outs));
-        if (properties != null) {
-            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        if (attributes != null) {
+            map = PMap.merge(map, attributes, PMap.IF_ABSENT);
         }
         return new ControlInfo(Type.ReadOnlyProperty, List.of(), outs, List.of(), map);
     }

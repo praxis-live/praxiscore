@@ -293,10 +293,10 @@ public abstract class CodeConnector<D extends CodeDelegate> {
      */
     protected void buildBaseComponentInfo(Info.ComponentInfoBuilder cmp) {
         cmp.merge(ComponentProtocol.API_INFO);
-        cmp.property(ComponentInfo.KEY_DYNAMIC, true);
-        cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, factory.componentType());
+        cmp.attribute(ComponentInfo.KEY_DYNAMIC, true);
+        cmp.attribute(ComponentInfo.KEY_COMPONENT_TYPE, factory.componentType());
         if (!expose.isEmpty()) {
-            cmp.property(ComponentInfo.KEY_EXPOSE,
+            cmp.attribute(ComponentInfo.KEY_EXPOSE,
                     expose.stream()
                             .map(PString::of)
                             .collect(PArray.collector()));

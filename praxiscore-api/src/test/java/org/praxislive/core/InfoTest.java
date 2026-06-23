@@ -74,16 +74,16 @@ public class InfoTest {
                 .protocol(StartableProtocol.class)
                 .control("p1", c -> c.property()
                         .input(a -> a.number().min(0).max(1)).defaultValue(PNumber.ONE)
-                        .property(ControlInfo.KEY_TRANSIENT, PBoolean.TRUE))
+                        .attribute(ControlInfo.KEY_TRANSIENT, PBoolean.TRUE))
                 .control("p2", c -> c.property()
                         .input(a -> a.string().template("public void draw(){"))
                         .defaultValue(PString.EMPTY))
                 .control("ro1", c -> c.readOnlyProperty()
                         .output(a -> a.number().min(0).max(1)))
-                .control("t1", c -> c.action().property("key", PString.of("value")))
+                .control("t1", c -> c.action().attribute("key", PString.of("value")))
                 .port("in", p -> p.input(ControlPort.class))
                 .port("out", p -> p.output(ControlPort.class))
-                .property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
+                .attribute(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
                 
         );
         

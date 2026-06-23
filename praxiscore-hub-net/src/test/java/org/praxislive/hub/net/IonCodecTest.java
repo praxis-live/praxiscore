@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -192,7 +192,7 @@ public class IonCodecTest {
                 .merge(ComponentProtocol.API_INFO)
                 .port("in", Info.port().input(ControlPort.class).build())
                 .port("out", Info.port().output(ControlPort.class).build())
-                .property("custom", customProp)
+                .attribute("custom", customProp)
                 .build();
         var msg = new Message.Reply(matchID, List.of(info));
         var msgList = roundTrip(List.of(msg));
@@ -204,7 +204,7 @@ public class IonCodecTest {
         assertTrue(decodedInfo instanceof ComponentInfo);
         assertEquals(info, decodedInfo);
         var byteProp = ComponentInfo.from(decodedInfo)
-                .flatMap(i -> PMap.from(i.properties().get("custom")))
+                .flatMap(i -> PMap.from(i.attributes().get("custom")))
                 .map(m -> m.get("data"))
                 .orElseThrow();
         assertEquals(bytes, byteProp);

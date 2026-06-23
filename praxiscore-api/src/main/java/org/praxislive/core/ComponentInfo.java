@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,10 +31,10 @@ import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 
 /**
- * Information about the controls, ports, protocols and properties of a
+ * Information about the controls, ports, protocols and attributes of a
  * Component.
  */
-public class ComponentInfo extends PMap.MapBasedValue {
+public final class ComponentInfo extends PMap.MapBasedValue {
 
     /**
      * Value type name.
@@ -58,7 +58,7 @@ public class ComponentInfo extends PMap.MapBasedValue {
 
     /**
      * Optional key for storing the {@link ComponentType} of the Component in
-     * the properties map. value must be a valid component type.
+     * the attributes map. Value must be a valid component type.
      */
     public static final String KEY_COMPONENT_TYPE = "component-type";
 
@@ -80,11 +80,11 @@ public class ComponentInfo extends PMap.MapBasedValue {
      * Optional key for adding a default list of control IDs to give extra
      * priority to exposing to the user. Value must be an array.
      * <p>
-     * It is up to any editor whether to use or ignore this property (eg. the
+     * It is up to any editor whether to use or ignore this attribute (eg. the
      * PraxisLIVE graph editor will show exposed controls on the graph itself).
      * If the editor supports overriding the default list of exposed controls,
      * it should add the altered list under the same key in the
-     * {@link ComponentProtocol#META} property.
+     * {@link ComponentProtocol#META} attribute.
      */
     public static final String KEY_EXPOSE = "expose";
 
@@ -171,9 +171,26 @@ public class ComponentInfo extends PMap.MapBasedValue {
      * This method is equivalent to calling
      * {@link PMap.MapBasedValue#dataMap()}.
      *
+     * @deprecated replaced by {@link #attributes()} to reduce confusion with
+     * property controls.
+     *
      * @return property map
      */
+    @Deprecated(forRemoval = true)
     public PMap properties() {
+        return dataMap();
+    }
+
+    /**
+     * Access the map of attributes. The map includes all the controls, ports
+     * and protocols, as well as any custom or optional attributes.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return attribute map
+     */
+    public PMap attributes() {
         return dataMap();
     }
 
@@ -181,7 +198,7 @@ public class ComponentInfo extends PMap.MapBasedValue {
             Map<String, ControlInfo> controls,
             Map<String, PortInfo> ports,
             Set<String> protocols,
-            PMap properties) {
+            PMap attributes) {
 
         var ctrls = OrderedMap.copyOf(controls);
         var prts = OrderedMap.copyOf(ports);
@@ -192,8 +209,8 @@ public class ComponentInfo extends PMap.MapBasedValue {
                 KEY_PROTOCOLS, protos.stream().map(PString::of).collect(PArray.collector())
         );
 
-        if (properties != null && !properties.isEmpty()) {
-            data = PMap.merge(data, properties, PMap.IF_ABSENT);
+        if (attributes != null && !attributes.isEmpty()) {
+            data = PMap.merge(data, attributes, PMap.IF_ABSENT);
         }
 
         return new ComponentInfo(ctrls, prts, protos, data);

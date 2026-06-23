@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -255,7 +255,7 @@ public class FilteredTypes implements SupportedTypes {
                 c = p;
                 p = c.getParent();
             }
-            var type = c.getInfo().properties().getString(ComponentInfo.KEY_COMPONENT_TYPE, "");
+            var type = c.getInfo().attributes().getString(ComponentInfo.KEY_COMPONENT_TYPE, "");
             if (type.startsWith("root:")) {
                 return type.substring(5);
             } else {

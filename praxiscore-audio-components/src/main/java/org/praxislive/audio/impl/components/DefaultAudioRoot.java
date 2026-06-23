@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -139,13 +139,13 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                     .defaultValue(PNumber.of(DEFAULT_SAMPLERATE))
                     .input(a -> a.number()
                         .min(MIN_SAMPLERATE).max(MAX_SAMPLERATE)
-                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .attribute(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("block-size", c -> c.property()
                     .defaultValue(PNumber.of(DEFAULT_BLOCKSIZE))
                     .input(a -> a.number()
                         .min(1).max(MAX_BLOCKSIZE)
-                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .attribute(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ))
                 .control("client-name", c -> c.property()
                     .defaultValue(PString.EMPTY)
@@ -160,8 +160,8 @@ public class DefaultAudioRoot extends AbstractRootContainer {
                                 libraries.keySet().stream().sorted())
                                 .toArray(String[]::new))
                 ))
-                .property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
-                .property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("root:audio"))
+                .attribute(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE)
+                .attribute(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("root:audio"))
         );
         info = baseInfo;
 

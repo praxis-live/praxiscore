@@ -139,7 +139,7 @@ class AtCmds {
                                 .flatMap(v -> ComponentInfo.from(v).stream())
                                 .flatMap(ci -> {
                                     return Optional.ofNullable(
-                                            ci.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                                            ci.attributes().get(ComponentInfo.KEY_COMPONENT_TYPE))
                                             .flatMap(ComponentType::from)
                                             .stream();
                                 }).findFirst().orElse(null);

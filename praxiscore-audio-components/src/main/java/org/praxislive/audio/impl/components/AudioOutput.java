@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -116,11 +116,11 @@ public class AudioOutput extends AbstractComponent {
         if (info == null) {
             info = Info.component(cmp -> {
                 cmp.merge(ComponentProtocol.API_INFO);
-                cmp.property(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE);
-                cmp.property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("audio:output"));
+                cmp.attribute(ComponentInfo.KEY_DYNAMIC, PBoolean.TRUE);
+                cmp.attribute(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("audio:output"));
                 cmp.control("channels", c -> c.property().input(a -> a
                         .number().min(1).max(MAX_CHANNELS)
-                        .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                        .attribute(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
                 ).defaultValue(PNumber.of(2)));
                 for (int i = 0; i < channelCount; i++) {
                     cmp.port(Port.IN + "-" + (i + 1), p -> p.input(AudioPort.class));

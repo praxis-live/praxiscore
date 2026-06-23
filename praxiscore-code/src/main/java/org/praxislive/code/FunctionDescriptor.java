@@ -234,7 +234,7 @@ class FunctionDescriptor extends ControlDescriptor<FunctionDescriptor> {
             controlInfo = Info.control().function()
                     .inputs(inputArgInfo)
                     .outputs(outputArgInfo)
-                    .property(Watch.WATCH_KEY, watchInfo)
+                    .attribute(Watch.WATCH_KEY, watchInfo)
                     .build();
         } else {
             controlInfo = Info.control().function()

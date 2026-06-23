@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -128,7 +128,7 @@ public class CodeComponent<D extends CodeDelegate> implements Component {
         if (parent == null) {
             // assume we're a root?!
             type = Optional.ofNullable(getInfo())
-                    .map(info -> info.properties().get(ComponentInfo.KEY_COMPONENT_TYPE))
+                    .map(info -> info.attributes().get(ComponentInfo.KEY_COMPONENT_TYPE))
                     .flatMap(ComponentType::from)
                     .orElse(null);
         } else {

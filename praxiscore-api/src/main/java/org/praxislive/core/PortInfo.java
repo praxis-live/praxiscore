@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -101,9 +101,26 @@ public final class PortInfo extends PMap.MapBasedValue {
      * This method is equivalent to calling
      * {@link PMap.MapBasedValue#dataMap()}.
      *
+     * @deprecated replaced by {@link #attributes()} to reduce confusion with
+     * property controls.
+     *
      * @return property map
      */
+    @Deprecated(forRemoval = true)
     public PMap properties() {
+        return dataMap();
+    }
+
+    /**
+     * Access the map of attributes. The map includes the type and direction, as
+     * well as any custom or optional attributes.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return attribute map
+     */
+    public PMap attributes() {
         return dataMap();
     }
 
