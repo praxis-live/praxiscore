@@ -328,7 +328,7 @@ public class CodeRootContainer<D extends CodeRootContainerDelegate> extends Code
             super.buildBaseComponentInfo(cmp);
             cmp.merge(ContainerProtocol.API_INFO);
             if (displayHint != null) {
-                cmp.property(ComponentInfo.KEY_DISPLAY_HINT, displayHint);
+                cmp.attribute(ComponentInfo.KEY_DISPLAY_HINT, displayHint);
             }
         }
 

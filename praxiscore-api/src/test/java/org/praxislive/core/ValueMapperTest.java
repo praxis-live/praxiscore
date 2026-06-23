@@ -169,10 +169,10 @@ public class ValueMapperTest {
                 ArgumentInfo.of(PNumber.class, PMap.of(PNumber.KEY_IS_INTEGER, true)),
                 "flag", ArgumentInfo.of(PBoolean.class));
         ArgumentInfo info1 = r1mapper.createInfo();
-        assertEquals(schema, info1.properties().get(PMap.KEY_SCHEMA));
+        assertEquals(schema, info1.attributes().get(PMap.KEY_SCHEMA));
         ArgumentInfo info2 = r2mapper.createInfo();
         assertEquals(info1, PMap.from(
-                info2.properties().get(PMap.KEY_SCHEMA)).orElseThrow()
+                info2.attributes().get(PMap.KEY_SCHEMA)).orElseThrow()
                 .get("value")
         );
 

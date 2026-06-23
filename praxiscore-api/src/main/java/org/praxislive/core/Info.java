@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -135,7 +135,7 @@ public class Info {
         private final Map<String, ControlInfo> controls;
         private final Map<String, PortInfo> ports;
         private final Set<String> protocols;
-        private PMap.Builder properties;
+        private PMap.Builder attributes;
 
         ComponentInfoBuilder() {
             controls = new LinkedHashMap<>();
@@ -202,14 +202,26 @@ public class Info {
          * @param value Object value
          * @return this
          */
+        @Deprecated(forRemoval = true)
         public ComponentInfoBuilder property(String key, Object value) {
+            return attribute(key, value);
+        }
+
+        /**
+         * Add custom attribute.
+         *
+         * @param key String key
+         * @param value Object value
+         * @return this
+         */
+        public ComponentInfoBuilder attribute(String key, Object value) {
             if (RESERVED_KEYS.contains(key)) {
                 throw new IllegalArgumentException("Reserved key");
             }
-            if (properties == null) {
-                properties = PMap.builder();
+            if (attributes == null) {
+                attributes = PMap.builder();
             }
-            properties.put(key, value);
+            attributes.put(key, value);
             return this;
         }
 
@@ -249,9 +261,9 @@ public class Info {
             for (String id : info.ports()) {
                 ports.put(id, info.portInfo(id));
             }
-            for (String key : info.properties().keys()) {
+            for (String key : info.attributes().keys()) {
                 if (!RESERVED_KEYS.contains(key)) {
-                    property(key, info.properties().get(key));
+                    attribute(key, info.attributes().get(key));
                 }
             }
             info.protocols().forEach(this::protocol);
@@ -260,7 +272,7 @@ public class Info {
 
         public ComponentInfo build() {
             return ComponentInfo.create(controls, ports, protocols,
-                    properties == null ? PMap.EMPTY : properties.build());
+                    attributes == null ? PMap.EMPTY : attributes.build());
         }
 
     }
@@ -324,7 +336,7 @@ public class Info {
         );
 
         private final ControlInfo.Type type;
-        private PMap.Builder properties;
+        private PMap.Builder attributes;
 
         List<ArgumentInfo> inputs;
         List<ArgumentInfo> outputs;
@@ -345,21 +357,34 @@ public class Info {
          * @return this
          */
         @SuppressWarnings("unchecked")
+        @Deprecated(forRemoval = true)
         public T property(String key, Object value) {
+            return attribute(key, value);
+        }
+
+        /**
+         * Add custom attribute.
+         *
+         * @param key String key
+         * @param value Object value
+         * @return this
+         */
+        @SuppressWarnings("unchecked")
+        public T attribute(String key, Object value) {
             if (RESERVED_KEYS.contains(key)) {
                 throw new IllegalArgumentException("Reserved key");
             }
-            if (properties == null) {
-                properties = PMap.builder();
+            if (attributes == null) {
+                attributes = PMap.builder();
             }
-            properties.put(key, value);
+            attributes.put(key, value);
             return (T) this;
         }
 
         public abstract ControlInfo build();
 
-        PMap buildProperties() {
-            return properties == null ? PMap.EMPTY : properties.build();
+        PMap buildAttributes() {
+            return attributes == null ? PMap.EMPTY : attributes.build();
         }
 
     }
@@ -419,7 +444,7 @@ public class Info {
 
         @Override
         public ControlInfo build() {
-            return ControlInfo.createPropertyInfo(inputs, defaults, buildProperties());
+            return ControlInfo.createPropertyInfo(inputs, defaults, buildAttributes());
         }
 
     }
@@ -467,7 +492,7 @@ public class Info {
 
         @Override
         public ControlInfo build() {
-            return ControlInfo.createReadOnlyPropertyInfo(outputs, buildProperties());
+            return ControlInfo.createReadOnlyPropertyInfo(outputs, buildAttributes());
         }
 
     }
@@ -528,7 +553,7 @@ public class Info {
 
         @Override
         public ControlInfo build() {
-            return ControlInfo.createFunctionInfo(inputs, outputs, buildProperties());
+            return ControlInfo.createFunctionInfo(inputs, outputs, buildAttributes());
         }
 
     }
@@ -544,7 +569,7 @@ public class Info {
 
         @Override
         public ControlInfo build() {
-            return ControlInfo.createActionInfo(buildProperties());
+            return ControlInfo.createActionInfo(buildAttributes());
         }
 
     }
@@ -605,7 +630,7 @@ public class Info {
     public static abstract class ArgumentInfoBuilder<T extends ArgumentInfoBuilder<T>> {
 
         private final String type;
-        private PMap.Builder properties;
+        private PMap.Builder attributes;
 
         ArgumentInfoBuilder(String type) {
             this.type = type;
@@ -619,20 +644,33 @@ public class Info {
          * @return this
          */
         @SuppressWarnings("unchecked")
+        @Deprecated(forRemoval = true)
         public T property(String key, Object value) {
+            return attribute(key, value);
+        }
+
+        /**
+         * Add custom attribute.
+         *
+         * @param key String key
+         * @param value Object value
+         * @return this
+         */
+        @SuppressWarnings("unchecked")
+        public T attribute(String key, Object value) {
             if (ArgumentInfo.KEY_TYPE.equals(key)) {
                 throw new IllegalArgumentException("Reserved key");
             }
-            if (properties == null) {
-                properties = PMap.builder();
+            if (attributes == null) {
+                attributes = PMap.builder();
             }
-            properties.put(key, value);
+            attributes.put(key, value);
             return (T) this;
         }
 
         public ArgumentInfo build() {
             return ArgumentInfo.create(type,
-                    properties == null ? PMap.EMPTY : properties.build());
+                    attributes == null ? PMap.EMPTY : attributes.build());
         }
 
     }
@@ -664,7 +702,7 @@ public class Info {
          * @return this
          */
         public NumberInfoBuilder min(double min) {
-            return property(PNumber.KEY_MINIMUM, PNumber.of(min));
+            return attribute(PNumber.KEY_MINIMUM, PNumber.of(min));
         }
 
         /**
@@ -674,7 +712,7 @@ public class Info {
          * @return this
          */
         public NumberInfoBuilder max(double max) {
-            return property(PNumber.KEY_MAXIMUM, PNumber.of(max));
+            return attribute(PNumber.KEY_MAXIMUM, PNumber.of(max));
         }
 
         /**
@@ -684,7 +722,7 @@ public class Info {
          * @return this
          */
         public NumberInfoBuilder skew(double skew) {
-            return property(PNumber.KEY_MINIMUM, PNumber.of(skew));
+            return attribute(PNumber.KEY_MINIMUM, PNumber.of(skew));
         }
 
     }
@@ -705,7 +743,7 @@ public class Info {
          * @return this
          */
         public StringInfoBuilder allowed(String... values) {
-            return property(ArgumentInfo.KEY_ALLOWED_VALUES,
+            return attribute(ArgumentInfo.KEY_ALLOWED_VALUES,
                     Stream.of(values).map(PString::of).collect(PArray.collector()));
         }
 
@@ -716,7 +754,7 @@ public class Info {
          * @return this
          */
         public StringInfoBuilder suggested(String... values) {
-            return property(ArgumentInfo.KEY_SUGGESTED_VALUES,
+            return attribute(ArgumentInfo.KEY_SUGGESTED_VALUES,
                     Stream.of(values).map(PString::of).collect(PArray.collector()));
         }
 
@@ -726,7 +764,7 @@ public class Info {
          * @return this
          */
         public StringInfoBuilder emptyIsDefault() {
-            return property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE);
+            return attribute(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE);
         }
 
         /**
@@ -736,7 +774,7 @@ public class Info {
          * @return this
          */
         public StringInfoBuilder template(String template) {
-            return property(ArgumentInfo.KEY_TEMPLATE, PString.of(template));
+            return attribute(ArgumentInfo.KEY_TEMPLATE, PString.of(template));
         }
 
         /**
@@ -746,7 +784,7 @@ public class Info {
          * @return this
          */
         public StringInfoBuilder mime(String mime) {
-            return property(ArgumentInfo.KEY_MIME_TYPE, PString.of(mime));
+            return attribute(ArgumentInfo.KEY_MIME_TYPE, PString.of(mime));
         }
 
     }
@@ -808,7 +846,7 @@ public class Info {
 
         private final String type;
         private final PortInfo.Direction direction;
-        private PMap.Builder properties;
+        private PMap.Builder attributes;
 
         PortInfoBuilder(String type, PortInfo.Direction direction) {
             this.type = type;
@@ -822,17 +860,29 @@ public class Info {
          * @param value Object value
          * @return this
          */
+        @Deprecated(forRemoval = true)
         public PortInfoBuilder property(String key, Object value) {
-            if (properties == null) {
-                properties = PMap.builder();
+            return attribute(key, value);
+        }
+
+        /**
+         * Add custom attribute.
+         *
+         * @param key String key
+         * @param value Object value
+         * @return this
+         */
+        public PortInfoBuilder attribute(String key, Object value) {
+            if (attributes == null) {
+                attributes = PMap.builder();
             }
-            properties.put(key, value);
+            attributes.put(key, value);
             return this;
         }
 
         public PortInfo build() {
             return PortInfo.create(type, direction,
-                    properties == null ? PMap.EMPTY : properties.build());
+                    attributes == null ? PMap.EMPTY : attributes.build());
         }
 
     }

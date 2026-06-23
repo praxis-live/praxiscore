@@ -267,7 +267,7 @@ public class DefaultScriptServiceTest {
         var root = new DefaultScriptService();
         try (var hub = new RootHubImpl("script", root)) {
             ComponentInfo info = Info.component()
-                    .property(ComponentInfo.KEY_COMPONENT_TYPE, "test:component")
+                    .attribute(ComponentInfo.KEY_COMPONENT_TYPE, "test:component")
                     .control("value", ci -> ci.property().input(a -> a.string()))
                     .build();
 

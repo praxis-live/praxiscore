@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2021 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -38,8 +38,8 @@ public class SystemManagerService implements Service {
     public final static ControlInfo SYSTEM_EXIT_INFO
             = Info.control(c -> c.function()
                 .inputs(i -> i.type(PNumber.class)
-                    .property(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
-                    .property(ArgumentInfo.KEY_OPTIONAL, PBoolean.TRUE)
+                    .attribute(PNumber.KEY_IS_INTEGER, PBoolean.TRUE)
+                    .attribute(ArgumentInfo.KEY_OPTIONAL, PBoolean.TRUE)
                 )
             );
     

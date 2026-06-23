@@ -185,16 +185,16 @@ class AnnotationUtils {
         boolean ranged = min > PNumber.MIN_VALUE || max < PNumber.MAX_VALUE;
 
         Info.ValueInfoBuilder builder = Info.argument().type(PNumber.class);
-        builder.property(PNumber.KEY_IS_INTEGER, true);
+        builder.attribute(PNumber.KEY_IS_INTEGER, true);
         if (ranged) {
-            builder.property(PNumber.KEY_MINIMUM, min);
-            builder.property(PNumber.KEY_MAXIMUM, max);
+            builder.attribute(PNumber.KEY_MINIMUM, min);
+            builder.attribute(PNumber.KEY_MAXIMUM, max);
         }
         if (suggested.length > 0) {
             PArray vals = IntStream.of(suggested)
                     .mapToObj(PNumber::of)
                     .collect(PArray.collector());
-            builder.property(ArgumentInfo.KEY_SUGGESTED_VALUES, vals);
+            builder.attribute(ArgumentInfo.KEY_SUGGESTED_VALUES, vals);
         }
 
         ArgumentInfo info = builder.build();
@@ -262,9 +262,9 @@ class AnnotationUtils {
                             .collect(PArray.collector());
             ArgumentInfo info = Info.argument(a -> {
                 Info.ValueInfoBuilder bld = a.type(PResource.class)
-                        .property(PResource.KEY_ALLOW_EMPTY, true);
+                        .attribute(PResource.KEY_ALLOW_EMPTY, true);
                 if (!mimeTypes.isEmpty()) {
-                    bld.property(PResource.KEY_MIME_TYPES, mimeTypes);
+                    bld.attribute(PResource.KEY_MIME_TYPES, mimeTypes);
                 }
                 return bld;
             });

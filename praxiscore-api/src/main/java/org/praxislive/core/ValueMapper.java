@@ -297,7 +297,7 @@ public abstract class ValueMapper<T> {
                 return super.createInfo();
             } else {
                 return Info.argument().type(valueType().asClass())
-                        .property(ArgumentInfo.KEY_ALLOW_EMPTY, true)
+                        .attribute(ArgumentInfo.KEY_ALLOW_EMPTY, true)
                         .build();
             }
         }
@@ -371,7 +371,7 @@ public abstract class ValueMapper<T> {
         @Override
         public ArgumentInfo createInfo() {
             return Info.argument().type(PNumber.class)
-                    .property(PNumber.KEY_IS_INTEGER, true)
+                    .attribute(PNumber.KEY_IS_INTEGER, true)
                     .build();
         }
 
@@ -523,8 +523,8 @@ public abstract class ValueMapper<T> {
                 schemaEntries[i] = PMap.entry(names.get(i), mappers.get(i).createInfo());
             }
             return Info.argument().type(PMap.class)
-                    .property(ArgumentInfo.KEY_ALLOW_EMPTY, true)
-                    .property(PMap.KEY_SCHEMA, PMap.ofEntries(schemaEntries))
+                    .attribute(ArgumentInfo.KEY_ALLOW_EMPTY, true)
+                    .attribute(PMap.KEY_SCHEMA, PMap.ofEntries(schemaEntries))
                     .build();
         }
 

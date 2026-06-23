@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -82,25 +82,25 @@ public class VideoOutput extends AbstractComponent {
                     .defaultValue(PString.EMPTY))
                 .control("device", c -> c.property().input(a -> a
                         .type(Value.class)
-                        .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE)
-                        .property(ArgumentInfo.KEY_SUGGESTED_VALUES,
+                        .attribute(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE)
+                        .attribute(ArgumentInfo.KEY_SUGGESTED_VALUES,
                                 IntStream.of(0, 1, 2, 3).mapToObj(PNumber::of).collect(PArray.collector())
                         ))
                     .defaultValue(PString.EMPTY))
                 .control("width", c -> c.property().input(a -> a
                         .type(Value.class)
-                        .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE))
+                        .attribute(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE))
                     .defaultValue(PString.EMPTY)
                 )
                 .control("height", c -> c.property().input(a -> a
                         .type(Value.class)
-                        .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE))
+                        .attribute(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE))
                     .defaultValue(PString.EMPTY)
                 )
                 .control("rotation", c -> c.property().input(a -> a
                         .type(Value.class)
-                        .property(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE)
-                        .property(ArgumentInfo.KEY_SUGGESTED_VALUES,
+                        .attribute(ArgumentInfo.KEY_EMPTY_IS_DEFAULT, PBoolean.TRUE)
+                        .attribute(ArgumentInfo.KEY_SUGGESTED_VALUES,
                                 IntStream.of(0, 90, 180, 270).mapToObj(PNumber::of).collect(PArray.collector())
                         ))
                     .defaultValue(PString.EMPTY))
@@ -110,7 +110,7 @@ public class VideoOutput extends AbstractComponent {
                 .control("show-cursor", c -> c.property().input(PBoolean.class).defaultValue(PBoolean.FALSE))
 
                 .port("in", p -> p.input(VideoPort.class))
-                .property(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("video:output"))
+                .attribute(ComponentInfo.KEY_COMPONENT_TYPE, ComponentType.of("video:output"))
         );
 
         device = new IntegerProperty();

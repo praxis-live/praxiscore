@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -28,7 +28,7 @@ import org.praxislive.core.types.PMap;
  * Info object used to define the valid input and output arguments of a Control.
  * <p>
  * As well as giving the type of the argument, an ArgumentInfo can have an
- * optional set of properties. This might be used for defining the "minimum" and
+ * optional set of attributes. This might be used for defining the "minimum" and
  * "maximum" values of a PNumber argument, for example.
  *
  */
@@ -115,9 +115,26 @@ public final class ArgumentInfo extends PMap.MapBasedValue {
      * This method is equivalent to calling
      * {@link PMap.MapBasedValue#dataMap()}.
      *
+     * @deprecated replaced by {@link #attributes()} to reduce confusion with
+     * property controls.
+     *
      * @return property map
      */
+    @Deprecated(forRemoval = true)
     public PMap properties() {
+        return dataMap();
+    }
+
+    /**
+     * Access the map of attributes. The map includes the value type, as well as
+     * any custom or optional attributes.
+     * <p>
+     * This method is equivalent to calling
+     * {@link PMap.MapBasedValue#dataMap()}.
+     *
+     * @return attribute map
+     */
+    public PMap attributes() {
         return dataMap();
     }
 
@@ -135,22 +152,22 @@ public final class ArgumentInfo extends PMap.MapBasedValue {
 
     /**
      * Create an ArgumentInfo from the Value class and optional PMap of
-     * additional properties.
+     * additional attributes.
      *
      * @param argClass
-     * @param properties
+     * @param attributes
      * @return ArgumentInfo
      */
     public static ArgumentInfo of(Class<? extends Value> argClass,
-            PMap properties) {
-        return create(Value.Type.of(argClass).name(), properties);
+            PMap attributes) {
+        return create(Value.Type.of(argClass).name(), attributes);
 
     }
 
-    static ArgumentInfo create(String argumentType, PMap properties) {
+    static ArgumentInfo create(String argumentType, PMap attributes) {
         PMap map = PMap.of(KEY_TYPE, argumentType);
-        if (properties != null) {
-            map = PMap.merge(map, properties, PMap.IF_ABSENT);
+        if (attributes != null) {
+            map = PMap.merge(map, attributes, PMap.IF_ABSENT);
         }
         return new ArgumentInfo(argumentType, map);
     }

@@ -286,7 +286,7 @@ public class PropertyControl extends Property implements Control {
             propertyField = field;
             synthetic = false;
             if (info.controlType() == ControlInfo.Type.ReadOnlyProperty
-                    || info.properties().getBoolean(ControlInfo.KEY_TRANSIENT, false)) {
+                    || info.attributes().getBoolean(ControlInfo.KEY_TRANSIENT, false)) {
                 writable = false;
             } else {
                 writable = true;
@@ -402,7 +402,7 @@ public class PropertyControl extends Property implements Control {
                         binding.getDefaultValue(),
                         buildProperties(field));
             }
-            if (info.properties().getBoolean("preferred", false)) {
+            if (info.attributes().getBoolean("preferred", false)) {
                 connector.exposeForPreferred(id);
             }
             return new Descriptor(id, index, info, binding, propertyField, onChange, onError);
