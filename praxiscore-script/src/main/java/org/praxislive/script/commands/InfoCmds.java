@@ -54,7 +54,7 @@ class InfoCmds {
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             if (args.isEmpty()) {
-                return StackFrame.supply(() -> List.of(Value.ofObject(description())));
+                return StackFrame.result(List.of(Value.ofObject(description())));
             } else if (args.size() != 1) {
                 throw new IllegalArgumentException("Too many arguments");
             }

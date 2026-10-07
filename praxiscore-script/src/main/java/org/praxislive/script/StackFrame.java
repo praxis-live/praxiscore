@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -184,9 +184,7 @@ public interface StackFrame {
      */
     public default StackFrame andThenMap(UnaryOperator<List<Value>> mapper) {
         Objects.requireNonNull(mapper);
-        return andThen(args -> new CompoundStackFrame.SupplierStackFrame(
-                () -> mapper.apply(args))
-        );
+        return andThen(args -> inline(env -> mapper.apply(args)));
     }
 
     /**
@@ -199,7 +197,7 @@ public interface StackFrame {
      */
     public default StackFrame onError(Function<List<Value>, StackFrame> errorStage) {
         Objects.requireNonNull(errorStage);
-        return new CompoundStackFrame.OnFailStackFrame(this, errorStage);
+        return new CompoundStackFrame.OnFail(this, errorStage);
     }
 
     /**
@@ -248,7 +246,27 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame empty() {
-        return new CompoundStackFrame.SupplierStackFrame(() -> List.of());
+        return new CompoundStackFrame.Fixed(List.of());
+    }
+
+    /**
+     * Create a StackFrame that returns a fixed result.
+     *
+     * @param value fixed result
+     * @return stackframe
+     */
+    public static StackFrame result(Value value) {
+        return result(List.of(value));
+    }
+
+    /**
+     * Create a StackFrame that returns a fixed result.
+     *
+     * @param values fixed result
+     * @return stackframe
+     */
+    public static StackFrame result(List<Value> values) {
+        return new CompoundStackFrame.Fixed(values);
     }
 
     /**
@@ -258,7 +276,7 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame inline(Function<Env, List<Value>> function) {
-        return new CompoundStackFrame.FunctionStackFrame(
+        return new CompoundStackFrame.Inline(
                 Objects.requireNonNull(function));
     }
 
@@ -269,8 +287,8 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame supply(Supplier<List<Value>> supplier) {
-        return new CompoundStackFrame.SupplierStackFrame(
-                Objects.requireNonNull(supplier));
+        Objects.requireNonNull(supplier);
+        return inline(env -> supplier.get());
     }
 
     /**

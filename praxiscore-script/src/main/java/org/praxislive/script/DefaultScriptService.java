@@ -64,6 +64,11 @@ public final class DefaultScriptService extends AbstractRoot implements RootHub.
     }
 
     @Override
+    protected void activating() {
+        setRunning();
+    }
+
+    @Override
     protected void processCall(Call call, PacketRouter router) {
         try {
             controls.get(call.to().controlID()).call(call, router);

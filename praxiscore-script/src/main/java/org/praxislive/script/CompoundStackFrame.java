@@ -25,7 +25,6 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.praxislive.core.Call;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PError;
@@ -126,14 +125,14 @@ final class CompoundStackFrame implements StackFrame {
         }
     }
 
-    static class OnFailStackFrame implements StackFrame {
+    static class OnFail implements StackFrame {
 
         private final StackFrame primaryFrame;
         private final Function<List<Value>, StackFrame> catchFrameSupplier;
 
         private StackFrame catchFrame;
 
-        OnFailStackFrame(StackFrame primaryFrame,
+        OnFail(StackFrame primaryFrame,
                 Function<List<Value>, StackFrame> catchFrameSupplier) {
             this.primaryFrame = primaryFrame;
             this.catchFrameSupplier = catchFrameSupplier;
@@ -204,14 +203,55 @@ final class CompoundStackFrame implements StackFrame {
 
     }
 
-    static class FunctionStackFrame implements StackFrame {
+    static class Fixed implements StackFrame {
+
+        private final State targetState;
+        private final List<Value> result;
+
+        private State state = State.Incomplete;
+
+        Fixed(List<Value> result) {
+            this.targetState = State.OK;
+            this.result = List.copyOf(result);
+        }
+
+        @Override
+        public State getState() {
+            return state;
+        }
+
+        @Override
+        public void postResponse(Call call) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void postResponse(State state, List<Value> args) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public StackFrame process(Env env) {
+            if (state == State.Incomplete) {
+                state = targetState;
+            }
+            return null;
+        }
+
+        @Override
+        public List<Value> result() {
+            return state == State.Incomplete ? null : result;
+        }
+    }
+
+    static class Inline implements StackFrame {
 
         private final Function<Env, List<Value>> function;
 
         private State state = State.Incomplete;
         private List<Value> result;
 
-        FunctionStackFrame(Function<Env, List<Value>> function) {
+        Inline(Function<Env, List<Value>> function) {
             this.function = function;
         }
 
@@ -232,56 +272,14 @@ final class CompoundStackFrame implements StackFrame {
 
         @Override
         public StackFrame process(Env env) {
-            try {
-                result = function.apply(env);
-                state = State.OK;
-            } catch (Exception ex) {
-                result = List.of(PError.of(ex));
-                state = State.Error;
-            }
-            return null;
-        }
-
-        @Override
-        public List<Value> result() {
-            return result;
-        }
-    }
-
-    static class SupplierStackFrame implements StackFrame {
-
-        private final Supplier<List<Value>> supplier;
-
-        private State state = State.Incomplete;
-        private List<Value> result;
-
-        SupplierStackFrame(Supplier<List<Value>> supplier) {
-            this.supplier = supplier;
-        }
-
-        @Override
-        public State getState() {
-            return state;
-        }
-
-        @Override
-        public void postResponse(Call call) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void postResponse(State state, List<Value> args) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public StackFrame process(Env env) {
-            try {
-                result = supplier.get();
-                state = State.OK;
-            } catch (Exception ex) {
-                result = List.of(PError.of(ex));
-                state = State.Error;
+            if (state == State.Incomplete) {
+                try {
+                    result = function.apply(env);
+                    state = State.OK;
+                } catch (Exception ex) {
+                    result = List.of(PError.of(ex));
+                    state = State.Error;
+                }
             }
             return null;
         }
