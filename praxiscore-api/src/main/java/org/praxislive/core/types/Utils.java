@@ -209,7 +209,11 @@ class Utils {
         if (value instanceof PArray || value instanceof PMap
                 || value instanceof PArray.ArrayBasedValue
                 || value instanceof PMap.MapBasedValue) {
-            return "{\n" + value.print(options).indent(2) + "}";
+            if (value.isEmpty()) {
+                return "{}";
+            } else {
+                return "{\n" + value.print(options).indent(2) + "}";
+            }
         } else {
             return escape(value.print(options));
         }
