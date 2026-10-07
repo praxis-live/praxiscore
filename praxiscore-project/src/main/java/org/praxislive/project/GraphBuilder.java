@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -31,6 +31,7 @@ import java.util.SequencedMap;
 import java.util.SequencedSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentType;
@@ -274,6 +275,26 @@ public final class GraphBuilder {
         }
 
         /**
+         * Transform an existing child. The transform function is called with
+         * the existing child element. The transform may return a new element,
+         * the existing element, or {@code null} to remove the child. If the
+         * child does not exist, this method does nothing.
+         * <p>
+         * This method behaves similarly to a call to
+         * {@link Map#computeIfPresent(java.lang.Object, java.util.function.BiFunction)}
+         * on the underlying children. It may be more efficient when only a
+         * single child needs to be transformed.
+         *
+         * @param id child id
+         * @param transform transformation function
+         * @return this
+         */
+        public B transformChild(String id, UnaryOperator<GraphElement.Component> transform) {
+            children.computeIfPresent(id, (n, cmp) -> transform.apply(cmp));
+            return (B) this;
+        }
+
+        /**
          * Transform the existing children. The transform function is called
          * with a stream of the existing child map entries, and should return a
          * list of desired child elements. The returned list will be used to
@@ -322,6 +343,26 @@ public final class GraphBuilder {
             var transformed = transform.apply(connections.stream());
             clearConnections();
             transformed.forEach(c -> connection(c));
+            return (B) this;
+        }
+
+        /**
+         * Transform an existing property. The transform function is called with
+         * the existing property element. The transform may return a new
+         * element, the existing element, or {@code null} to remove the
+         * property. If the property does not exist, this method does nothing.
+         * <p>
+         * This method behaves similarly to a call to
+         * {@link Map#computeIfPresent(java.lang.Object, java.util.function.BiFunction)}
+         * on the underlying properties. It may be more efficient when only a
+         * single property needs to be transformed.
+         *
+         * @param id property id
+         * @param transform transformation function
+         * @return this
+         */
+        public B transformProperty(String id, UnaryOperator<GraphElement.Property> transform) {
+            properties.computeIfPresent(id, (n, p) -> transform.apply(p));
             return (B) this;
         }
 
