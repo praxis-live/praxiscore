@@ -21,11 +21,16 @@
  */
 package org.praxislive.project.tools;
 
+import java.awt.Desktop;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
+import org.praxislive.core.ArgumentInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.OrderedMap;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
@@ -58,7 +63,9 @@ public final class ProjectCommands implements CommandInstaller {
             Map.entry("run", new ProjectExecute(true)),
             Map.entry("save-all", new SaveAll()),
             Map.entry("save-config", new SaveConfig()),
-            Map.entry("save-root", new SaveRoot())
+            Map.entry("save-root", new SaveRoot()),
+            Map.entry("edit-config", new EditConfig()),
+            Map.entry("reload", new ReloadConfig())
     );
 
     @Override
@@ -74,13 +81,13 @@ public final class ProjectCommands implements CommandInstaller {
         return MessageFormat.format(MESSAGES.getString(key), arguments);
     }
 
-    static StackFrame log(Namespace namespace, LogLevel level, String message) {
+    static StackFrame log(Namespace namespace, LogLevel level, Object message) {
         return ScriptStackFrame.forScript(namespace,
                 """
                 log $LEVEL $MESSAGE
                 """)
                 .createConstant("LEVEL", PString.of(level))
-                .createConstant("MESSAGE", PString.of(message))
+                .createConstant("MESSAGE", Value.ofObject(message))
                 .build().andThen(v -> StackFrame.empty());
     }
 
@@ -278,6 +285,93 @@ public final class ProjectCommands implements CommandInstaller {
                         return log(namespace, LogLevel.INFO,
                                 message("saveroot.success", "/" + id, path));
                     });
+        }
+
+    }
+
+    private static class EditConfig extends InteractiveCommand {
+
+        @Override
+        protected StackFrame userInput(ProjectData data, Namespace namespace) {
+            return ScriptStackFrame.forScript(namespace,
+                    """
+                    try {
+                        var editor [user-input-select $MESSAGE [array internal external]]
+                        if [== external $editor] {
+                            map external true
+                        } else {
+                            map
+                        }
+                    }
+                    """)
+                    .createConstant("MESSAGE", PString.of(message("editor.choose")))
+                    .build();
+        }
+
+        @Override
+        protected StackFrame execute(ProjectData data, Namespace namespace, PMap params) {
+            boolean external = params.getBoolean("external", false);
+            if (external) {
+                return StackFrame.async(() -> {
+                    Desktop.getDesktop().open(data.projectFile().toFile());
+                    return PString.EMPTY;
+                }).andThen(v -> log(namespace, LogLevel.INFO,
+                        message("editconfig.reload")));
+            } else {
+                PResource pxp = PResource.of(data.projectFile().toUri());
+                ArgumentInfo info = Info.argument().string()
+                        .mime(ProjectData.MIME_PXP).build();
+                return ScriptStackFrame.forScript(namespace,
+                        """
+                        var CONFIG [load $PXP]
+                        try {
+                            user-input $MESSAGE $CONFIG $INFO
+                        } catch {echo ""}
+                        """)
+                        .createConstant("MESSAGE",
+                                PString.of(message("editconfig.edit")))
+                        .createConstant("PXP", pxp)
+                        .createConstant("INFO", info)
+                        .build()
+                        .andThen(v -> {
+                            String config = v.getFirst().toString();
+                            if (config.isBlank()) {
+                                return StackFrame.empty();
+                            } else {
+                                return StackFrame.async(() -> {
+                                    Files.writeString(data.projectFile(), config);
+                                    return PString.EMPTY;
+                                });
+
+                            }
+                        })
+                        .andThen(v -> data.reload(namespace, false));
+            }
+
+        }
+
+    }
+
+    private static class ReloadConfig extends InteractiveCommand {
+
+        @Override
+        protected StackFrame execute(ProjectData data, Namespace namespace, PMap params) {
+            boolean reload = params.getBoolean("rebuild", false);
+            if (reload) {
+                return data.reload(namespace, true)
+                        .onError(v -> {
+                            if (!v.isEmpty()) {
+                                return log(namespace, LogLevel.WARNING, v.getFirst());
+                            } else {
+                                throw new RuntimeException();
+                            }
+                        })
+                        .andThen(v -> StackFrame.empty());
+
+            } else {
+                return data.reload(namespace, false)
+                        .andThen(v -> StackFrame.empty());
+            }
         }
 
     }

@@ -47,6 +47,7 @@ import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
 import org.praxislive.project.GraphElement;
 import org.praxislive.project.GraphModel;
+import org.praxislive.project.ParseException;
 import org.praxislive.project.ProjectElement;
 import org.praxislive.project.ProjectModel;
 import org.praxislive.project.SyntaxUtils;
@@ -63,6 +64,8 @@ class ProjectData {
     static final String ROOT_EXT = ".pxr";
     static final String SUBGRAPH_EXT = ".pxg";
     static final String PROJECT_FILENAME = "project.pxp";
+    static final String MIME_PXP = "text/x-praxis-project";
+    static final String MIME_PXR = "text/x-praxis-root";
 
     private static final String PROJECT_CONSTANT = "_PROJECT_DATA";
     private static final String SETUP_HUB = "hub";
@@ -154,6 +157,32 @@ class ProjectData {
                 throw new RuntimeException(errors.stream().collect(Collectors.joining()));
             }
         });
+
+    }
+
+    StackFrame reload(Namespace namespace, boolean rebuild) {
+        Path pxp = projectFile();
+        return StackFrame.async(() -> PString.of(Files.readString(pxp)))
+                .andThen(v -> {
+                    try {
+                        ProjectModel model = ProjectModel.parse(pxp.getParent().toUri(),
+                                v.getFirst().toString());
+                        setupElements.clear();
+                        setupElements.addAll(model.setupElements());
+                        buildElements.clear();
+                        buildElements.addAll(model.buildElements());
+                        runElements.clear();
+                        runElements.addAll(model.runElements());
+                        if (active && rebuild) {
+                            executedElements.clear();
+                            return execute(namespace, false);
+                        } else {
+                            return StackFrame.empty();
+                        }
+                    } catch (ParseException ex) {
+                        throw new IllegalArgumentException(ex);
+                    }
+                });
 
     }
 
@@ -332,14 +361,17 @@ class ProjectData {
     private String handleError(ProjectElement element, List<Value> errors) {
         String header = switch (element) {
             case ProjectElement.File file ->
-                "Errors :\n" + file.file().getPath() + "\n";
+                "Errors : " + file.file().getPath() + "\n\n";
             case ProjectElement.Line line ->
-                "Errors :\n" + line.line() + "\n";
+                line.line().lines().limit(5)
+                .map(l -> l.indent(4))
+                .collect(Collectors.joining("", "Errors :\n", "\n\n"));
         };
         return errors.stream()
-                .flatMap(v -> PError.from(v).stream())
-                .map(err -> err.type() + "\n" + err.message())
-                .collect(Collectors.joining("\n", header, "\n"));
+                .map(v -> PError.from(v)
+                        .map(err -> err.errorType() + "\n" + err.message())
+                        .orElse(v.toString()))
+                .collect(Collectors.joining("\n", header, "\n------\n\n"));
     }
 
     static boolean hasExtension(String path, String ext) {
