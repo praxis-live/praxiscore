@@ -45,6 +45,7 @@ import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
+import org.praxislive.core.RootHub;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.SystemManagerService;
@@ -423,14 +424,20 @@ public class Launcher {
                 Hub.Builder hubBuilder = Hub.builder()
                         .setCoreRootFactory(coreFactory)
                         .extendLookup(main);
+
+                LogLevel logLevel = LogLevel.INFO;
+                hubBuilder.extendLookup(logLevel);
+
                 if (terminal) {
                     Root terminalIO = createTerminalIO();
                     hubBuilder.addExtension(terminalIO);
+                    if (!(terminalIO instanceof RootHub.ServiceProvider rhsp)
+                            || !rhsp.services().contains(LogService.class)) {
+                        hubBuilder.addExtension(new LogServiceImpl(logLevel));
+                    }
+                } else {
+                    hubBuilder.addExtension(new LogServiceImpl(logLevel));
                 }
-
-                LogLevel logLevel = LogLevel.INFO;
-                hubBuilder.addExtension(new LogServiceImpl(logLevel));
-                hubBuilder.extendLookup(logLevel);
 
                 Hub hub = hubBuilder.build();
                 if (script != null) {

@@ -44,10 +44,13 @@ import org.jline.reader.impl.completer.ArgumentCompleter;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.AttributedString;
+import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import org.praxislive.core.ArgumentInfo;
 import org.praxislive.core.Call;
+import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.Value;
+import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.UserInputService;
 import org.praxislive.core.syntax.Tokenizer;
 import org.praxislive.core.types.PArray;
@@ -55,6 +58,7 @@ import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
+import org.praxislive.launcher.AbstractLogProcessor;
 
 class TerminalImpl {
 
@@ -74,15 +78,18 @@ class TerminalImpl {
 
     private final Queue<Call> requestQueue;
     private final AtomicReference<JLineTerminalIO> service;
+    private final LogProcessor logProcessor;
 
     private Thread inputThread;
     private Terminal terminal;
     private LineReader reader;
     private Prompter prompter;
+    private boolean dumbColor;
 
     private TerminalImpl() {
         service = new AtomicReference<>();
         requestQueue = new ConcurrentLinkedQueue<>();
+        logProcessor = new LogProcessor();
     }
 
     synchronized void attach(JLineTerminalIO service) {
@@ -94,6 +101,7 @@ class TerminalImpl {
                         .jni(true)
                         .dumb(true)
                         .build();
+                dumbColor = Terminal.TYPE_DUMB_COLOR.equals(terminal.getType());
                 reader = LineReaderBuilder.builder()
                         .terminal(terminal)
                         .parser((line, cursor, context) -> {
@@ -119,6 +127,12 @@ class TerminalImpl {
         this.service.compareAndSet(service, null);
     }
 
+    synchronized void postLog(Call call) {
+        if (reader != null) {
+            logProcessor.processLog(call);
+        }
+    }
+
     synchronized void postRequest(Call call) {
         requestQueue.add(call);
         if (requestQueue.size() == 1 && reader != null && reader.isReading()) {
@@ -135,8 +149,7 @@ class TerminalImpl {
     synchronized void showError(String msg) {
         if (reader != null) {
             reader.printAbove(new AttributedString("ERR : " + msg,
-                    AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
-                    .toAnsi(terminal));
+                    AttributedStyle.DEFAULT.foreground(AttributedStyle.RED)));
         }
     }
 
@@ -235,8 +248,10 @@ class TerminalImpl {
                     .addPrompt();
         } else {
             String ext = switch (mime) {
-                case "text/x-java", "text/x-praxis-java" -> "java";
-                default -> "";
+                case "text/x-java", "text/x-praxis-java" ->
+                    "java";
+                default ->
+                    "";
             };
             builder.createEditorPrompt()
                     .name("input")
@@ -303,19 +318,21 @@ class TerminalImpl {
     }
 
     private synchronized void writeResponse(Call call) {
-        String output = call.args().stream()
-                .map(Value::toString)
-                .collect(Collectors.joining(" "));
         if (call.isError()) {
-            reader.printAbove(new AttributedString("ERR : " + output,
-                    AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
-                    .toAnsi(terminal)
-            );
+            String output = errorResponseToOutput(call.args());
+            reader.printAbove(new AttributedString("!!! " + output,
+                    AttributedStyle.DEFAULT.foreground(AttributedStyle.RED)));
         } else {
-            reader.printAbove(new AttributedString("--- : " + output,
-                    AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                    .toAnsi(terminal)
-            );
+            String output = call.args().stream()
+                    .map(v -> v.print())
+                    .collect(Collectors.joining(System.lineSeparator()));
+            if (output.contains(System.lineSeparator())) {
+                output = "---" + System.lineSeparator() + output;
+            } else {
+                output = "--- : " + output;
+            }
+            reader.printAbove(new AttributedString(output,
+                    AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN)));
         }
     }
 
@@ -326,6 +343,62 @@ class TerminalImpl {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String errorResponseToOutput(List<Value> args) {
+        return args.stream()
+                .map(v -> PError.from(v)
+                        .map(e -> e.message().isBlank()
+                                ? e.errorType()
+                                : e.errorType() + System.lineSeparator() + e.message())
+                        .orElseGet(() -> v.print()))
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private class LogProcessor extends AbstractLogProcessor {
+
+        AttributedStringBuilder sb;
+
+        @Override
+        protected void write(ComponentAddress src, LogLevel level, String text) {
+            if (sb == null) {
+                sb = new AttributedStringBuilder();
+            }
+            if (dumbColor) {
+                // IDE output window treats bold as bright, and needs the
+                // escapes on every output line
+                AttributedStyle style = switch (level) {
+                    case ERROR ->
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED);
+                    case WARNING ->
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
+                    default ->
+                        AttributedStyle.DEFAULT.bold();
+                };
+                text.lines().forEach(line -> sb.append(line, style)
+                        .append(System.lineSeparator()));
+            } else {
+                AttributedStyle style = switch (level) {
+                    case ERROR ->
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED);
+                    case WARNING ->
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
+                    default ->
+                        AttributedStyle.DEFAULT.faint();
+                };
+                sb.append(text, style);
+            }
+
+        }
+
+        @Override
+        protected void flush() {
+            if (sb != null) {
+                reader.printAbove(sb.toAttributedString());
+                sb = null;
+            }
+        }
+
     }
 
     static TerminalImpl getInstance() {

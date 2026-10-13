@@ -240,8 +240,11 @@ public class BasicCoreRoot extends AbstractRoot {
      */
     protected final Root.Controller installRoot(String id, Root root)
             throws Exception {
-        if (!ComponentAddress.isValidID(id) || hubAccess.getRootController(id) != null) {
-            throw new IllegalArgumentException();
+        if (!ComponentAddress.isValidID(id)) {
+            throw new IllegalArgumentException("Invalid root ID");
+        }
+        if (hubAccess.getRootController(id) != null) {
+            throw new IllegalArgumentException("Root ID already in use");
         }
         Root.Controller ctrl = root.initialize(id, hubAccess.getRootHub());
         if (hubAccess.registerRootController(id, ctrl)) {
