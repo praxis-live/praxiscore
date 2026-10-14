@@ -380,7 +380,9 @@ public class Launcher {
 
             final boolean terminal;
             if (interactive == null) {
-                terminal = !(requireServer || (script == null && showEnv));
+                terminal = !(requireServer
+                        || scriptPath != null
+                        || (script == null && showEnv));
             } else {
                 terminal = interactive;
             }
