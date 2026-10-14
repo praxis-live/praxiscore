@@ -318,22 +318,32 @@ class TerminalImpl {
     }
 
     private synchronized void writeResponse(Call call) {
-        if (call.isError()) {
-            String output = errorResponseToOutput(call.args());
-            reader.printAbove(new AttributedString("!!! " + output,
-                    AttributedStyle.DEFAULT.foreground(AttributedStyle.RED)));
+        boolean error = call.isError();
+        String output = error
+                ? errorResponseToOutput(call.args())
+                : responseToOutput(call.args());
+        boolean multiline = output.contains(System.lineSeparator());
+        if (error) {
+            output = "!!! : " + output;
         } else {
-            String output = call.args().stream()
-                    .map(v -> v.print())
-                    .collect(Collectors.joining(System.lineSeparator()));
-            if (output.contains(System.lineSeparator())) {
+            if (multiline) {
                 output = "---" + System.lineSeparator() + output;
             } else {
                 output = "--- : " + output;
             }
-            reader.printAbove(new AttributedString(output,
-                    AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN)));
         }
+        AttributedStyle style = error
+                ? AttributedStyle.DEFAULT.foreground(AttributedStyle.RED)
+                : AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN);
+        if (dumbColor) {
+            AttributedStringBuilder sb = new AttributedStringBuilder();
+            output.lines().forEach(line -> sb.append(line, style)
+                    .append(System.lineSeparator()));
+            reader.printAbove(sb.toAttributedString());
+        } else {
+            reader.printAbove(new AttributedString(output, style));
+        }
+
     }
 
     private boolean isCompleteScript(String script) {
@@ -343,6 +353,12 @@ class TerminalImpl {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String responseToOutput(List<Value> args) {
+        return args.stream()
+                .map(v -> v.print())
+                .collect(Collectors.joining(System.lineSeparator()));
     }
 
     private String errorResponseToOutput(List<Value> args) {
