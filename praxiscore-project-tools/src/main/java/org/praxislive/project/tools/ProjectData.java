@@ -25,7 +25,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -92,7 +92,7 @@ class ProjectData {
         this.setupElements = new ArrayList<>(model.setupElements());
         this.buildElements = new ArrayList<>(model.buildElements());
         this.runElements = new ArrayList<>(model.runElements());
-        executedElements = new HashSet<>();
+        executedElements = new LinkedHashSet<>();
         if (active) {
             this.active = true;
             executedElements.addAll(setupElements);
@@ -160,7 +160,7 @@ class ProjectData {
 
     }
 
-    StackFrame reload(Namespace namespace, boolean rebuild) {
+    StackFrame reload(Namespace namespace, boolean reloadAll) {
         Path pxp = projectFile();
         return StackFrame.async(() -> PString.of(Files.readString(pxp)))
                 .andThen(v -> {
@@ -173,8 +173,14 @@ class ProjectData {
                         buildElements.addAll(model.buildElements());
                         runElements.clear();
                         runElements.addAll(model.runElements());
-                        if (active && rebuild) {
-                            executedElements.clear();
+                        if (active) {
+                            if (reloadAll) {
+                                executedElements.clear();
+                            } else {
+                                executedElements.removeIf(el
+                                        -> !setupElements.contains(el)
+                                        && !buildElements.contains(el));
+                            }
                             return execute(namespace, false);
                         } else {
                             return StackFrame.empty();
@@ -183,7 +189,21 @@ class ProjectData {
                         throw new IllegalArgumentException(ex);
                     }
                 });
+    }
 
+    StackFrame reloadRoot(Namespace namespace, String rootID) {
+        if (!active) {
+            throw new IllegalStateException(message("project.inactive"));
+        }
+        ProjectElement.File file = executedRootFiles()
+                .filter(el -> Objects.equals(rootID,
+                        stripExtension(Path.of(el.file()).getFileName().toString(),
+                                ROOT_EXT)))
+                .findFirst().orElseThrow(IllegalArgumentException::new);
+        Namespace ns = namespace.createChild();
+        StackFrame frame = ScriptStackFrame.forScript(ns,
+                "cd " + projectFile.getParent().toUri()).inline().build();
+        return frame.andThen(v -> fileToStackFrame(ns, file));
     }
 
     StackFrame saveAll(Namespace namespace) {
@@ -228,6 +248,7 @@ class ProjectData {
 
     StackFrame saveRoot(Namespace namespace, String id) {
         Path dst = registeredRootFiles()
+                .map(el -> Path.of(el.file()))
                 .filter(p -> Objects.equals(id,
                         stripExtension(p.getFileName().toString(), ROOT_EXT)))
                 .findFirst()
@@ -293,17 +314,29 @@ class ProjectData {
         return runElements.stream();
     }
 
-    Stream<Path> registeredRootFiles() {
+    Stream<ProjectElement.File> registeredRootFiles() {
         return buildElements()
                 .filter(ProjectElement.File.class::isInstance)
                 .map(ProjectElement.File.class::cast)
-                .map(ProjectElement.File::file)
-                .map(Path::of)
-                .filter(p -> hasExtension(p.getFileName().toString(), ROOT_EXT));
+                .filter(el -> hasExtension(el.file().getPath(), ROOT_EXT));
     }
 
     Stream<String> registeredRootIDs() {
         return registeredRootFiles()
+                .map(el -> Path.of(el.file()))
+                .map(p -> stripExtension(p.getFileName().toString(), ROOT_EXT));
+    }
+
+    Stream<ProjectElement.File> executedRootFiles() {
+        return executedElements.stream()
+                .filter(ProjectElement.File.class::isInstance)
+                .map(ProjectElement.File.class::cast)
+                .filter(el -> hasExtension(el.file().getPath(), ROOT_EXT));
+    }
+
+    Stream<String> executedRootIDs() {
+        return executedRootFiles()
+                .map(el -> Path.of(el.file()))
                 .map(p -> stripExtension(p.getFileName().toString(), ROOT_EXT));
     }
 

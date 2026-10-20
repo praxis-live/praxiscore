@@ -23,7 +23,6 @@ package org.praxislive.project.tools;
 
 import java.awt.Desktop;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +64,9 @@ public final class ProjectCommands implements CommandInstaller {
             Map.entry("save-config", new SaveConfig()),
             Map.entry("save-root", new SaveRoot()),
             Map.entry("edit-config", new EditConfig()),
-            Map.entry("reload", new ReloadConfig())
+            Map.entry("reload-all", new Reload(true)),
+            Map.entry("reload-config", new Reload(false)),
+            Map.entry("reload-root", new ReloadRoot())
     );
 
     @Override
@@ -352,26 +353,66 @@ public final class ProjectCommands implements CommandInstaller {
 
     }
 
-    private static class ReloadConfig extends InteractiveCommand {
+    private static class Reload extends InteractiveCommand {
+
+        private final boolean all;
+
+        private Reload(boolean all) {
+            this.all = all;
+        }
 
         @Override
         protected StackFrame execute(ProjectData data, Namespace namespace, PMap params) {
-            boolean reload = params.getBoolean("rebuild", false);
-            if (reload) {
-                return data.reload(namespace, true)
-                        .onError(v -> {
-                            if (!v.isEmpty()) {
-                                return log(namespace, LogLevel.WARNING, v.getFirst());
-                            } else {
-                                throw new RuntimeException();
-                            }
-                        })
-                        .andThen(v -> StackFrame.empty());
+            return data.reload(namespace, all)
+                    .onError(v -> {
+                        if (!v.isEmpty()) {
+                            return log(namespace, LogLevel.WARNING, v.getFirst());
+                        } else {
+                            throw new RuntimeException();
+                        }
+                    })
+                    .andThen(v -> StackFrame.empty());
+        }
 
-            } else {
-                return data.reload(namespace, false)
-                        .andThen(v -> StackFrame.empty());
-            }
+    }
+
+    private static class ReloadRoot extends InteractiveCommand {
+
+        @Override
+        protected StackFrame userInput(ProjectData data, Namespace namespace) {
+            return ScriptStackFrame.forScript(namespace,
+                    """
+                    if [== 0 [array-size $ROOTS]] {
+                        fail $ERROR_NO_ROOTS
+                    } else {
+                        try {
+                            var id [user-input-select $MESSAGE $ROOTS]
+                            map id $id
+                        }
+                    }
+                    """)
+                    .createConstant("ROOTS", data.executedRootIDs()
+                            .sorted()
+                            .map(PString::of)
+                            .collect(PArray.collector()))
+                    .createConstant("MESSAGE", PString.of(message("reloadroot.choose")))
+                    .createConstant("ERROR_NO_ROOTS",
+                            PString.of(message("reloadroot.error-no-roots")))
+                    .build();
+        }
+
+        @Override
+        protected StackFrame execute(ProjectData data, Namespace namespace, PMap params) {
+            String id = params.get("id").toString();
+            return data.reloadRoot(namespace, id)
+                    .onError(v -> {
+                        if (!v.isEmpty()) {
+                            return log(namespace, LogLevel.WARNING, v.getFirst());
+                        } else {
+                            throw new RuntimeException();
+                        }
+                    })
+                    .andThen(v -> StackFrame.empty());
         }
 
     }

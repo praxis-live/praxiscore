@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -264,14 +265,15 @@ class NetworkCoreRoot extends BasicCoreRoot {
             if (call.isRequest()) {
                 List<Value> args = call.args();
                 if (!args.isEmpty()) {
-                    if (configuration != null) {
-                        throw new IllegalStateException("Hub Configuration already fixed");
-                    }
                     PMap map = PMap.from(call.args().get(0))
                             .orElseThrow(IllegalArgumentException::new);
-                    configuration = HubConfiguration.fromMap(map);
-                    configure();
-                    confMap = map;
+                    if (configuration == null) {
+                        configuration = HubConfiguration.fromMap(map);
+                        configure();
+                        confMap = map;
+                    } else if (!Objects.equals(confMap, map)) {
+                        throw new IllegalStateException("Hub Configuration already fixed");
+                    }
                 }
                 if (call.isReplyRequired()) {
                     router.route(call.reply(confMap));
