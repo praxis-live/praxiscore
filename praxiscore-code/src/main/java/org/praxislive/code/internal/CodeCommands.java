@@ -34,7 +34,6 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
-import org.praxislive.core.services.LogService;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
@@ -187,11 +186,10 @@ public class CodeCommands implements CommandInstaller {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            return StackFrame.serviceCall(LogService.class, LogService.LOG,
-                    List.of(LogLevel.WARNING.asPString(),
-                            PString.of(MESSAGES.getString("java-release.deprecation")))
-            ).andThen(v -> StackFrame.serviceCall(CodeCompilerService.class,
-                    CodeCompilerService.OPTIONS, PMap.of("release", args.get(0))));
+            return StackFrame.log(LogLevel.WARNING,
+                    MESSAGES.getString("java-release.deprecation"))
+                    .andThen(v -> StackFrame.serviceCall(CodeCompilerService.class,
+                            CodeCompilerService.OPTIONS, PMap.of("release", args.get(0))));
         }
 
     }
@@ -269,9 +267,7 @@ public class CodeCommands implements CommandInstaller {
             }).andThen(v -> {
                 PString msg = PString.of(v.get(0));
                 if (!msg.isEmpty()) {
-                    return StackFrame.serviceCall(LogService.class,
-                            LogService.LOG, List.of(
-                                    PString.of(LogLevel.WARNING), msg));
+                    return StackFrame.log(LogLevel.WARNING, msg);
                 } else {
                     return StackFrame.empty();
                 }

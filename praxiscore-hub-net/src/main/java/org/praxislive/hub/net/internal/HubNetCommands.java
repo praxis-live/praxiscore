@@ -26,8 +26,6 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
-import org.praxislive.core.services.LogService;
-import org.praxislive.core.types.PString;
 import org.praxislive.script.*;
 
 /**
@@ -62,10 +60,9 @@ public class HubNetCommands implements CommandInstaller {
                     HubConfigurationService.class,
                     HubConfigurationService.HUB_CONFIGURE, args);
             if (deprecated) {
-                return StackFrame.serviceCall(LogService.class, LogService.LOG,
-                        List.of(LogLevel.WARNING.asPString(),
-                                PString.of(MESSAGES.getString("hub-configure.deprecation")))
-                ).andThen(v -> serviceCall);
+                return StackFrame.log(LogLevel.WARNING,
+                        MESSAGES.getString("hub-configure.deprecation"))
+                        .andThen(v -> serviceCall);
             } else {
                 return serviceCall;
             }

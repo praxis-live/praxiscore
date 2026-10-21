@@ -64,7 +64,7 @@ public abstract class AbstractLogProcessor {
      *
      * @return minimum log level
      */
-    public LogLevel getMininumLevel() {
+    public LogLevel getMinimumLevel() {
         return minLogLevel;
     }
 

@@ -140,7 +140,7 @@ class ProjectData {
                 }
                 case ProjectElement.Line line -> {
                     frame = frame.andThen(v -> {
-                        return ScriptStackFrame.forScript(ns, line.line()).build()
+                        return ScriptStackFrame.forScript(ns, line.line()).inline().build()
                                 .onError(errs -> {
                                     errors.add(handleError(element, errs));
                                     return StackFrame.empty();

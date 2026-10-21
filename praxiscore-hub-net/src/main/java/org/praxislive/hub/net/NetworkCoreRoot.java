@@ -271,7 +271,7 @@ class NetworkCoreRoot extends BasicCoreRoot {
                         configuration = HubConfiguration.fromMap(map);
                         configure();
                         confMap = map;
-                    } else if (!Objects.equals(confMap, map)) {
+                    } else if (!confMap.equivalent(map)) {
                         throw new IllegalStateException("Hub Configuration already fixed");
                     }
                 }

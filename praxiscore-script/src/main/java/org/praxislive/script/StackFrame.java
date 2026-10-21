@@ -29,6 +29,8 @@ import java.util.function.UnaryOperator;
 import org.praxislive.core.Call;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Value;
+import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
@@ -335,6 +337,21 @@ public interface StackFrame {
                 return Call.create(to, env.getAddress(), env.getTime(), args);
             }
         };
+    }
+
+    /**
+     * Create a StackFrame that logs the provided message. If no
+     * {@link LogService} is available then the stackframe is a no-op. The
+     * message is converted using {@link Value#ofObject(java.lang.Object)}.
+     *
+     * @param level log level
+     * @param message log message
+     * @return stackframe
+     */
+    public static StackFrame log(LogLevel level, Object message) {
+        return serviceCall(LogService.class, LogService.LOG,
+                List.of(level.asPString(), Value.ofObject(message)))
+                .onError(v -> StackFrame.empty());
     }
 
 }

@@ -29,7 +29,6 @@ import org.praxislive.core.ControlInfo;
 import org.praxislive.core.Value;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.services.LogLevel;
-import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.RootManagerService;
 import org.praxislive.script.Command;
 import org.praxislive.script.Namespace;
@@ -113,17 +112,15 @@ class SystemCmds {
 
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            List<Value> logArgs
-                    = switch (args.size()) {
+            LogLevel level = switch (args.size()) {
                 case 1 ->
-                    List.of(LogLevel.INFO.asPString(), args.getLast());
+                    LogLevel.INFO;
                 case 2 ->
-                    List.of(LogLevel.valueOf(args.getFirst().toString()).asPString(),
-                    args.getLast());
+                    LogLevel.valueOf(args.getFirst().toString());
                 default ->
                     throw new IllegalArgumentException();
             };
-            return StackFrame.serviceCall(LogService.class, LogService.LOG, logArgs);
+            return StackFrame.log(level, args.getLast());
         }
 
         @Override
