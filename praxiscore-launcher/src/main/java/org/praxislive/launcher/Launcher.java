@@ -34,6 +34,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Optional;
@@ -44,6 +45,7 @@ import java.util.concurrent.Callable;
 import org.praxislive.code.CodeCompilerService;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.Root;
+import org.praxislive.core.RootHub;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.SystemManagerService;
@@ -106,9 +108,7 @@ public class Launcher {
                 cmd.usage(cmd.getOut());
                 ret = cmd.getCommandSpec().exitCodeOnUsageHelp();
             } else if (cmd.isVersionHelpRequested()) {
-                String versionOutput = MessageFormat.format(
-                        context.resourceBundle().getString("message.version"),
-                        context.version());
+                String versionOutput = exec.message("message.version", context.version());
                 cmd.getOut().println(versionOutput);
                 ret = cmd.getCommandSpec().exitCodeOnVersionHelp();
             } else {
@@ -182,8 +182,22 @@ public class Launcher {
          *
          * @return optional file to run on launch
          */
+        @Deprecated(forRemoval = true)
         public default Optional<File> autoRunFile() {
             return Optional.empty();
+        }
+
+        /**
+         * Provide an optional file to be run on launch, eg. for embedding the
+         * launcher in a project. If the context provides an auto-run file and
+         * the file option is specified, an exception will be thrown on launch.
+         * An implementation that doesn't want this behaviour should return an
+         * empty optional if a file is specified.
+         *
+         * @return optional file to run on launch
+         */
+        public default Optional<Path> autoRun() {
+            return autoRunFile().map(File::toPath);
         }
 
         /**
@@ -213,9 +227,21 @@ public class Launcher {
     @CommandLine.Command(mixinStandardHelpOptions = true)
     private static class Exec implements Callable<Integer> {
 
+        @CommandLine.Option(names = {"-d", "--cd"},
+                descriptionKey = "option.cd.help")
+        private Path cd;
+
+        @CommandLine.Option(names = {"-x", "--exec"},
+                descriptionKey = "option.exec.help")
+        private String exec;
+
         @CommandLine.Option(names = {"-f", "--file"},
                 descriptionKey = "option.file.help")
-        private File file;
+        private Path file;
+
+        @CommandLine.Option(names = {"-i", "--interactive"},
+                descriptionKey = "option.interactive.help")
+        private Boolean interactive;
 
         @CommandLine.Option(names = {"-p", "--port"},
                 converter = PortConverter.class,
@@ -225,10 +251,6 @@ public class Launcher {
         @CommandLine.Option(names = {"-n", "--network"},
                 descriptionKey = "option.network.help")
         private String network;
-
-        @CommandLine.Option(names = {"-i", "--interactive"},
-                descriptionKey = "option.interactive.help")
-        private boolean interactive;
 
         @CommandLine.Option(names = "--child",
                 descriptionKey = "option.child.help")
@@ -287,55 +309,94 @@ public class Launcher {
                 cidr = null;
             }
 
-            File autorun = null;
+            Path autorun = null;
             if (!child && !noAutorun) {
-                autorun = context.autoRunFile().orElse(null);
+                autorun = context.autoRun().orElse(null);
             }
 
             if (file != null) {
                 if (child) {
-                    error("Cannot specify --file and --child");
+                    error(message("message.fileAndChild"));
                     return 1;
                 }
                 if (autorun != null) {
-                    error("Cannot specify --file when auto-run file exists");
+                    error(message("message.fileAndAutorun"));
                     return 1;
                 }
+            }
+
+            final String postScript;
+            if (cd != null || exec != null) {
+                String ps = "\n";
+                if (cd != null) {
+                    ps += """
+                          global {
+                            cd %s
+                          }
+                          """.formatted(cd.toUri());
+                }
+                if (exec != null) {
+                    ps += exec;
+                }
+                postScript = ps;
+            } else {
+                postScript = null;
             }
 
             final String script;
-            File scriptFile = autorun == null ? file : autorun;
-            if (scriptFile != null) {
-                scriptFile = scriptFile.getAbsoluteFile();
-                if (scriptFile.isDirectory()) {
-                    scriptFile = new File(scriptFile, "project.pxp");
+            Path scriptPath = file == null ? autorun : file;
+            if (scriptPath != null) {
+                scriptPath = scriptPath.toAbsolutePath().normalize();
+                if (Files.isDirectory(scriptPath)) {
+                    scriptPath = scriptPath.resolve("project.pxp");
                 }
-                if (!scriptFile.exists()) {
-                    error("No file found at " + scriptFile);
+                if (!Files.exists(scriptPath)) {
+                    error(message("message.noFile", scriptPath));
                     return 1;
                 }
                 try {
-                    script = "set _PWD " + scriptFile.getParentFile().toURI() + "\n"
-                            + Files.readString(scriptFile.toPath());
+                    String body = Files.readString(scriptPath);
+                    String preScript = """
+                                global {
+                                    constant _FILE %s
+                                }
+                                cd %s
+                                """.formatted(
+                            scriptPath.toUri(),
+                            scriptPath.getParent().toUri()
+                    );
+                    if (postScript == null) {
+                        script = preScript + body;
+                    } else {
+                        script = preScript + body + postScript;
+                    }
                 } catch (Exception ex) {
-                    error("Unable to read script at " + scriptFile);
+                    error(message("message.readFileError", scriptPath));
                     return 1;
                 }
             } else {
-                script = null;
+                script = postScript;
             }
 
-            if (!requireServer && !interactive && script == null) {
+            final boolean terminal;
+            if (interactive == null) {
+                terminal = !(requireServer
+                        || scriptPath != null
+                        || (script == null && showEnv));
+            } else {
+                terminal = interactive;
+            }
+
+            if (!requireServer && !terminal && script == null) {
                 if (showEnv) {
                     return 0;
                 } else {
-                    error("WARNING : Nothing to do, exiting.");
-                    error("Use --help to see options");
+                    error(message("message.noTask"));
                     return 1;
                 }
             }
 
-            final var main = new MainThreadImpl();
+            final MainThreadImpl main = new MainThreadImpl();
 
             int exitValue = 0;
 
@@ -365,24 +426,30 @@ public class Launcher {
                 Hub.Builder hubBuilder = Hub.builder()
                         .setCoreRootFactory(coreFactory)
                         .extendLookup(main);
-                if (interactive) {
-                    var terminalIO = createTerminalIO();
-                    hubBuilder.addExtension(terminalIO);
-                }
 
                 LogLevel logLevel = LogLevel.INFO;
-                hubBuilder.addExtension(new LogServiceImpl(logLevel));
                 hubBuilder.extendLookup(logLevel);
 
-                Hub hub = hubBuilder.build();
-                hub.start();
+                if (terminal) {
+                    Root terminalIO = createTerminalIO();
+                    hubBuilder.addExtension(terminalIO);
+                    if (!(terminalIO instanceof RootHub.ServiceProvider rhsp)
+                            || !rhsp.services().contains(LogService.class)) {
+                        hubBuilder.addExtension(new LogServiceImpl(logLevel));
+                    }
+                } else {
+                    hubBuilder.addExtension(new LogServiceImpl(logLevel));
+                }
 
+                Hub hub = hubBuilder.build();
                 if (script != null) {
                     hub.eval(script);
                 }
+                hub.start();
 
                 if (requireServer) {
-                    var serverInfo = coreFactory.awaitInfo(30, TimeUnit.SECONDS);
+                    NetworkCoreFactory.Info serverInfo
+                            = coreFactory.awaitInfo(30, TimeUnit.SECONDS);
                     port = serverInfo.serverAddress()
                             .filter(a -> a instanceof InetSocketAddress)
                             .map(a -> (InetSocketAddress) a)
@@ -400,7 +467,7 @@ public class Launcher {
 
         private void installChildSignalOverrides() {
             // override same as JLine terminal
-            var signals = new String[]{"INT", "QUIT", "TSTP", "CONT", "INFO", "WINCH"};
+            String[] signals = new String[]{"INT", "QUIT", "TSTP", "CONT", "INFO", "WINCH"};
             try {
                 ServiceLoader.load(Signals.class)
                         .findFirst()
@@ -436,21 +503,30 @@ public class Launcher {
             }
         }
 
+        private String message(String key, Object... params) {
+            String base = context.resourceBundle().getString(key);
+            if (params.length == 0) {
+                return base;
+            } else {
+                return MessageFormat.format(base, params);
+            }
+        }
+
         private void outputEnvironmentInfo() {
             try {
-                var handle = ProcessHandle.current();
+                ProcessHandle handle = ProcessHandle.current();
                 handle.info().command().ifPresent(s
                         -> out("Command :\n" + s + "\n"));
                 handle.info().arguments().ifPresent(args
                         -> out("Arguments :\n" + (Arrays.toString(args)) + "\n"));
                 handle.info().commandLine().ifPresent(s
                         -> out("Full command line :\n" + s + "\n"));
-                var modulePath = System.getProperty("jdk.module.path");
+                String modulePath = System.getProperty("jdk.module.path");
                 out("Java module path :");
                 out((modulePath == null || modulePath.isBlank()
                         ? "[EMPTY]" : modulePath));
                 out("");
-                var classPath = System.getProperty("java.class.path");
+                String classPath = System.getProperty("java.class.path");
                 out("Java class path :");
                 out((classPath == null || classPath.isBlank()
                         ? "[EMPTY]" : classPath));
@@ -470,7 +546,7 @@ public class Launcher {
         }
 
         private void error(String msg) {
-            var ansiMsg = CommandLine.Help.Ansi.AUTO.string(
+            String ansiMsg = CommandLine.Help.Ansi.AUTO.string(
                     "@|bold,red " + msg + "|@"
             );
             System.out.println(ansiMsg);
@@ -517,7 +593,7 @@ public class Launcher {
         private void run(Hub hub) {
             while (hub.isAlive()) {
                 try {
-                    var task = queue.poll(500, TimeUnit.MILLISECONDS);
+                    Runnable task = queue.poll(500, TimeUnit.MILLISECONDS);
                     if (task != null) {
                         task.run();
                     }
@@ -531,7 +607,7 @@ public class Launcher {
             drain:
             for (;;) {
                 try {
-                    var task = queue.poll(500, TimeUnit.MILLISECONDS);
+                    Runnable task = queue.poll(500, TimeUnit.MILLISECONDS);
                     if (task != null) {
                         task.run();
                     } else {

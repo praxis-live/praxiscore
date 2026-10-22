@@ -70,7 +70,8 @@ public class PMapTest extends AbstractTestBase {
         PMap map = PMap.of("key1", 25,
                 "key2", array,
                 "key3", childMap,
-                "key4", "This is one line");
+                "key4", "This is one line",
+                "key5", PMap.EMPTY);
         String print = map.print();
         log(print);
         assertEquals("""
@@ -85,6 +86,7 @@ public class PMapTest extends AbstractTestBase {
                        one line}
                      }
                      key4 "This is one line"
+                     key5 {}
                      """, print + "\n");
         PMap parsed = PMap.parse(print);
         log(map);

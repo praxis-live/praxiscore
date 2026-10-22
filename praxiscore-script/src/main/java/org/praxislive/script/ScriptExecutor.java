@@ -29,9 +29,12 @@ import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.types.PError;
 
 import static java.lang.System.Logger.Level;
+
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Lookup;
 import org.praxislive.core.PacketRouter;
+import org.praxislive.core.Value;
+import org.praxislive.core.types.PString;
 
 /**
  *
@@ -43,16 +46,26 @@ class ScriptExecutor {
     private final List<StackFrame> stack;
     private final Queue<Call> queue;
     private final Env env;
-    private final Namespace namespace;
+    private final Namespace rootNS;
+    private final ComponentAddress context;
+
+    private Namespace namespace;
 
     ScriptExecutor(Env env,
             Namespace rootNS,
             ComponentAddress context) {
         this.env = new EnvWrapper(env);
+        this.rootNS = rootNS;
+        this.context = context;
         stack = new LinkedList<>();
         queue = new LinkedList<>();
-        namespace = rootNS.createChild();
-        namespace.createConstant(Env.CONTEXT, context);
+        namespace = createNamespace();
+    }
+
+    private Namespace createNamespace() {
+        Namespace ns = rootNS.createChild();
+        ns.createConstant(Env.CONTEXT, context);
+        return ns;
     }
 
     public void queueEvalCall(Call call) {
@@ -69,7 +82,7 @@ class ScriptExecutor {
             Call call = queue.poll();
             env.getPacketRouter().route(call.error(PError.of("")));
         }
-
+        namespace = createNamespace();
     }
 
     public void processScriptCall(Call call) {
@@ -104,7 +117,7 @@ class ScriptExecutor {
             if (state == StackFrame.State.Incomplete) {
                 return;
             } else {
-                var args = current.result();
+                List<Value> args = current.result();
                 LOG.log(Level.TRACE, () -> "Stack frame complete : " + current.getClass()
                         + "\n  Result : " + args + "\n  Stack Size : " + stack.size());
                 stack.remove(0);
@@ -118,6 +131,10 @@ class ScriptExecutor {
                         call = call.reply(args);
                     } else {
                         LOG.log(Level.TRACE, "Sending Error return call");
+                        Variable error = namespace.getOrCreateVariable(Env.ERROR, PString.EMPTY);
+                        if (!args.isEmpty()) {
+                            error.setValue(args.getFirst());
+                        }
                         call = call.error(args);
                     }
                     env.getPacketRouter().route(call);
@@ -131,8 +148,9 @@ class ScriptExecutor {
             Call call = queue.peek();
             var args = call.args();
             try {
-                var script = args.get(0).toString();
-                var stackFrame = ScriptStackFrame.forScript(namespace, script)
+                String script = args.get(0).toString();
+                ScriptStackFrame stackFrame = ScriptStackFrame
+                        .forScript(namespace, script)
                         .inline()
                         .build();
                 stack.add(0, stackFrame);

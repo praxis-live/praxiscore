@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,13 +23,11 @@
 package org.praxislive.launcher;
 
 import java.util.List;
-import java.util.Objects;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
-import org.praxislive.core.Value;
 import org.praxislive.core.services.LogLevel;
 import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Service;
@@ -37,12 +35,11 @@ import org.praxislive.core.types.PError;
 
 class LogServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
 
-    private static final String NEWLINE = System.lineSeparator();
-
-    private final LogLevel logLevel;
+    private final LogProcessor logProcessor;
 
     LogServiceImpl(LogLevel logLevel) {
-        this.logLevel = Objects.requireNonNull(logLevel);
+        this.logProcessor = new LogProcessor();
+        this.logProcessor.setMinimumLevel(logLevel);
     }
 
     @Override
@@ -54,7 +51,7 @@ class LogServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
     protected void processCall(Call call, PacketRouter router) {
         if (call.isRequest()) {
             try {
-                processLog(call);
+                logProcessor.processLog(call);
                 if (call.isReplyRequired()) {
                     router.route(call.reply());
                 }
@@ -64,34 +61,19 @@ class LogServiceImpl extends AbstractRoot implements RootHub.ServiceProvider {
         }
     }
 
-    private void processLog(Call call) throws Exception {
-        ComponentAddress src = call.from().component();
-        List<Value> args = call.args();
-        StringBuilder sb = new StringBuilder();
-        LogLevel lastLevel = null;
-        for (int i = 1; i < args.size(); i += 2) {
-            LogLevel level = LogLevel.valueOf(args.get(i - 1).toString());
-            if (!logLevel.isLoggable(level)) {
-                continue;
-            }
-            Value arg = args.get(i);
-            if (level != lastLevel) {
-                lastLevel = level;
-                sb.append(level.name()).append(" : ").append(src.toString()).append(NEWLINE);
-            }
-            PError.from(arg).ifPresentOrElse(err -> {
-                sb.append(err.errorType()).append(" - ").append(err.message()).append(NEWLINE);
-                var stack = err.stackTrace();
-                if (!stack.isBlank()) {
-                    sb.append(stack).append(NEWLINE);
-                }
-            }, () -> {
-                sb.append(arg.toString()).append(NEWLINE);
-            });
-            System.err.print(sb.toString());
-            sb.setLength(0);
+    private class LogProcessor extends AbstractLogProcessor {
+
+        @Override
+        protected void flush() {
+            System.err.println();
+            System.err.flush();
         }
-        System.err.flush();
+
+        @Override
+        protected void write(ComponentAddress src, LogLevel level, String text) {
+            System.err.println(text);
+        }
+
     }
 
 }

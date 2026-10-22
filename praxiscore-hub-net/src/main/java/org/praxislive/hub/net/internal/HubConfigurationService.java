@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2020 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -21,9 +21,9 @@
  */
 package org.praxislive.hub.net.internal;
 
-import java.util.List;
 import java.util.stream.Stream;
 import org.praxislive.core.ControlInfo;
+import org.praxislive.core.Info;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.types.PMap;
 
@@ -31,12 +31,12 @@ import org.praxislive.core.types.PMap;
  *
  */
 public class HubConfigurationService implements Service {
-    
+
     public static final String HUB_CONFIGURE = "hub-configure";
-    public static final ControlInfo HUB_CONFIGURE_INFO =
-            ControlInfo.createFunctionInfo(List.of(PMap.info()),
-                    List.of(),
-                    PMap.EMPTY);
+    public static final ControlInfo HUB_CONFIGURE_INFO
+            = Info.control(c -> c.function()
+                    .inputs(a -> a.type(PMap.class).optional())
+                    .outputs(a -> a.type(PMap.class)));
 
     @Override
     public Stream<String> controls() {
@@ -50,5 +50,5 @@ public class HubConfigurationService implements Service {
         }
         throw new IllegalArgumentException();
     }
-    
+
 }

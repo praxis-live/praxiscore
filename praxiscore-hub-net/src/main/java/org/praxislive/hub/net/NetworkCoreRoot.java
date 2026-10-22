@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.praxislive.base.AbstractAsyncControl;
 import org.praxislive.core.Call;
 import org.praxislive.core.ComponentAddress;
@@ -253,17 +254,29 @@ class NetworkCoreRoot extends BasicCoreRoot {
 
     private class HubConfigurationControl implements Control {
 
+        private PMap confMap;
+
+        private HubConfigurationControl() {
+            this.confMap = PMap.EMPTY;
+        }
+
         @Override
         public void call(Call call, PacketRouter router) throws Exception {
             if (call.isRequest()) {
-                if (configuration != null) {
-                    throw new IllegalStateException("Hub Configuration already fixed");
+                List<Value> args = call.args();
+                if (!args.isEmpty()) {
+                    PMap map = PMap.from(call.args().get(0))
+                            .orElseThrow(IllegalArgumentException::new);
+                    if (configuration == null) {
+                        configuration = HubConfiguration.fromMap(map);
+                        configure();
+                        confMap = map;
+                    } else if (!confMap.equivalent(map)) {
+                        throw new IllegalStateException("Hub Configuration already fixed");
+                    }
                 }
-                configuration = HubConfiguration.fromMap(
-                        PMap.from(call.args().get(0)).orElseThrow());
-                configure();
                 if (call.isReplyRequired()) {
-                    router.route(call.reply());
+                    router.route(call.reply(confMap));
                 }
             }
 

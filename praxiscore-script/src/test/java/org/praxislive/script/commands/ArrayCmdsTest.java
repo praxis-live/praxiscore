@@ -86,6 +86,53 @@ public class ArrayCmdsTest {
     }
 
     @Test
+    public void testArrayContainsCommand() throws Exception {
+        logTest("testArrayContainsCommand");
+        InlineCommand arrayContains = (InlineCommand) CMDS.get("array-contains");
+        PArray array = Stream.of(V0, V1, V2, V3)
+                .map(Value::ofObject)
+                .collect(PArray.collector());
+
+        List<Value> resultList = arrayContains.process(env(), namespace(),
+                List.of(array, PString.of("FOO")));
+        logResult("Command result of array-contains \"FOO\"", resultList);
+        assertEquals(1, resultList.size());
+        assertTrue(PBoolean.from(resultList.getFirst())
+                .map(PBoolean::value).orElseThrow());
+        resultList = arrayContains.process(env(), namespace(),
+                List.of(array, PString.of("42")));
+        logResult("Command result of array-contains \"42\"", resultList);
+        assertEquals(1, resultList.size());
+        assertTrue(PBoolean.from(resultList.getFirst())
+                .map(PBoolean::value).orElseThrow());
+        PArray testArray = PArray.ofObjects("/root.info", "/root.meta");
+        resultList = arrayContains.process(env(), namespace(),
+                List.of(array, testArray));
+        logResult("Command result of array-contains " + testArray, resultList);
+        assertEquals(1, resultList.size());
+        assertTrue(PBoolean.from(resultList.getFirst())
+                .map(PBoolean::value).orElseThrow());
+        resultList = arrayContains.process(env(), namespace(),
+                List.of(array, PString.of("40")));
+        logResult("Command result of array-contains \"40\"", resultList);
+        assertEquals(1, resultList.size());
+        assertFalse(PBoolean.from(resultList.getFirst())
+                .map(PBoolean::value).orElseThrow());
+
+        resultList = arrayContains.process(env(), namespace(),
+                List.of(PArray.EMPTY, PNumber.ONE));
+        logResult("Command result of array-contains 1 on empty array", resultList);
+        assertEquals(1, resultList.size());
+        assertFalse(PBoolean.from(resultList.getFirst())
+                .map(PBoolean::value).orElseThrow());
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            List<Value> noResult = arrayContains.process(env(), namespace(), List.of(PNumber.ONE));
+        });
+
+    }
+
+    @Test
     public void testArrayGetCommand() throws Exception {
         logTest("testArrayGetCommand");
         InlineCommand arrayGet = (InlineCommand) CMDS.get("array-get");
@@ -256,7 +303,7 @@ public class ArrayCmdsTest {
 
         results = range.process(env(), namespace(),
                 PArray.ofObjects(1, 10, 3.3).asList());
-        logResult("Seveneth result of range", results);
+        logResult("Seventh result of range", results);
         result = PArray.from(results.getFirst()).orElseThrow().asListOf(PNumber.class);
         assertArrayEquals(new double[]{1, 4.3, 7.6},
                 result.stream().mapToDouble(PNumber::value).toArray(),

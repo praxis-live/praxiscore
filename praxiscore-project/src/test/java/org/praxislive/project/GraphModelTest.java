@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  * 
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -22,7 +22,6 @@
 package org.praxislive.project;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -389,7 +388,7 @@ public class GraphModelTest {
                         .map(c -> Map.entry(c.getKey(), rewriteMeta(c.getValue())))
                         .toList()));
         if (VERBOSE) {
-            System.out.println("Transformed model");
+            System.out.println("Transformed model : transformChildren");
             System.out.println(transformed);
         }
         PMap attr1 = PMap.from(transformed.root().children()
@@ -415,6 +414,24 @@ public class GraphModelTest {
                         }
                         """;
         assertEquals(expectedOutput, transformed.writeToString());
+
+        transformed = model.withTransform(root -> {
+            root.transformChild("child1", cmp -> rewriteMeta(cmp));
+            root.transformChild("child2", cmp -> null);
+        });
+        if (VERBOSE) {
+            System.out.println("Transformed model : transformChild");
+            System.out.println(transformed);
+        }
+        expectedOutput = """
+                        @ /root root:custom {
+                          @ ./child1 core:variable {
+                            # must be kept \\{
+                            .meta [map graph.x 21 graph.y 42]
+                          }
+                        }
+                        """;
+        assertEquals(expectedOutput, transformed.writeToString());
     }
 
     private GraphElement.Component rewriteMeta(GraphElement.Component cmp) {
@@ -430,24 +447,13 @@ public class GraphModelTest {
         }
         PMap attr = mb.build();
         GraphBuilder.Component newCmp = GraphBuilder.component(cmp);
-        newCmp.transformProperties(props -> {
-            List<Map.Entry<String, GraphElement.Property>> result = new ArrayList<>(props.toList());
-            int index = -1;
-            for (int i = 0; i < result.size(); i++) {
-                if ("meta".equals(result.get(i).getKey())) {
-                    index = i;
-                    break;
-                }
-            }
-            if (index > -1) {
-                PMap existing = PMap.from(result.get(index).getValue().value()).orElseThrow();
-                result.set(index, Map.entry("meta",
-                        GraphElement.property(PMap.merge(existing, attr, PMap.REPLACE))));
-            } else {
-                result.add(0, Map.entry("meta", GraphElement.property(attr)));
-            }
-            return result;
-        });
+        if (newCmp.properties().containsKey("meta")) {
+            newCmp.transformProperty("meta", m -> GraphElement.property(
+                    PMap.merge(PMap.from(m.value()).orElse(PMap.EMPTY),
+                            attr, PMap.REPLACE)));
+        } else {
+            newCmp.property("meta", attr);
+        }
 
         newCmp.transformComments(comments -> comments
                 .filter(c -> !c.text().strip().startsWith("%"))

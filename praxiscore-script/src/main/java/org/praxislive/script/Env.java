@@ -41,13 +41,18 @@ public interface Env {
      * addresses are resolved against. Used and controlled by the {@code @}
      * command.
      */
-    public final static String CONTEXT = "_CTXT";
+    public static final String CONTEXT = "_CTXT";
 
     /**
      * Name of the present working directory variable used to resolve relative
      * file paths in various commands.
      */
-    public final static String PWD = "_PWD";
+    public static final String PWD = "_PWD";
+
+    /**
+     * Name of the variable storing the last error, if any.
+     */
+    public static final String ERROR = "ERROR";
 
     /**
      * Lookup object of the script executor.

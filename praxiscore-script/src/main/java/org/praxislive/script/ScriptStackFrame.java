@@ -202,8 +202,8 @@ public final class ScriptStackFrame implements StackFrame {
                     .orElse(PArray.EMPTY)
                     .asListOf(String.class)
                     .stream()
-                    .collect(Collectors.joining("\n"));
-            result = List.of(PString.of(errors));
+                    .collect(Collectors.joining("\n", "Trapped Errors\n", "\n"));
+            result = List.of(PError.of(errors));
             state = State.Error;
         } else {
             rootNode.writeResult(scratchList);

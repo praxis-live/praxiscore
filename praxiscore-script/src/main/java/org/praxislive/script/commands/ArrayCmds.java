@@ -27,6 +27,7 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
+import org.praxislive.core.types.PBoolean;
 import org.praxislive.core.types.PNumber;
 import org.praxislive.script.Command;
 import org.praxislive.script.Env;
@@ -42,6 +43,7 @@ class ArrayCmds {
 
     private static final Map<String, Command> COMMANDS = Map.of(
             "array", new Array(),
+            "array-contains", new ArrayContains(),
             "array-get", new ArrayGet(),
             "array-join", new ArrayJoin(),
             "array-range", new ArrayRange(),
@@ -72,6 +74,31 @@ class ArrayCmds {
         @Override
         public String description() {
             return CoreCommands.message("array.description");
+        }
+
+    }
+
+    private static class ArrayContains implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 2) {
+                throw new IllegalArgumentException("Incorrect number of arguments");
+            }
+            PArray array = PArray.from(args.get(0))
+                    .orElseThrow(() -> new IllegalArgumentException("First argument is not an array"));
+            Value value = args.get(1);
+            for (Value x : array) {
+                if (x.equivalent(value) || value.equivalent(x)) {
+                    return List.of(PBoolean.TRUE);
+                }
+            }
+            return List.of(PBoolean.FALSE);
+        }
+
+        @Override
+        public String description() {
+            return CoreCommands.message("array-contains.description");
         }
 
     }

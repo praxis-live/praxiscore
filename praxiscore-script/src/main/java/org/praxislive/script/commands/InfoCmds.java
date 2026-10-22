@@ -32,6 +32,7 @@ import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PMap;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
+import org.praxislive.script.Env;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.StackFrame;
 
@@ -53,7 +54,7 @@ class InfoCmds {
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
             if (args.isEmpty()) {
-                return StackFrame.supply(() -> List.of(Value.ofObject(description())));
+                return StackFrame.result(List.of(Value.ofObject(description())));
             } else if (args.size() != 1) {
                 throw new IllegalArgumentException("Too many arguments");
             }
@@ -90,6 +91,8 @@ class InfoCmds {
                 case "namespace" ->
                     PMap.of("commands", commands(namespace),
                     "variables", variables(namespace));
+                case "last-error" ->
+                    PString.of(namespace.getValue(Env.ERROR, PString.EMPTY).print());
                 default ->
                     PString.of(namespace.getCommand(command).description());
             };

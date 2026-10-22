@@ -19,7 +19,6 @@
  * Please visit https://www.praxislive.org if you need additional information or
  * have any questions.
  */
-
 package org.praxislive.script.commands;
 
 import java.text.MessageFormat;
@@ -32,7 +31,7 @@ import org.praxislive.script.CommandInstaller;
  * Command installer for core script commands.
  */
 public class CoreCommands implements CommandInstaller {
-    
+
     private static final ResourceBundle MESSAGES
             = ResourceBundle.getBundle(CoreCommands.class.getPackageName() + ".Messages");
 
@@ -51,12 +50,13 @@ public class CoreCommands implements CommandInstaller {
         ProcessCmds.install(commands);
         ScriptCmds.install(commands);
         StringCmds.install(commands);
+        SystemCmds.install(commands);
     }
-    
+
     static String message(String key) {
         return MESSAGES.getString(key);
     }
-    
+
     static String message(String key, Object... arguments) {
         return MessageFormat.format(MESSAGES.getString(key), arguments);
     }

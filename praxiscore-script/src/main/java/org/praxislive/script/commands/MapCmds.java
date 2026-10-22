@@ -38,11 +38,6 @@ import org.praxislive.script.Namespace;
  */
 class MapCmds {
 
-    private static final CreateMap MAP = new CreateMap();
-    private static final MapGet MAP_GET = new MapGet();
-    private static final MapKeys MAP_KEYS = new MapKeys();
-    private static final MapSize MAP_SIZE = new MapSize();
-
     private static final Map<String, Command> COMMANDS = Map.of(
             "map", new CreateMap(),
             "map-get", new MapGet(),

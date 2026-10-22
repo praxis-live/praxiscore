@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
+import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PResource;
 
 /**
@@ -57,6 +58,20 @@ public final class ScriptUtils {
                 .flatMap(v -> PResource.from(v.getValue()))
                 .map(PResource::value)
                 .orElse(new File("").toURI());
+    }
+
+    /**
+     * Find the global namespace at the root of the provided namespace.
+     *
+     * @param namespace child namespace
+     * @return global namespace if available
+     */
+    public static final Optional<Namespace> findGlobalNamespace(Namespace namespace) {
+        return Optional.ofNullable(
+                namespace.getVariable("_GLOBAL_NAMESPACE"))
+                .map(Variable::getValue)
+                .flatMap(PReference::from)
+                .flatMap(ref -> ref.as(Namespace.class));
     }
 
     /**

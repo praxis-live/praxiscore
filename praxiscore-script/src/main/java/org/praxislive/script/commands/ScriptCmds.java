@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import org.praxislive.core.Value;
 import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PBoolean;
+import org.praxislive.core.types.PError;
 import org.praxislive.core.types.PReference;
 import org.praxislive.core.types.PResource;
 import org.praxislive.core.types.PString;
@@ -57,7 +58,8 @@ class ScriptCmds {
             "global", new Global(),
             "if", new If(),
             "include", INCLUDE,
-            "try", new Try()
+            "try", new Try(),
+            "fail", new Fail()
     );
 
     private ScriptCmds() {
@@ -306,7 +308,16 @@ class ScriptCmds {
                 case 3 -> {
                     if ("catch".equals(args.get(1).toString())) {
                         return ScriptStackFrame.forScript(namespace, args.get(0).toString()).build()
-                                .onError(err -> ScriptStackFrame.forScript(namespace, args.get(2).toString()).build());
+                                .onError(err -> {
+                                    String body = args.get(2).toString();
+                                    ScriptStackFrame.Builder builder
+                                            = ScriptStackFrame
+                                                    .forScript(namespace, body);
+                                    if (!err.isEmpty()) {
+                                        builder.createVariable(Env.ERROR, err.getFirst());
+                                    }
+                                    return builder.build();
+                                });
                     } else {
                         throw new IllegalArgumentException("Unknown second argument : " + args.get(1));
                     }
@@ -319,6 +330,22 @@ class ScriptCmds {
         @Override
         public String description() {
             return CoreCommands.message("try.description");
+        }
+
+    }
+
+    private static class Fail implements Command {
+
+        @Override
+        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
+            Value arg = args.isEmpty() ? PString.EMPTY : args.getFirst();
+            PError error = PError.from(arg).orElseGet(() -> PError.of(arg.toString()));
+            throw new PError.WrapperException(error);
+        }
+
+        @Override
+        public String description() {
+            return CoreCommands.message("fail.description");
         }
 
     }

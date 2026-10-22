@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.praxislive.core.Value;
 import org.praxislive.core.ComponentAddress;
 import org.praxislive.core.ComponentInfo;
@@ -33,16 +34,15 @@ import org.praxislive.core.ControlAddress;
 import org.praxislive.core.protocols.ComponentProtocol;
 import org.praxislive.core.protocols.ContainerProtocol;
 import org.praxislive.core.services.RootManagerService;
+import org.praxislive.core.types.PArray;
 import org.praxislive.core.types.PString;
 import org.praxislive.script.Command;
 import org.praxislive.script.Env;
 import org.praxislive.script.Namespace;
 import org.praxislive.script.ScriptStackFrame;
 import org.praxislive.script.StackFrame;
+import org.praxislive.script.Variable;
 
-/**
- *
- */
 class AtCmds {
 
     private static final Map<String, Command> COMMANDS = Map.of(
@@ -116,7 +116,7 @@ class AtCmds {
                     if (namespace.getVariable("_TRAP") != null) {
                         ComponentAddress checkAddress = ctxt;
                         ComponentType checkType = type;
-                        return create.onError(v -> verifyType(checkAddress, checkType))
+                        return create.onError(v -> verifyType(namespace, checkAddress, checkType))
                                 .andThen(eval);
                     } else {
                         return create.andThen(eval);
@@ -138,7 +138,7 @@ class AtCmds {
         }
 
         // @TODO v7 improve component type detection here
-        private StackFrame verifyType(ComponentAddress cmp, ComponentType type) {
+        private StackFrame verifyType(Namespace namespace, ComponentAddress cmp, ComponentType type) {
             return StackFrame.call(ControlAddress.of(cmp, ComponentProtocol.INFO), List.of())
                     .andThen(args -> {
                         ComponentType infoType = args.stream().limit(1)
@@ -150,11 +150,21 @@ class AtCmds {
                                             .stream();
                                 }).findFirst().orElse(null);
                         if (type.equals(infoType)) {
+                            Variable trap = namespace.getVariable("_TRAP");
+                            if (trap != null) {
+                                PArray value = Stream.concat(
+                                        PArray.from(trap.getValue())
+                                                .orElse(PArray.EMPTY).stream(),
+                                        Stream.of(PString.of("Component " + cmp
+                                        + " already exists")))
+                                        .collect(PArray.collector());
+                                trap.setValue(value);
+                            }
                             return StackFrame.empty();
                         } else {
                             throw new IllegalArgumentException(
-                                    "Component type mismatch - expected " + type
-                                    + ", actually " + infoType);
+                                    "Component type mismatch at " + cmp
+                                    + " - expected " + type + ", actually " + infoType);
                         }
                     });
         }

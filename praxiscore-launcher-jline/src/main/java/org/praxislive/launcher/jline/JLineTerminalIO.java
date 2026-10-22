@@ -22,12 +22,12 @@
 package org.praxislive.launcher.jline;
 
 import java.util.List;
-import java.util.Set;
 import org.praxislive.base.AbstractRoot;
 import org.praxislive.core.Call;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.PacketRouter;
 import org.praxislive.core.RootHub;
+import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.ScriptService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.Services;
@@ -35,23 +35,19 @@ import org.praxislive.core.types.PString;
 import org.praxislive.core.services.SystemManagerService;
 import org.praxislive.core.services.UserInputService;
 
+import static org.praxislive.core.services.UserInputService.*;
+
 /**
  *
  */
 class JLineTerminalIO extends AbstractRoot implements RootHub.ServiceProvider {
-
-    private static final Set<String> USER_INPUT_CONTROLS
-            = Set.of(UserInputService.USER_INPUT,
-                    UserInputService.USER_INPUT_CONFIRM,
-                    UserInputService.USER_INPUT_MAP,
-                    UserInputService.USER_INPUT_SELECT);
 
     private ControlAddress scriptService;
     private ControlAddress fromAddress;
 
     @Override
     public List<Class<? extends Service>> services() {
-        return List.of(UserInputService.class);
+        return List.of(UserInputService.class, LogService.class);
     }
 
     @Override
@@ -77,10 +73,17 @@ class JLineTerminalIO extends AbstractRoot implements RootHub.ServiceProvider {
     @Override
     protected void processCall(Call call, PacketRouter router) {
         if (call.isRequest()) {
-            if (USER_INPUT_CONTROLS.contains(call.to().controlID())) {
-                TerminalImpl.getInstance().postRequest(call);
-            } else {
-                throw new UnsupportedOperationException();
+            switch (call.to().controlID()) {
+                case LogService.LOG -> {
+                    TerminalImpl.getInstance().postLog(call);
+                    if (call.isReplyRequired()) {
+                        router.route(call.reply());
+                    }
+                }
+                case USER_INPUT, USER_INPUT_CONFIRM, USER_INPUT_MAP, USER_INPUT_SELECT ->
+                    TerminalImpl.getInstance().postRequest(call);
+                default ->
+                    throw new UnsupportedOperationException();
             }
         } else if ("io".equals(call.to().controlID())) {
             TerminalImpl.getInstance().postResponse(call);

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -29,6 +29,8 @@ import java.util.function.UnaryOperator;
 import org.praxislive.core.Call;
 import org.praxislive.core.ControlAddress;
 import org.praxislive.core.Value;
+import org.praxislive.core.services.LogLevel;
+import org.praxislive.core.services.LogService;
 import org.praxislive.core.services.Service;
 import org.praxislive.core.services.ServiceUnavailableException;
 import org.praxislive.core.services.Services;
@@ -184,9 +186,7 @@ public interface StackFrame {
      */
     public default StackFrame andThenMap(UnaryOperator<List<Value>> mapper) {
         Objects.requireNonNull(mapper);
-        return andThen(args -> new CompoundStackFrame.SupplierStackFrame(
-                () -> mapper.apply(args))
-        );
+        return andThen(args -> inline(env -> mapper.apply(args)));
     }
 
     /**
@@ -199,7 +199,7 @@ public interface StackFrame {
      */
     public default StackFrame onError(Function<List<Value>, StackFrame> errorStage) {
         Objects.requireNonNull(errorStage);
-        return new CompoundStackFrame.OnFailStackFrame(this, errorStage);
+        return new CompoundStackFrame.OnFail(this, errorStage);
     }
 
     /**
@@ -248,7 +248,27 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame empty() {
-        return new CompoundStackFrame.SupplierStackFrame(() -> List.of());
+        return new CompoundStackFrame.Fixed(List.of());
+    }
+
+    /**
+     * Create a StackFrame that returns a fixed result.
+     *
+     * @param value fixed result
+     * @return stackframe
+     */
+    public static StackFrame result(Value value) {
+        return result(List.of(value));
+    }
+
+    /**
+     * Create a StackFrame that returns a fixed result.
+     *
+     * @param values fixed result
+     * @return stackframe
+     */
+    public static StackFrame result(List<Value> values) {
+        return new CompoundStackFrame.Fixed(values);
     }
 
     /**
@@ -258,7 +278,7 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame inline(Function<Env, List<Value>> function) {
-        return new CompoundStackFrame.FunctionStackFrame(
+        return new CompoundStackFrame.Inline(
                 Objects.requireNonNull(function));
     }
 
@@ -269,8 +289,8 @@ public interface StackFrame {
      * @return stackframe
      */
     public static StackFrame supply(Supplier<List<Value>> supplier) {
-        return new CompoundStackFrame.SupplierStackFrame(
-                Objects.requireNonNull(supplier));
+        Objects.requireNonNull(supplier);
+        return inline(env -> supplier.get());
     }
 
     /**
@@ -317,6 +337,21 @@ public interface StackFrame {
                 return Call.create(to, env.getAddress(), env.getTime(), args);
             }
         };
+    }
+
+    /**
+     * Create a StackFrame that logs the provided message. If no
+     * {@link LogService} is available then the stackframe is a no-op. The
+     * message is converted using {@link Value#ofObject(java.lang.Object)}.
+     *
+     * @param level log level
+     * @param message log message
+     * @return stackframe
+     */
+    public static StackFrame log(LogLevel level, Object message) {
+        return serviceCall(LogService.class, LogService.LOG,
+                List.of(level.asPString(), Value.ofObject(message)))
+                .onError(v -> StackFrame.empty());
     }
 
 }

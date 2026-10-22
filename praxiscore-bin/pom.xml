@@ -143,6 +143,11 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>praxiscore-project-tools</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>praxiscore-video</artifactId>
       <version>${project.version}</version>
     </dependency>

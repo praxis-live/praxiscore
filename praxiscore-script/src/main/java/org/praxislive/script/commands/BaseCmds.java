@@ -33,8 +33,8 @@ import org.praxislive.script.Namespace;
 import org.praxislive.script.Variable;
 
 import static java.lang.System.Logger.Level;
-import org.praxislive.core.services.SystemManagerService;
-import org.praxislive.script.StackFrame;
+
+import org.praxislive.core.types.PBoolean;
 
 /**
  *
@@ -46,10 +46,11 @@ class BaseCmds {
     private static final Map<String, Command> COMMANDS = Map.of(
             "constant", new Constant(),
             "set", new Set(),
+            "is-set", new IsSet(),
+            "get", new Get(),
             "var", new Var(),
             "echo", new Echo(),
-            "print", new Print(),
-            "exit", new Exit()
+            "print", new Print()
     );
 
     private BaseCmds() {
@@ -81,6 +82,42 @@ class BaseCmds {
         @Override
         public String description() {
             return CoreCommands.message("set.description");
+        }
+
+    }
+
+    private static class IsSet implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 1) {
+                throw new Exception();
+            }
+            Variable var = namespace.getVariable(args.getFirst().toString());
+            return List.of(PBoolean.of(var != null));
+        }
+
+        @Override
+        public String description() {
+            return CoreCommands.message("is-set.description");
+        }
+
+    }
+
+    private static class Get implements InlineCommand {
+
+        @Override
+        public List<Value> process(Env context, Namespace namespace, List<Value> args) throws Exception {
+            if (args.size() != 1) {
+                throw new Exception();
+            }
+            Variable var = namespace.getVariable(args.getFirst().toString());
+            return List.of(var.getValue());
+        }
+
+        @Override
+        public String description() {
+            return CoreCommands.message("get.description");
         }
 
     }
@@ -159,21 +196,6 @@ class BaseCmds {
         @Override
         public String description() {
             return CoreCommands.message("print.description");
-        }
-
-    }
-
-    private static class Exit implements Command {
-
-        @Override
-        public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            return StackFrame.serviceCall(SystemManagerService.class,
-                    SystemManagerService.SYSTEM_EXIT, args);
-        }
-
-        @Override
-        public String description() {
-            return CoreCommands.message("exit.description");
         }
 
     }

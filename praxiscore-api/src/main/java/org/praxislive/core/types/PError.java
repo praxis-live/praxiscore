@@ -94,7 +94,6 @@ public final class PError extends Value {
         if (stack == null) {
             if (ex != null) {
                 stack = Stream.of(ex.getStackTrace())
-                        .skip(1)
                         .limit(5)
                         .map(e -> "    " + e.toString())
                         .collect(Collectors.joining("\n"));
@@ -113,6 +112,11 @@ public final class PError extends Value {
      */
     public Optional<Exception> exception() {
         return Optional.ofNullable(ex);
+    }
+
+    @Override
+    public String print(PrintOption... options) {
+        return dataMap().print(options);
     }
 
     @Override

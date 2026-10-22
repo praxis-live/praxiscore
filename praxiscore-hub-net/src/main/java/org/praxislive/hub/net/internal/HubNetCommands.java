@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2024 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -23,46 +23,54 @@ package org.praxislive.hub.net.internal;
 
 import java.util.List;
 import java.util.Map;
-import org.praxislive.core.Call;
-import org.praxislive.core.ComponentAddress;
-import org.praxislive.core.ControlAddress;
+import java.util.ResourceBundle;
 import org.praxislive.core.Value;
-import org.praxislive.core.services.ServiceUnavailableException;
-import org.praxislive.core.services.Services;
-import org.praxislive.script.Command;
-import org.praxislive.script.CommandInstaller;
-import org.praxislive.script.Env;
-import org.praxislive.script.Namespace;
-import org.praxislive.script.StackFrame;
-import org.praxislive.script.AbstractSingleCallFrame;
+import org.praxislive.core.services.LogLevel;
+import org.praxislive.script.*;
 
 /**
  *
  */
 public class HubNetCommands implements CommandInstaller {
 
-    private final static ConfigurationCommand HUB_CONFIGURE = new ConfigurationCommand();
+    private static final ResourceBundle MESSAGES
+            = ResourceBundle.getBundle(HubNetCommands.class.getPackageName() + ".Messages");
+
+    private final static Map<String, Command> COMMANDS = Map.of(
+            "hub", new ConfigurationCommand(false),
+            "hub-configure", new ConfigurationCommand(true)
+    );
 
     @Override
     public void install(Map<String, Command> commands) {
-        commands.put("hub", HUB_CONFIGURE);
-        commands.put("hub-configure", HUB_CONFIGURE);
+        commands.putAll(COMMANDS);
     }
 
     private final static class ConfigurationCommand implements Command {
 
+        private final boolean deprecated;
+
+        private ConfigurationCommand(boolean deprecated) {
+            this.deprecated = deprecated;
+        }
+
         @Override
         public StackFrame createStackFrame(Namespace namespace, List<Value> args) throws Exception {
-            return new AbstractSingleCallFrame(namespace, args) {
-                @Override
-                protected Call createCall(Env env, List<Value> args) throws Exception {
-                    ComponentAddress service = env.getLookup().find(Services.class)
-                            .flatMap(sm -> sm.locate(HubConfigurationService.class))
-                            .orElseThrow(ServiceUnavailableException::new);
-                    ControlAddress to = ControlAddress.of(service, HubConfigurationService.HUB_CONFIGURE);
-                    return Call.create(to, env.getAddress(), env.getTime(), args);
-                }
-            };
+            StackFrame serviceCall = StackFrame.serviceCall(
+                    HubConfigurationService.class,
+                    HubConfigurationService.HUB_CONFIGURE, args);
+            if (deprecated) {
+                return StackFrame.log(LogLevel.WARNING,
+                        MESSAGES.getString("hub-configure.deprecation"))
+                        .andThen(v -> serviceCall);
+            } else {
+                return serviceCall;
+            }
+        }
+
+        @Override
+        public String description() {
+            return MESSAGES.getString("hub.description");
         }
 
     }

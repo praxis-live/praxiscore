@@ -124,6 +124,27 @@ public interface Namespace {
     }
 
     /**
+     * Get the value from the variable with the given ID from this namespace or
+     * a parent namespace, or return the default value.
+     * <p>
+     * The default implementation of this method calls
+     * {@link #getVariable(java.lang.String)} to find a registered variable, and
+     * if present returns the result of {@link Variable#getValue()}.
+     *
+     * @param id variable ID
+     * @param defaultValue default initial value
+     * @return value
+     */
+    public default Value getValue(String id, Value defaultValue) {
+        Variable v = getVariable(id);
+        if (v != null) {
+            return v.getValue();
+        } else {
+            return defaultValue;
+        }
+    }
+
+    /**
      * Create a constant in this namespace with the initial value given. The
      * constant is guaranteed to always return {@code value} from
      * {@link Variable#getValue()}, and to always throw
