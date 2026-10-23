@@ -601,12 +601,10 @@ public class CodeRoot<D extends CodeRootDelegate> extends CodeComponent<D> imple
                         active = active.next;
                     }
                 }
-                // If context changes, try to activate again.
-                // If the context changes and the root is stopped in the same cycle
-                // do not call into delegate.
+                // Check active again in case context has changed or root has
+                // been stopped during update.
                 try {
-                    if (active.context != null
-                            && (active.context == context || active.context.checkActive())) {
+                    if (active.context != null && root.isRunning() && active.context.checkActive()) {
                         return method.invoke(active.driver, args);
                     } else {
                         return null;
