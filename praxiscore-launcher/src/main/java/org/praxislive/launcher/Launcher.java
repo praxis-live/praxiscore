@@ -243,6 +243,10 @@ public class Launcher {
                 descriptionKey = "option.interactive.help")
         private Boolean interactive;
 
+        @CommandLine.Option(names = "--machine",
+                descriptionKey = "option.machine.help")
+        private boolean machine;
+
         @CommandLine.Option(names = {"-p", "--port"},
                 converter = PortConverter.class,
                 descriptionKey = "option.port.help")
@@ -379,7 +383,9 @@ public class Launcher {
             }
 
             final boolean terminal;
-            if (interactive == null) {
+            if (machine) {
+                terminal = true;
+            } else if (interactive == null) {
                 terminal = !(requireServer
                         || scriptPath != null
                         || (script == null && showEnv));
@@ -431,7 +437,7 @@ public class Launcher {
                 hubBuilder.extendLookup(logLevel);
 
                 if (terminal) {
-                    Root terminalIO = createTerminalIO();
+                    Root terminalIO = machine ? new MachineTerminalIO() : createTerminalIO();
                     hubBuilder.addExtension(terminalIO);
                     if (!(terminalIO instanceof RootHub.ServiceProvider rhsp)
                             || !rhsp.services().contains(LogService.class)) {
