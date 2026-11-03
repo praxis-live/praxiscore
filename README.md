@@ -24,6 +24,12 @@ fully built runtime will be found at `praxiscore-bin/target/praxiscore` and
 To run the test suite, execute
 `./praxiscore-bin/target/praxiscore/bin/praxis -f ./testsuite/`.
 
+## Automation
+
+The launcher supports `--machine` for line-framed UTF-8 PCL input and replies,
+without a human terminal provider. See the [machine terminal protocol](praxiscore-launcher/README.md)
+for framing, lifecycle and a subprocess example.
+
 ## License
 
 PraxisCORE is licensed under the terms of the GNU Lesser General Public License v3.
