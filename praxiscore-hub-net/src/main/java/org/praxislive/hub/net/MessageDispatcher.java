@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2025 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -79,14 +79,17 @@ abstract class MessageDispatcher {
 
     void handleMessage(SocketAddress sender, Message msg) {
         try {
-            if (msg instanceof Message.Send sendMsg) {
-                handleSendMessage(sender, sendMsg);
-            } else if (msg instanceof Message.Service serviceMsg) {
-                handleServiceMessage(sender, serviceMsg);
-            } else if (msg instanceof Message.Reply replyMsg) {
-                handleReplyMessage(sender, replyMsg);
-            } else if (msg instanceof Message.Error errorMsg) {
-                handleErrorMessage(sender, errorMsg);
+            switch (msg) {
+                case Message.Send sendMsg ->
+                    handleSendMessage(sender, sendMsg);
+                case Message.Service serviceMsg ->
+                    handleServiceMessage(sender, serviceMsg);
+                case Message.Reply replyMsg ->
+                    handleReplyMessage(sender, replyMsg);
+                case Message.Error errorMsg ->
+                    handleErrorMessage(sender, errorMsg);
+                default -> {
+                }
             }
         } catch (Exception e) {
             if (msg instanceof Message.Send || msg instanceof Message.Service) {
@@ -132,8 +135,8 @@ abstract class MessageDispatcher {
     }
 
     private void handleSendMessage(SocketAddress sender, Message.Send msg) throws Exception {
-        var to = msg.to();
-        var from = msg.from();
+        ControlAddress to = msg.to();
+        ControlAddress from = msg.from();
         String fromString = from.toString();
         if (fromString.startsWith(SYS_PREFIX)) {
             fromString = getRemoteSysPrefix() + fromString;
@@ -150,9 +153,9 @@ abstract class MessageDispatcher {
                 .filter(Service.class::isAssignableFrom)
                 .map(cls -> (Class<? extends Service>) cls)
                 .orElseThrow(ServiceUnavailableException::new);
-        var serviceAddress = findService(service);
-        var to = ControlAddress.of(serviceAddress, msg.control());
-        var from = msg.from();
+        ComponentAddress serviceAddress = findService(service);
+        ControlAddress to = ControlAddress.of(serviceAddress, msg.control());
+        ControlAddress from = msg.from();
         String fromString = from.toString();
         if (fromString.startsWith(SYS_PREFIX)) {
             fromString = getRemoteSysPrefix() + fromString;
@@ -184,8 +187,12 @@ abstract class MessageDispatcher {
     }
 
     private void handleInvokeCall(Call call) {
-        var to = call.to();
-        var toString = to.toString();
+        if (receivedMessages.containsKey(call.matchID())) {
+            handleResponseCall(call.error(PError.of("Unknown control address : " + call.to())));
+            return;
+        }
+        ControlAddress to = call.to();
+        String toString = to.toString();
         if (toString.startsWith(getRemoteSysPrefix())) {
             toString = toString.substring(getRemoteSysPrefix().length());
             to = ControlAddress.of(toString);
@@ -219,12 +226,13 @@ abstract class MessageDispatcher {
     }
 
     private void handleResponseCall(Call call) {
-        var info = receivedMessages.remove(call.matchID());
+        ReceivedMessageInfo info = receivedMessages.remove(call.matchID());
         if (info == null) {
             LOG.log(Level.DEBUG, "Unexpected call response\n{0}", call);
             return;
         }
-        Message msg = call.isError() ? new Message.Error(info.message().matchID(), call.args())
+        Message msg = call.isError()
+                ? new Message.Error(info.message().matchID(), call.args())
                 : new Message.Reply(info.message().matchID(), call.args());
         try {
             dispatchMessage(info.sender(), msg);
