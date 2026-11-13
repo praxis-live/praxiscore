@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright 2023 Neil C Smith.
+ * Copyright 2026 Neil C Smith.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 3 only, as
@@ -275,7 +275,86 @@ public class NetworkCoreFactoryTest {
         try {
             var childCalled = childScriptService.await();
             assertTrue(childCalled);
-            runner.awaitResult();
+            var result = runner.awaitResult();
+            assertEquals("Hello World", result);
+        } finally {
+            parentHub.shutdown();
+            parentHub.await();
+            childHub.shutdown();
+            childHub.await();
+        }
+    }
+
+    @Test
+    @Timeout(10)
+    public void testInvocationLoopOnChildRootMissing() throws Exception {
+        var childCoreFactory = NetworkCoreFactory.builder()
+                .enableServer()
+                .build();
+        var childScriptService = new ChildScriptService();
+        var childHub = Hub.builder()
+                .setCoreRootFactory(childCoreFactory)
+                .addExtension(new RootFactoryImpl())
+                .addExtension(childScriptService)
+                .build();
+        childHub.start();
+        int port = childCoreFactory.awaitInfo(10, TimeUnit.SECONDS)
+                .serverAddress()
+                .map(InetSocketAddress.class::cast)
+                .map(InetSocketAddress::getPort)
+                .orElseThrow();
+
+        var runner = new TestRunner("""
+                                    @ /root root:test
+                                    set X [/root.get-result]
+                                    foreach root in [roots --all] {
+                                      if [string-contains $root "proxy"] {
+                                        # remove from child while keeping
+                                        # reference in parent hub
+                                        [echo "/" $root ".remove-root"] root
+                                      }
+                                    }
+                                    try {
+                                      /root.get-result
+                                      echo FAIL
+                                    } catch {
+                                      echo $X
+                                    }
+                                    """);
+
+        var proxyInfo = new ProxyInfo() {
+            @Override
+            public boolean matches(String rootID, ComponentType rootType) {
+                return true;
+            }
+
+            @Override
+            public SocketAddress socketAddress() {
+                return new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
+            }
+
+            @Override
+            public List<Class<? extends Service>> services() {
+                return List.of(ScriptService.class);
+            }
+
+        };
+        var parentHub = Hub.builder()
+                .setCoreRootFactory(NetworkCoreFactory.builder()
+                        .hubConfiguration(HubConfiguration.builder()
+                                .proxy(proxyInfo)
+                                .build())
+                        .exposeServices(List.of(RootManagerService.class))
+                        .build()
+                )
+                .addExtension(runner)
+                .build();
+        parentHub.start();
+        try {
+            var childCalled = childScriptService.await();
+            assertTrue(childCalled);
+            var result = runner.awaitResult();
+            assertEquals("Hello World", result);
         } finally {
             parentHub.shutdown();
             parentHub.await();
