@@ -27,6 +27,8 @@ import org.praxislive.core.Settings;
 /**
  *
  */
+@SuppressWarnings("removal")
+@Deprecated(forRemoval = true)
 public class GStreamerSettings {
 
     private final static String KEY_CAPTURE_PREFIX = "video.gstreamer.capture";

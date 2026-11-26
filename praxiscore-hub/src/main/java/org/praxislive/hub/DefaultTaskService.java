@@ -43,12 +43,14 @@ import org.praxislive.core.types.PReference;
 class DefaultTaskService extends AbstractRoot implements RootHub.ServiceProvider {
 
     private static final String KEY_SYSTEM_THREADS = "hub.tasks.systemthreads";
+    private static final String SYS_PROP_SYSTEM_THREADS = "core." + KEY_SYSTEM_THREADS;
 
     private final boolean systemThreads;
     private final ExecutorService threadService;
 
     public DefaultTaskService() {
-        systemThreads = Settings.getBoolean(KEY_SYSTEM_THREADS, false);
+        systemThreads = Settings.getBoolean(KEY_SYSTEM_THREADS,
+                Boolean.getBoolean(SYS_PROP_SYSTEM_THREADS));
         if (systemThreads) {
             threadService = Executors.newCachedThreadPool((Runnable r) -> {
                 Thread thr = new Thread(r);

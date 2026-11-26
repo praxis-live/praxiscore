@@ -29,6 +29,7 @@ import static java.lang.System.Logger.Level.*;
 /**
  *
  */
+@Deprecated(forRemoval = true)
 public class Settings {
 
     private final static Provider provider = Lookup.SYSTEM.find(Provider.class)

@@ -27,6 +27,8 @@ import org.praxislive.core.Settings;
 /**
  *
  */
+@SuppressWarnings("removal")
+@Deprecated(forRemoval = true)
 public class AudioSettings {
     
     public final static String KEY_LIBRARY = "audio.library";

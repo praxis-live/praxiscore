@@ -27,6 +27,8 @@ import org.praxislive.core.Settings;
 /**
  *
  */
+@SuppressWarnings("removal")
+@Deprecated(forRemoval = true)
 public class VideoSettings {
 
     public enum FullScreenMode {

@@ -33,6 +33,7 @@ import org.praxislive.core.Settings;
 /**
  *
  */
+@Deprecated(forRemoval = true)
 public class SettingsProvider extends Settings.Provider {
 
     private final static Preferences PREFS = Preferences.userNodeForPackage(SettingsProvider.class);
