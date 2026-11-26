@@ -1,4 +1,4 @@
-
+@SuppressWarnings("removal")
 module org.praxislive.launcher {
     
     requires java.logging;

@@ -13,18 +13,18 @@ jobs:
     strategy:
       matrix:
         java: [ '21', '25' ]
-        os: [ 'ubuntu-24.04', 'windows-2022', 'macos-15' ]
+        os: [ 'ubuntu-26.04', 'windows-2025', 'macos-26' ]
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Set up JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
